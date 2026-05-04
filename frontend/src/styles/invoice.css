@@ -1,0 +1,271 @@
+/* ── Invoice page layout ── */
+
+.invoice-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  display: grid;
+  gap: 18px;
+}
+
+/* Controls toolbar (hidden on print) */
+.invoice-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invoice-controls button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+}
+
+/* Company editor */
+.invoice-company-editor {
+  padding: 18px;
+}
+
+.invoice-company-editor h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.invoice-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.invoice-editor-grid label {
+  display: grid;
+  gap: 6px;
+  color: #4d5a55;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.invoice-editor-grid input {
+  min-height: 40px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+/* ── Invoice document ── */
+.invoice-document {
+  border: 1px solid #d0d7d3;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 36px 40px;
+  display: grid;
+  gap: 28px;
+}
+
+/* Header: company + title block */
+.invoice-doc-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: start;
+}
+
+.invoice-from {
+  display: grid;
+  gap: 4px;
+}
+
+.invoice-company-name {
+  font-size: 1.15rem;
+}
+
+.invoice-from span {
+  color: #4d5a55;
+  font-size: 0.85rem;
+}
+
+.invoice-title-block {
+  text-align: right;
+}
+
+.invoice-title {
+  margin: 0 0 10px;
+  font-size: 2rem;
+  letter-spacing: 0.06em;
+  color: #1f6f5b;
+}
+
+.invoice-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.invoice-meta label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #4d5a55;
+  font-size: 0.83rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* Bill to */
+.invoice-bill-to {
+  display: grid;
+  gap: 6px;
+  border-top: 2px solid #edf0eb;
+  padding-top: 16px;
+}
+
+.invoice-label {
+  color: #68746f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Editable inline fields */
+.invoice-field {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #e0e8e4;
+  border-radius: 6px;
+  background: #f7f9f7;
+  color: #1d2522;
+  padding: 0 10px;
+  font-size: 0.9rem;
+}
+
+.invoice-field:focus {
+  border-color: #9fb5ab;
+  background: #ffffff;
+  outline: none;
+}
+
+.amount-field {
+  text-align: right;
+  max-width: 120px;
+}
+
+/* Invoice line-items table */
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.invoice-table th {
+  background: #1f6f5b;
+  color: #ffffff;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.invoice-table td {
+  border-bottom: 1px solid #edf0eb;
+  padding: 12px 12px;
+  vertical-align: middle;
+}
+
+.invoice-no-data {
+  color: #68746f;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Totals */
+.invoice-totals {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.invoice-totals-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px 24px;
+  align-items: center;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #f7f9f7;
+  padding: 16px 20px;
+  min-width: 280px;
+}
+
+.invoice-totals-grid span,
+.invoice-totals-grid strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.invoice-totals-grid strong {
+  font-size: 1rem;
+  color: #1f6f5b;
+}
+
+/* Notes */
+.invoice-notes {
+  display: grid;
+  gap: 8px;
+}
+
+.invoice-notes textarea {
+  min-height: 80px;
+  border: 1px solid #e0e8e4;
+  border-radius: 6px;
+  background: #f7f9f7;
+  color: #1d2522;
+  padding: 10px;
+  font-size: 0.88rem;
+  resize: vertical;
+  width: 100%;
+}
+
+/* ── Print styles ── */
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  .invoice-page {
+    padding: 0;
+    max-width: none;
+  }
+
+  .invoice-document {
+    border: none;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .invoice-field {
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+}
+
+/* By default hide print-only elements */
+.print-only {
+  display: none;
+}

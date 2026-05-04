@@ -1,0 +1,328 @@
+.table-scroll {
+  overflow: auto;
+  /* Fixed height so horizontal scrollbar stays within viewport at all times */
+  max-height: calc(100vh - 240px);
+  border: 1px solid #d8ddd7;
+  border-radius: 6px;
+}
+
+.reservations-table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.reservations-table th {
+  background: #56649a;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.sort-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.sort-header span {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.reservations-table th,
+.reservations-table td {
+  border: 1px solid #d8ddd7;
+  height: 32px;
+  padding: 4px 8px;
+  vertical-align: middle;
+}
+
+.reservations-table .col-narrow {
+  text-align: center;
+  width: 44px;
+}
+
+.reservations-table .col-center {
+  text-align: center;
+}
+
+.reservations-table .col-apartment {
+  min-width: 200px;
+}
+
+.reservations-table .col-apartment select {
+  min-width: 190px;
+}
+
+.reservations-table .col-muted {
+  color: #68746f;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.row-new td {
+  background: #eef8f3 !important;
+}
+
+.row-dirty td {
+  background: #fdf8ec !important;
+}
+
+.row-airbnb-zero td {
+  background: #ffe6e6 !important;
+  color: #7f1021;
+}
+
+.row-airbnb-zero .col-narrow.col-muted:last-of-type {
+  color: #e51b3f;
+  font-weight: 700;
+}
+
+.paste-hint {
+  color: #68746f;
+  font-size: 0.78rem;
+  margin: 0 0 8px;
+}
+
+.paste-hint em {
+  font-style: normal;
+  color: #1d2522;
+}
+
+.reservations-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.reservations-table tbody tr:nth-child(even) {
+  background: #f3f6f4;
+}
+
+.reservations-table input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f8f74;
+}
+
+.reservations-table input:not([type='checkbox']),
+.reservations-table select {
+  width: 100%;
+  min-width: 90px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #1d2522;
+  padding: 0 6px;
+}
+
+.reservations-table input:not([type='checkbox']):focus,
+.reservations-table select:focus {
+  border-color: #9fb5ab;
+  background: #ffffff;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.table-actions button {
+  min-height: 26px;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+}
+
+.danger-text-btn {
+  color: #9b3f20 !important;
+}
+
+.table-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 38%);
+  padding: 20px;
+}
+
+.reservation-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 24%);
+  padding: 18px;
+}
+
+.modal-header,
+.modal-actions,
+.reservation-modal-summary,
+.checkbox-field {
+  display: flex;
+  align-items: center;
+}
+
+.modal-header {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-header h2,
+.modal-header p {
+  margin: 0;
+}
+
+.modal-header p {
+  color: #68746f;
+  margin-top: 4px;
+}
+
+.reservation-modal-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reservation-modal-form label {
+  display: grid;
+  gap: 7px;
+  color: #4d5a55;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.reservation-modal-form input,
+.reservation-modal-form select,
+.reservation-modal-form textarea {
+  min-height: 40px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+.reservation-modal-form textarea {
+  min-height: 88px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.checkbox-field {
+  grid-template-columns: auto 1fr;
+  align-content: end;
+  gap: 8px;
+  justify-content: start;
+}
+
+.checkbox-field input {
+  min-height: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: #2f8f74;
+}
+
+.reservation-modal-summary {
+  justify-content: space-between;
+  gap: 12px;
+  grid-column: 1 / -1;
+  border-radius: 8px;
+  background: #eef2f0;
+  padding: 12px;
+}
+
+.reservation-modal-summary span {
+  color: #4d5a55;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+.modal-actions button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.form-error {
+  border-radius: 8px;
+  background: #fde8df;
+  color: #9b3f20;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+}
+
+.reservation-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.reservation-filters label {
+  display: grid;
+  gap: 6px;
+  color: #4d5a55;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.reservation-filters select {
+  min-width: 150px;
+  min-height: 38px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+.reservation-bulk-delete {
+  align-self: end;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.select-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  background: #e9edf7;
+  color: #1d2b5f;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.select-pill.muted {
+  background: #edf0eb;
+  color: #42514b;
+}

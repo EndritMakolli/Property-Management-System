@@ -1,0 +1,310 @@
+.reports-page {
+  display: grid;
+  gap: 18px;
+}
+
+.reports-header,
+.reports-filters,
+.reports-table-header,
+.reports-row {
+  display: grid;
+}
+
+.reports-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.reports-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.reports-header svg {
+  color: #1f6f5b;
+}
+
+.reports-filters {
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.reports-filters label {
+  display: grid;
+  gap: 7px;
+  color: #4d5a55;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.reports-filters select {
+  min-height: 40px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+.exclusions-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.excluded-apartment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.excluded-apartment-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: #2a3530;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 0 10px;
+}
+
+.excluded-apartment-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: #9b3f20;
+}
+
+.reports-table {
+  display: grid;
+}
+
+.property-panel .show-more-button {
+  margin-top: 12px;
+}
+
+.reports-table-header,
+.reports-row {
+  grid-template-columns: minmax(220px, 1.5fr) repeat(6, minmax(110px, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.reports-table-header {
+  color: #68746f;
+  font-size: 0.78rem;
+  padding: 0 0 10px;
+}
+
+.reports-table-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
+}
+
+.reports-table-header button:hover {
+  color: #1f6f5b;
+}
+
+.reports-table-header button svg {
+  flex: 0 0 auto;
+}
+
+.reports-row {
+  border-top: 1px solid #edf0eb;
+  min-height: 48px;
+  padding: 10px 0;
+}
+
+.reports-row span {
+  color: #4d5a55;
+}
+
+/* ── Stats sections ── */
+.stats-chart-panel {
+  padding: 18px;
+}
+
+.stats-section-title {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  color: #2a3530;
+}
+
+.stats-section {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.stats-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stats-section-header .stats-section-title {
+  margin: 0;
+}
+
+/* Stay duration cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.stats-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 14px;
+}
+
+.stats-card-label {
+  color: #68746f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.stats-card-value {
+  font-size: 1.7rem;
+  display: block;
+  margin-top: 4px;
+}
+
+.stats-card-sub {
+  color: #4d5a55;
+  font-size: 0.8rem;
+}
+
+.stats-bar-bg {
+  height: 7px;
+  border-radius: 999px;
+  background: #e5eae3;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.stats-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1f6f5b;
+}
+
+/* Country table */
+.country-table {
+  display: grid;
+  font-size: 0.85rem;
+}
+
+.country-header,
+.country-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 100px 140px 120px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.country-header {
+  color: #68746f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-bottom: 2px solid #dfe5dd;
+  padding-bottom: 8px;
+}
+
+.country-row {
+  border-bottom: 1px solid #edf0eb;
+}
+
+.country-row span {
+  color: #4d5a55;
+}
+
+.inline-bar {
+  margin-top: 4px;
+}
+
+/* Prefix editor */
+.prefix-editor {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f7f9f7;
+}
+
+.prefix-textarea {
+  width: 100%;
+  min-height: 200px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  padding: 10px;
+  resize: vertical;
+}
+
+/* Fully booked list */
+.fully-booked-list {
+  font-size: 0.82rem;
+  color: #4d5a55;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+/* Lowest performers */
+.perf-card {
+  gap: 8px;
+}
+
+.stats-card-name {
+  font-size: 1rem;
+  display: block;
+}
+
+.perf-metrics {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.perf-metrics span {
+  font-size: 0.8rem;
+  color: #68746f;
+}
+
+.perf-metrics strong {
+  color: #1d2522;
+}

@@ -1,0 +1,176 @@
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #dfe5dd;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid,
+  .schedule-columns,
+  .schedule-columns.three-columns,
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
+
+  .property-row {
+    grid-template-columns: 1fr;
+  }
+
+  .property-form {
+    grid-template-columns: 1fr;
+  }
+
+  .property-create-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .listings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .availability-search-form,
+  .availability-results,
+  .reports-filters,
+  .finance-metrics,
+  .admin-user-form,
+  .sync-status-row,
+  .sync-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-form,
+  .finance-list-row > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-page-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-overview-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .calendar-overview-filters {
+    justify-content: flex-start;
+  }
+
+  .calendar-listings-rail {
+    border-right: 0;
+    border-bottom: 1px solid #dfe5dd;
+  }
+
+  .calendar-listing-list {
+    grid-auto-flow: column;
+    grid-auto-columns: 190px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+@media (max-width: 640px) {
+  .main-panel,
+  .sidebar {
+    padding: 16px;
+  }
+
+  .topbar,
+  .report-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar-actions {
+    justify-content: space-between;
+  }
+
+  .primary-button {
+    justify-content: center;
+    flex: 1;
+  }
+
+  .listings-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .listings-actions {
+    flex-wrap: wrap;
+  }
+
+  .codes-header,
+  .codes-tabs,
+  .sync-header,
+  .finance-header,
+  .admin-panel-header,
+  .finance-period-controls,
+  .category-create {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .listings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .property-create-form {
+    grid-template-columns: 1fr;
+  }
+
+  .property-create-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reservation-modal-form,
+  .availability-search-form,
+  .availability-results,
+  .availability-card,
+  .reports-filters,
+  .finance-metrics,
+  .admin-user-form,
+  .finance-form,
+  .finance-list-row,
+  .finance-list-row > div,
+  .sync-status-row,
+  .sync-card {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-card-actions {
+    align-items: stretch;
+  }
+
+  .reports-table-header {
+    display: none;
+  }
+
+  .reports-row {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-card img,
+  .availability-card > span {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .property-calendar-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .property-calendar-actions {
+    flex-wrap: wrap;
+  }
+}

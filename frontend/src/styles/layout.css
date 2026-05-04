@@ -1,0 +1,143 @@
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: #f6f7f4;
+  color: #1d2522;
+}
+
+.sidebar {
+  border-right: 1px solid #dfe5dd;
+  background: #fffdf8;
+  padding: 24px 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e20606;
+  color: #f0f0f0;
+  font-weight: 800;
+}
+
+.brand strong,
+.brand span,
+.nav-link span,
+.panel-header h2,
+.reservation-item strong,
+.pending-item strong,
+.property-row strong {
+  overflow-wrap: anywhere;
+}
+
+.brand span {
+  display: block;
+  color: #68746f;
+  font-size: 0.82rem;
+}
+
+.nav-list {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-radius: 8px;
+  color: #4d5a55;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background: #e7f1ed;
+  color: #184b3f;
+}
+
+.main-panel {
+  min-width: 0;
+  padding: 24px;
+}
+
+.topbar,
+.report-toolbar,
+.panel-header,
+.property-row,
+.topbar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.topbar {
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.topbar h1,
+.report-toolbar h2 {
+  margin: 0;
+}
+
+.topbar h1 {
+  font-size: 1.65rem;
+}
+
+.eyebrow,
+.section-kicker {
+  margin: 0 0 4px;
+  color: #68746f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  gap: 10px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #d3dbd7;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  cursor: pointer;
+}
+
+.icon-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+}
+
+.primary-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  background: #1f6f5b;
+  color: #ffffff;
+}

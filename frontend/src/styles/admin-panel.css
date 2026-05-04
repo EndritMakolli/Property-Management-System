@@ -1,0 +1,116 @@
+.admin-panel-page {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.admin-panel-header h2,
+.admin-create-card h3,
+.admin-users-card h3 {
+  margin: 0;
+}
+
+.admin-panel-header span,
+.admin-panel-message,
+.admin-row-actions span {
+  color: #68746f;
+}
+
+.admin-create-card,
+.admin-users-card {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-user-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(150px, 0.8fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-user-form input,
+.admin-user-form select,
+.admin-users-row input,
+.admin-users-row select {
+  min-height: 40px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+.admin-user-form input:disabled,
+.admin-user-form select:disabled,
+.admin-users-row input:disabled,
+.admin-users-row select:disabled {
+  background: #f2f4f1;
+  color: #7d8883;
+}
+
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  color: #4d5a55;
+  white-space: nowrap;
+}
+
+.admin-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.admin-users-table {
+  display: grid;
+  overflow-x: auto;
+}
+
+.admin-users-head,
+.admin-users-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.75fr) minmax(120px, 0.55fr) minmax(190px, 1fr) minmax(120px, auto);
+  gap: 10px;
+  align-items: center;
+  min-width: 860px;
+}
+
+.admin-users-head {
+  border-bottom: 1px solid #e8ece7;
+  color: #68746f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.admin-users-row {
+  border-bottom: 1px solid #edf0eb;
+  padding: 10px 0;
+}
+
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.admin-row-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+}

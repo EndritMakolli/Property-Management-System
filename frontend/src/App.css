@@ -1,0 +1,15 @@
+@import './styles/auth.css';
+@import './styles/shared.css';
+@import './styles/layout.css';
+@import './styles/dashboard.css';
+@import './styles/reservations.css';
+@import './styles/calendar.css';
+@import './styles/properties.css';
+@import './styles/availability.css';
+@import './styles/reports.css';
+@import './styles/codes.css';
+@import './styles/synchronizations.css';
+@import './styles/admin-panel.css';
+@import './styles/finance.css';
+@import './styles/responsive.css';
+@import './styles/invoice.css';

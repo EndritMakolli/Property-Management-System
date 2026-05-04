@@ -1,0 +1,23 @@
+.date-input {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.date-input input[readonly] {
+  width: 100%;
+  cursor: pointer;
+}
+
+.date-input.readonly input[readonly] {
+  cursor: default;
+}
+
+.date-input-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}

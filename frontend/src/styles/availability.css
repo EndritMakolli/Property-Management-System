@@ -1,0 +1,183 @@
+.availability-page {
+  display: grid;
+  gap: 18px;
+}
+
+.availability-search-band {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.availability-search-band h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.availability-search-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.availability-search-form label {
+  display: grid;
+  gap: 7px;
+  color: #4d5a55;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.availability-search-form input,
+.availability-search-form select {
+  min-height: 42px;
+  border: 1px solid #cbd5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d2522;
+  padding: 0 10px;
+}
+
+.availability-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px 16px;
+}
+
+.availability-summary strong {
+  font-size: 1.6rem;
+}
+
+.availability-summary span {
+  color: #68746f;
+}
+
+.availability-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.availability-card {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.availability-book-btn {
+  align-self: flex-end;
+  min-height: 34px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.availability-card img,
+.availability-card > span {
+  width: 94px;
+  height: 94px;
+  border-radius: 8px;
+}
+
+.availability-card img {
+  object-fit: cover;
+}
+
+.availability-card > span {
+  background: linear-gradient(135deg, #dfe5dd, #f6f7f4);
+}
+
+.availability-card strong,
+.availability-card p,
+.availability-card small {
+  display: block;
+  margin: 0;
+}
+
+.availability-card strong {
+  margin-top: 4px;
+}
+
+.availability-card p {
+  color: #4d5a55;
+  margin-top: 7px;
+}
+
+.availability-card small {
+  color: #68746f;
+  margin-top: 8px;
+}
+
+.availability-recommendations {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.availability-recommendations h3 {
+  margin: 0;
+}
+
+.recommendation-route {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.recommendation-segment {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e1e7e3;
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 12px;
+}
+
+.recommendation-segment > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1f6f5b;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.recommendation-segment strong,
+.recommendation-segment p,
+.recommendation-segment small {
+  display: block;
+  margin: 0;
+}
+
+.recommendation-segment strong {
+  overflow-wrap: anywhere;
+}
+
+.recommendation-segment p {
+  color: #4d5a55;
+  margin-top: 5px;
+}
+
+.recommendation-segment small {
+  color: #68746f;
+  margin-top: 6px;
+}
