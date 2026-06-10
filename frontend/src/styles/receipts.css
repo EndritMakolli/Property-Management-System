@@ -1,0 +1,455 @@
+.receipts-page {
+  display: grid;
+  gap: 16px;
+}
+
+.receipts-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  padding: 18px;
+}
+
+.receipts-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.receipts-month-picker {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.receipts-month-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ── Summary cards ── */
+.receipts-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .receipts-summary { grid-template-columns: 1fr; }
+}
+
+.receipts-summary-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-panel);
+}
+
+.summary-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.receipts-summary-warning .summary-value { color: #b45309; }
+.receipts-summary-ok     .summary-value { color: #1a6845; }
+.receipts-summary-danger .summary-value { color: #c0392b; }
+
+/* ── Main table ── */
+.receipts-table-scroll {
+  max-height: calc(100vh - 300px);
+}
+
+.receipts-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.receipts-table th {
+  background: var(--table-header-bg);
+  color: #fff;
+  font-weight: 700;
+  text-align: left;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+}
+
+.receipts-table td {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+
+.receipts-table tbody tr:nth-child(even) { background: #f3f6f4; }
+.receipts-table tbody tr:nth-child(odd)  { background: var(--bg-panel); }
+.receipts-table tbody .row-has-receipts td { background: #edf7f2 !important; }
+
+.col-right  { text-align: right; }
+.col-center { text-align: center; }
+
+.receipts-date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  min-width: 130px;
+}
+
+.receipts-date-btn:hover { color: #1f6f5b; text-decoration: underline; }
+
+.receipts-total-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.receipts-total-cell:hover { background: #edf7f2; }
+
+.receipts-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #e8f5ef;
+  color: #1f6f5b;
+  flex-shrink: 0;
+}
+
+.receipts-total-cell:hover .receipts-add-btn { background: #1f6f5b; color: #fff; }
+
+.receipts-item-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #1f6f5b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.receipts-amount  { font-weight: 600; color: var(--text-primary); }
+.receipts-zero    { color: var(--text-muted); }
+
+.receipts-checkbox { width: 16px; height: 16px; cursor: pointer; }
+
+.receipts-deposit-input {
+  width: 100%;
+  min-width: 80px;
+  max-width: 110px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 0.84rem;
+  text-align: right;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.receipts-note-input {
+  width: 100%;
+  min-width: 120px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 0.84rem;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.receipts-note-input:focus {
+  border-color: #9fb5ab;
+  background: var(--bg-panel);
+  outline: none;
+}
+
+/* ── Day detail modal ── */
+.day-detail-backdrop { align-items: flex-start; padding-top: 40px; }
+
+.day-detail-modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.day-detail-subtitle {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin-top: 2px;
+  display: block;
+}
+
+.day-detail-body {
+  display: grid;
+  gap: 20px;
+  padding: 16px;
+}
+
+/* Day entry fields */
+.day-entry-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.day-entry-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.day-entry-input {
+  min-width: 110px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.86rem;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.day-entry-checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.86rem;
+}
+
+.day-entry-note { flex: 1 1 160px; }
+.day-entry-save-btn { align-self: flex-end; }
+
+/* Receipt items */
+.receipt-items-section { display: grid; gap: 12px; }
+
+.receipt-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.receipt-items-header h4 { margin: 0; font-size: 0.95rem; }
+
+.receipt-item-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.receipt-item-card.is-dirty { border-color: #a5c4b8; background: #f5faf8; }
+
+.receipt-item-top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.receipt-item-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.receipt-item-field input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.86rem;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.receipt-item-value-input { width: 110px; text-align: right; }
+.receipt-item-note        { flex: 1 1 160px; }
+.receipt-item-note input  { width: 100%; }
+
+.receipt-item-note-totals {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.77rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.receipt-item-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+/* Linked reservations */
+.receipt-linked-reservations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.linked-reservation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #c5e5d8;
+  border-radius: 6px;
+  background: #edf7f2;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+.linked-res-name   { font-weight: 600; color: var(--text-primary); }
+.linked-res-detail { color: var(--text-muted); }
+.linked-res-paid   { font-weight: 600; color: #1a6845; }
+
+.linked-res-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+.linked-res-remove:hover { color: #c0392b; }
+
+.link-reservation-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: #1f6f5b;
+  background: none;
+  border: 1px dashed #a5c4b8;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.link-reservation-btn:hover { background: #f0faf6; }
+
+/* Diff row */
+.receipt-item-diff {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.receipt-item-diff.nonzero { color: var(--text-primary); }
+.diff-nonzero { color: #b45309; }
+
+/* Reservation picker */
+.reservation-picker {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafbfa;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.reservation-picker-hint {
+  font-size: 0.77rem;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.picker-reservation-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+  flex-wrap: wrap;
+}
+
+.picker-reservation-row:hover:not(:disabled) { border-color: #a5c4b8; background: #f0faf6; }
+.picker-reservation-row.selected { border-color: #1f6f5b; background: #edf7f2; }
+.picker-reservation-row.unavailable { opacity: 0.4; cursor: not-allowed; }
+
+.picker-check { color: transparent; display: flex; }
+.picker-check.visible { color: #1f6f5b; }
+
+.picker-guest  { font-weight: 600; min-width: 100px; }
+.picker-apt    { color: var(--text-muted); min-width: 80px; }
+.picker-dates  { color: var(--text-muted); font-size: 0.78rem; flex: 1; }
+.picker-paid   { font-weight: 600; color: #1a6845; margin-left: auto; }
+
+/* Day totals */
+.receipt-day-totals {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.receipt-diff-row { font-size: 0.9rem; color: var(--text-primary); font-weight: 600; }
+.receipt-diff-row.has-diff .diff-nonzero { color: #b45309; }

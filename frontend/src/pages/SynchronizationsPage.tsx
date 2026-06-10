@@ -1,12 +1,17 @@
-import { RefreshCw, Save } from 'lucide-react'
+import { ChevronDown, ChevronRight, RefreshCw, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchProperties, syncPropertyCalendar, updatePropertySync } from '../api/pmsApi'
-import type { PropertyListing } from '../types/domain'
+import {
+  fetchProperties,
+  fetchSyncLogs,
+  syncPropertyCalendar,
+  updatePropertySync,
+} from '../api/pmsApi'
+import type { PropertyListing, SyncLogRecord } from '../types/domain'
 
 type EditableSyncProperty = PropertyListing & {
   isDirty?: boolean
   lastSyncMessage?: string
-  syncing?: boolean
+  syncing?: string | null
 }
 
 const statusLabels = {
@@ -17,6 +22,8 @@ const statusLabels = {
 
 export function SynchronizationsPage() {
   const [properties, setProperties] = useState<EditableSyncProperty[]>([])
+  const [syncLogs, setSyncLogs] = useState<SyncLogRecord[]>([])
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
 
@@ -24,8 +31,9 @@ export function SynchronizationsPage() {
     try {
       setStatus('loading')
       setError('')
-      const rows = await fetchProperties()
+      const [rows, logs] = await Promise.all([fetchProperties(), fetchSyncLogs()])
       setProperties(rows.map((property) => ({ ...property, isDirty: false })))
+      setSyncLogs(logs)
       setStatus('ready')
     } catch (caughtError) {
       setStatus('error')
@@ -39,18 +47,16 @@ export function SynchronizationsPage() {
 
   const totals = useMemo(
     () => ({
-      connected: properties.filter((property) => property.syncStatus === 'connected').length,
-      partial: properties.filter((property) => property.syncStatus === 'partial').length,
-      missing: properties.filter((property) => property.syncStatus === 'not_configured').length,
+      connected: properties.filter((p) => p.syncStatus === 'connected').length,
+      partial: properties.filter((p) => p.syncStatus === 'partial').length,
+      missing: properties.filter((p) => p.syncStatus === 'not_configured').length,
     }),
     [properties],
   )
 
   function updateRow(id: string, updates: Partial<EditableSyncProperty>) {
     setProperties((current) =>
-      current.map((property) =>
-        property.id === id ? { ...property, ...updates, isDirty: true } : property,
-      ),
+      current.map((p) => (p.id === id ? { ...p, ...updates, isDirty: true } : p)),
     )
   }
 
@@ -60,37 +66,50 @@ export function SynchronizationsPage() {
       const saved = await updatePropertySync(property.id, {
         airbnbIcalUrl: property.airbnbIcalUrl,
         bookingIcalUrl: property.bookingIcalUrl,
+        autoSyncEnabled: property.autoSyncEnabled,
+        syncIntervalHours: property.syncIntervalHours,
       })
       setProperties((current) =>
         current.map((item) => (item.id === property.id ? { ...saved, isDirty: false } : item)),
       )
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Could not save synchronization links.')
+      setError(caughtError instanceof Error ? caughtError.message : 'Could not save synchronization settings.')
     }
   }
 
-  async function syncAirbnb(property: EditableSyncProperty) {
+  async function syncChannel(property: EditableSyncProperty, channel: 'airbnb' | 'booking') {
     try {
       setError('')
       setProperties((current) =>
-        current.map((item) => (item.id === property.id ? { ...item, syncing: true } : item)),
+        current.map((item) => (item.id === property.id ? { ...item, syncing: channel } : item)),
       )
-      const result = await syncPropertyCalendar(property.id, 'airbnb')
-      const message = `${result.sync.imported} imported, ${result.sync.updated} updated, ${result.sync.skipped} skipped`
+      const result = await syncPropertyCalendar(property.id, channel)
+      const message = `${channel}: ${result.sync.imported} imported, ${result.sync.updated} updated, ${result.sync.skipped} skipped`
       setProperties((current) =>
         current.map((item) =>
-          item.id === property.id ? { ...item, syncing: false, lastSyncMessage: message } : item,
+          item.id === property.id ? { ...item, syncing: null, lastSyncMessage: message } : item,
         ),
       )
       if (result.sync.errors.length > 0) {
         setError(result.sync.errors.join(' '))
       }
+      const logs = await fetchSyncLogs()
+      setSyncLogs(logs)
     } catch (caughtError) {
       setProperties((current) =>
-        current.map((item) => (item.id === property.id ? { ...item, syncing: false } : item)),
+        current.map((item) => (item.id === property.id ? { ...item, syncing: null } : item)),
       )
-      setError(caughtError instanceof Error ? caughtError.message : 'Could not sync Airbnb calendar.')
+      setError(caughtError instanceof Error ? caughtError.message : `Could not sync ${channel}.`)
     }
+  }
+
+  function toggleLogs(propertyId: string) {
+    setExpandedLogs((prev) => {
+      const next = new Set(prev)
+      if (next.has(propertyId)) next.delete(propertyId)
+      else next.add(propertyId)
+      return next
+    })
   }
 
   return (
@@ -102,7 +121,7 @@ export function SynchronizationsPage() {
         </div>
         <button className="primary-button" onClick={loadProperties}>
           <RefreshCw size={17} />
-          Refresh status
+          Refresh
         </button>
       </div>
 
@@ -127,64 +146,143 @@ export function SynchronizationsPage() {
 
       {status === 'ready' && (
         <div className="sync-list">
-          {properties.map((property) => (
-            <article className="sync-card" key={property.id}>
-              <div className="sync-card-main">
-                {property.photoUrl ? <img alt="" src={property.photoUrl} /> : <span />}
-                <div>
-                  <h3>{property.name}</h3>
-                  <p>{property.apartmentType}</p>
-                  <span className={`sync-badge ${property.syncStatus}`}>
-                    {statusLabels[property.syncStatus]}
-                  </span>
+          {properties.map((property) => {
+            const logsForProperty = syncLogs.filter((l) => l.propertyId === property.id)
+            const isLogsExpanded = expandedLogs.has(property.id)
+
+            return (
+              <article className="sync-card" key={property.id}>
+                <div className="sync-card-main">
+                  {property.photoUrl ? <img alt="" src={property.photoUrl} /> : <span />}
+                  <div>
+                    <h3>{property.name}</h3>
+                    <p>{property.apartmentType}</p>
+                    <span className={`sync-badge ${property.syncStatus}`}>
+                      {statusLabels[property.syncStatus]}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="sync-fields">
-                <label>
-                  Airbnb iCal link
-                  <input
-                    placeholder="https://www.airbnb.com/calendar/ical/..."
-                    type="url"
-                    value={property.airbnbIcalUrl}
-                    onChange={(event) => updateRow(property.id, { airbnbIcalUrl: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Booking.com iCal link
-                  <input
-                    placeholder="https://admin.booking.com/hotel/hoteladmin/ical.html?..."
-                    type="url"
-                    value={property.bookingIcalUrl}
-                    onChange={(event) => updateRow(property.id, { bookingIcalUrl: event.target.value })}
-                  />
-                </label>
-              </div>
+                <div className="sync-fields">
+                  <label>
+                    Airbnb iCal link
+                    <input
+                      placeholder="https://www.airbnb.com/calendar/ical/..."
+                      type="url"
+                      value={property.airbnbIcalUrl}
+                      onChange={(event) => updateRow(property.id, { airbnbIcalUrl: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Booking.com iCal link
+                    <input
+                      placeholder="https://admin.booking.com/hotel/hoteladmin/ical.html?..."
+                      type="url"
+                      value={property.bookingIcalUrl}
+                      onChange={(event) => updateRow(property.id, { bookingIcalUrl: event.target.value })}
+                    />
+                  </label>
+                </div>
 
-              <div className="sync-card-actions">
-                <p>
-                  Automatic reservation import can use these private calendar links. Full channel API
-                  sync can be added later.
-                </p>
-                <label className="sync-export-link">
-                  PMS export link
-                  <input readOnly value={property.exportIcalUrl} onFocus={(event) => event.target.select()} />
-                </label>
-                <button disabled={!property.isDirty} onClick={() => saveRow(property)}>
-                  <Save size={16} />
-                  Save links
-                </button>
-                <button
-                  disabled={!property.airbnbIcalUrl || property.syncing}
-                  onClick={() => syncAirbnb(property)}
-                >
-                  <RefreshCw size={16} />
-                  {property.syncing ? 'Syncing...' : 'Sync Airbnb now'}
-                </button>
-                {property.lastSyncMessage && <span className="sync-result">{property.lastSyncMessage}</span>}
-              </div>
-            </article>
-          ))}
+                <div className="sync-auto-row">
+                  <label className="sync-toggle-label">
+                    <input
+                      checked={property.autoSyncEnabled}
+                      type="checkbox"
+                      onChange={(e) => updateRow(property.id, { autoSyncEnabled: e.target.checked })}
+                    />
+                    Auto-sync
+                  </label>
+                  {property.autoSyncEnabled && (
+                    <label className="sync-interval-label">
+                      Every
+                      <input
+                        min="1"
+                        max="168"
+                        type="number"
+                        value={property.syncIntervalHours}
+                        onChange={(e) =>
+                          updateRow(property.id, { syncIntervalHours: Number(e.target.value) })
+                        }
+                      />
+                      hours
+                    </label>
+                  )}
+                </div>
+
+                <div className="sync-card-actions">
+                  <label className="sync-export-link">
+                    PMS export link
+                    <input readOnly value={property.exportIcalUrl} onFocus={(e) => e.target.select()} />
+                  </label>
+                  <button disabled={!property.isDirty} onClick={() => saveRow(property)}>
+                    <Save size={16} />
+                    Save settings
+                  </button>
+                  <button
+                    disabled={!property.airbnbIcalUrl || property.syncing !== null && property.syncing !== undefined}
+                    onClick={() => syncChannel(property, 'airbnb')}
+                  >
+                    <RefreshCw size={16} />
+                    {property.syncing === 'airbnb' ? 'Syncing...' : 'Sync Airbnb now'}
+                  </button>
+                  <button
+                    disabled={!property.bookingIcalUrl || property.syncing !== null && property.syncing !== undefined}
+                    onClick={() => syncChannel(property, 'booking')}
+                  >
+                    <RefreshCw size={16} />
+                    {property.syncing === 'booking' ? 'Syncing...' : 'Sync Booking.com'}
+                  </button>
+                  {property.lastSyncMessage && (
+                    <span className="sync-result">{property.lastSyncMessage}</span>
+                  )}
+                </div>
+
+                {logsForProperty.length > 0 && (
+                  <div className="sync-logs-section">
+                    <button
+                      className="sync-logs-toggle"
+                      type="button"
+                      onClick={() => toggleLogs(property.id)}
+                    >
+                      {isLogsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      Sync history ({logsForProperty.length})
+                    </button>
+                    {isLogsExpanded && (
+                      <table className="sync-log-table">
+                        <thead>
+                          <tr>
+                            <th>Channel</th>
+                            <th>Status</th>
+                            <th>Imported</th>
+                            <th>Updated</th>
+                            <th>Skipped</th>
+                            <th>Conflicts</th>
+                            <th>Time</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logsForProperty.slice(0, 20).map((log) => (
+                            <tr key={log.id} className={log.status === 'error' ? 'sync-log-error' : ''}>
+                              <td style={{ textTransform: 'capitalize' }}>{log.channel}</td>
+                              <td>
+                                <span className={`sync-log-status ${log.status}`}>{log.status}</span>
+                              </td>
+                              <td>{log.importedCount}</td>
+                              <td>{log.updatedCount}</td>
+                              <td>{log.skippedCount}</td>
+                              <td>{log.conflictCount > 0 ? <strong style={{ color: '#9b3f20' }}>{log.conflictCount}</strong> : 0}</td>
+                              <td className="sync-log-time">{new Date(log.syncedAt).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+              </article>
+            )
+          })}
         </div>
       )}
     </section>

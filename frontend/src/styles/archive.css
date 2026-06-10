@@ -1,0 +1,123 @@
+.archive-page {
+  display: grid;
+  gap: 16px;
+}
+
+.archive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  padding: 18px;
+  flex-wrap: wrap;
+}
+
+.archive-header-text h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.archive-info-text {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  margin: 0;
+  max-width: 400px;
+}
+
+.archived-full-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.archived-full-table th {
+  background: var(--table-header-bg);
+  color: #ffffff;
+  font-weight: 700;
+  text-align: left;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.archived-full-table th,
+.archived-full-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.archived-full-table tbody tr:nth-child(odd) {
+  background: var(--bg-panel);
+}
+
+.archived-full-table tbody tr:nth-child(even) {
+  background: #f3f6f4;
+}
+
+.row-expiring td {
+  background: #fff4f0 !important;
+}
+
+.archive-days-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e9f1ee;
+  color: #1f6f5b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.archive-expiring-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fde8df;
+  color: #9b3f20;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.platform-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0 8px;
+  text-transform: capitalize;
+  background: #e9f1ee;
+  color: #1f6f5b;
+}
+
+.platform-badge.platform-airbnb {
+  background: #ffe4e5;
+  color: #c0392b;
+}
+
+.platform-badge.platform-booking {
+  background: #dce8ff;
+  color: #003580;
+}
+
+.platform-badge.platform-maintenance {
+  background: #d1fae5;
+  color: #065f46;
+}

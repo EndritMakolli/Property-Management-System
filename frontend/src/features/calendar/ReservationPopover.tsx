@@ -7,6 +7,7 @@ type ReservationPopoverProps = {
 }
 
 export function ReservationPopover({ reservation }: ReservationPopoverProps) {
+  const isMaintenance = reservation.reservationType === 'maintenance'
   return (
     <div className="reservation-popover">
       <strong>{reservationLabel(reservation)}</strong>
@@ -15,7 +16,7 @@ export function ReservationPopover({ reservation }: ReservationPopoverProps) {
         {formatDisplayDate(reservation.checkIn)} to {formatDisplayDate(reservation.checkOut)}
       </span>
       <span>{reservation.totalNights} nights</span>
-      {reservation.reservationType !== 'airbnb' && (
+      {!isMaintenance && reservation.reservationType !== 'airbnb' && (
         <span>{Number(reservation.totalPaid).toFixed(2)} EUR</span>
       )}
     </div>

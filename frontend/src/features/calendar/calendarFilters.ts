@@ -15,7 +15,7 @@ export function sortCalendarProperties(
       return a.bedrooms - b.bedrooms || extractLeadingNumber(a.name) - extractLeadingNumber(b.name)
     }
     // name A-Z
-    return a.name.localeCompare(b.name)
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
   })
 }
 

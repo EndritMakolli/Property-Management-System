@@ -1,3 +1,4 @@
+@import './styles/theme.css';
 @import './styles/auth.css';
 @import './styles/shared.css';
 @import './styles/layout.css';
@@ -13,3 +14,5 @@
 @import './styles/finance.css';
 @import './styles/responsive.css';
 @import './styles/invoice.css';
+@import './styles/archive.css';
+@import './styles/receipts.css';

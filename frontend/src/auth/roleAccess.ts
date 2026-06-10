@@ -2,9 +2,11 @@ import type { UserRole } from '../types/domain'
 
 const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
   admin: [
-    '/',
+    '/dashboard',
     '/availability',
+    '/search-reservations',
     '/reservations',
+    '/archive',
     '/calendar',
     '/properties',
     '/reports',
@@ -13,20 +15,37 @@ const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
     '/admin-panel',
     '/guests',
     '/finance',
+    '/invoices',
+    '/receipts',
+    '/maintenance',
+    '/needs-attention',
+    '/booking-requests',
+    '/pricing-rules',
+    '/booking-settings',
     '/settings',
+    '/invoice',
   ],
   management: [
-    '/',
+    '/dashboard',
     '/availability',
+    '/search-reservations',
     '/reservations',
+    '/archive',
     '/calendar',
     '/properties',
     '/codes',
     '/synchronizations',
     '/guests',
+    '/invoices',
+    '/maintenance',
+    '/needs-attention',
+    '/booking-requests',
+    '/pricing-rules',
+    '/booking-settings',
     '/settings',
+    '/invoice',
   ],
-  cleaning: ['/'],
+  cleaning: ['/dashboard', '/codes', '/maintenance', '/invoice'],
 }
 
 export function canAccess(role: UserRole, path: string) {
@@ -38,7 +57,7 @@ export function canAccess(role: UserRole, path: string) {
 
 export function defaultPathForRole(role: UserRole) {
   if (role === 'admin' || role === 'management' || role === 'cleaning') {
-    return '/'
+    return '/dashboard'
   }
   return '/login'
 }

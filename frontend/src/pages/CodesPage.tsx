@@ -1,4 +1,4 @@
-import { KeyRound, Plus } from 'lucide-react'
+import { Check, Copy, KeyRound, Plus, Wifi } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   createLockboxCode,
@@ -7,7 +7,8 @@ import {
   fetchLockboxCodes,
   updateDoorCode,
   updateLockboxCode,
-  type CodePayload,
+  type DoorCodePayload,
+  type LockboxCodePayload,
 } from '../api/pmsApi'
 import { DateInput } from '../components/shared/DateInput'
 import { formatDisplayDate } from '../utils/date'
@@ -29,8 +30,21 @@ export function CodesPage() {
       setStatus('loading')
       setError('')
       const [doorRows, lockboxRows] = await Promise.all([fetchDoorCodes(), fetchLockboxCodes()])
-      setDoorCodes(doorRows.map((item) => ({ ...item, isDirty: false })))
-      setLockboxCodes(lockboxRows.map((item) => ({ ...item, isDirty: false })))
+      setDoorCodes(
+        [...doorRows]
+          .sort((a, b) =>
+            a.apartmentNumber.localeCompare(b.apartmentNumber, undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            }),
+          )
+          .map((item) => ({ ...item, isDirty: false })),
+      )
+      setLockboxCodes(
+        [...lockboxRows]
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+          .map((item) => ({ ...item, isDirty: false })),
+      )
       setStatus('ready')
     } catch {
       setStatus('error')
@@ -57,10 +71,8 @@ export function CodesPage() {
   async function saveDoorCode(code: EditableDoorCode) {
     try {
       setError('')
-      const saved = await updateDoorCode(code.id, {
-        newCode: code.newCode,
-        notes: code.notes,
-      })
+      const payload: DoorCodePayload = { newCode: code.newCode, notes: code.notes }
+      const saved = await updateDoorCode(code.id, payload)
       setDoorCodes((current) =>
         current.map((item) => (item.id === code.id ? { ...saved, isDirty: false } : item)),
       )
@@ -72,9 +84,15 @@ export function CodesPage() {
   async function saveLockboxCode(code: EditableLockboxCode) {
     try {
       setError('')
+      const payload: LockboxCodePayload = {
+        name: code.name,
+        apartmentNumber: code.apartmentNumber,
+        newCode: code.newCode,
+        notes: code.notes,
+      }
       const saved = code.isNew
-        ? await createLockboxCode(toCodePayload(code))
-        : await updateLockboxCode(code.id, toCodePayload(code))
+        ? await createLockboxCode(payload)
+        : await updateLockboxCode(code.id, payload)
       setLockboxCodes((current) =>
         current.map((item) =>
           item.id === code.id ? { ...saved, isDirty: false, isNew: false } : item,
@@ -104,10 +122,12 @@ export function CodesPage() {
     setLockboxCodes((current) => [
       {
         id: `new-${Date.now()}`,
+        name: '',
         apartmentNumber: '',
         oldCode: '',
         newCode: '',
         dateChanged: '',
+        changedBy: '',
         notes: '',
         isDirty: true,
         isNew: true,
@@ -130,7 +150,10 @@ export function CodesPage() {
       </div>
 
       <div className="codes-tabs">
-        <button className={activeTab === 'door' ? 'active' : ''} onClick={() => setActiveTab('door')}>
+        <button
+          className={activeTab === 'door' ? 'active' : ''}
+          onClick={() => setActiveTab('door')}
+        >
           <KeyRound size={16} />
           Door Codes
         </button>
@@ -148,18 +171,12 @@ export function CodesPage() {
       {error && status === 'ready' && <p className="form-error">{error}</p>}
 
       {status === 'ready' && activeTab === 'door' && (
-        <CodesTable
-          rows={doorCodes}
-          type="door"
-          onSave={saveDoorCode}
-          onUpdate={updateDoorRow}
-        />
+        <DoorCodesTable rows={doorCodes} onSave={saveDoorCode} onUpdate={updateDoorRow} />
       )}
 
       {status === 'ready' && activeTab === 'lockbox' && (
-        <CodesTable
+        <LockboxCodesTable
           rows={lockboxCodes}
-          type="lockbox"
           onDelete={removeLockboxCode}
           onSave={saveLockboxCode}
           onUpdate={updateLockboxRow}
@@ -169,39 +186,134 @@ export function CodesPage() {
   )
 }
 
-type CodesTableProps =
-  | {
-      rows: EditableDoorCode[]
-      type: 'door'
-      onSave: (code: EditableDoorCode) => void
-      onUpdate: (id: string, updates: Partial<EditableDoorCode>) => void
-    }
-  | {
-      rows: EditableLockboxCode[]
-      type: 'lockbox'
-      onDelete: (code: EditableLockboxCode) => void
-      onSave: (code: EditableLockboxCode) => void
-      onUpdate: (id: string, updates: Partial<EditableLockboxCode>) => void
-    }
+function buildDoorCopyText(code: DoorCodeRecord): string {
+  return [
+    `Apartamenti: ${code.apartmentNumber || '—'}`,
+    `Kati: ${code.floor || '—'}`,
+    `Kodi i derës: ${code.newCode || '—'}`,
+    `Wi-Fi: ${code.wifiName || '—'}`,
+    `Fjalëkalimi: ${code.wifiPassword || '—'}`,
+  ].join('\n')
+}
 
-function CodesTable(props: CodesTableProps) {
+function buildLockboxCopyText(code: LockboxCodeRecord): string {
+  const lines: string[] = []
+  lines.push(code.name || '—')
+  lines.push(`Kodi: ${code.newCode || '—'}`)
+  return lines.join('\n')
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      // fallback: select text
+    }
+  }
+
+  return (
+    <button
+      className={`copy-info-btn ${copied ? 'copied' : ''}`}
+      title="Copy apartment info to clipboard"
+      type="button"
+      onClick={handleCopy}
+    >
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+      {copied ? 'Copied!' : 'Copy info'}
+    </button>
+  )
+}
+
+function DoorCodesTable({
+  rows,
+  onSave,
+  onUpdate,
+}: {
+  rows: EditableDoorCode[]
+  onSave: (code: EditableDoorCode) => void
+  onUpdate: (id: string, updates: Partial<EditableDoorCode>) => void
+}) {
   return (
     <div className="table-scroll">
       <table className="codes-table">
         <thead>
           <tr>
-            <th>{props.type === 'door' ? 'Apartment number' : 'Lockbox name'}</th>
+            <th>Apartment</th>
             <th>Old code</th>
             <th>Current code</th>
             <th>Date changed</th>
+            <th>Wi-Fi</th>
             <th>Notes</th>
             <th>Reminder</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {props.rows.map((row) => (
-            <CodeTableRow key={row.id} props={props} row={row} />
+          {rows.map((row) => (
+            <tr key={row.id} className={row.isDirty ? 'row-dirty' : ''}>
+              <td>
+                <strong>{row.apartmentNumber}</strong>
+                {row.floor && <small className="code-floor">{row.floor}</small>}
+              </td>
+              <td>
+                <input readOnly type="text" value={row.oldCode} />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  value={row.newCode}
+                  onChange={(e) => onUpdate(row.id, { newCode: e.target.value })}
+                />
+              </td>
+              <td>
+                <DateInput readOnly ariaLabel="Date changed" value={row.dateChanged} />
+              </td>
+              <td className="wifi-cell">
+                {row.wifiName ? (
+                  <>
+                    <span className="wifi-name">
+                      <Wifi size={12} />
+                      {row.wifiName}
+                    </span>
+                    {row.wifiPassword && (
+                      <small className="wifi-pass">{row.wifiPassword}</small>
+                    )}
+                  </>
+                ) : (
+                  <span className="code-muted">—</span>
+                )}
+              </td>
+              <td>
+                <input
+                  type="text"
+                  value={row.notes}
+                  onChange={(e) => onUpdate(row.id, { notes: e.target.value })}
+                />
+              </td>
+              <td>
+                {row.needsChange ? (
+                  <span className="code-warning">
+                    Not changed since checkout
+                    {row.lastCheckout ? ` (${formatDisplayDate(row.lastCheckout)})` : ''}
+                  </span>
+                ) : (
+                  <span className="code-ok">OK</span>
+                )}
+              </td>
+              <td>
+                <div className="table-actions">
+                  <CopyButton text={buildDoorCopyText(row)} />
+                  <button disabled={!row.isDirty} onClick={() => onSave(row)}>
+                    Save
+                  </button>
+                </div>
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>
@@ -209,55 +321,58 @@ function CodesTable(props: CodesTableProps) {
   )
 }
 
-function CodeTableRow({
-  props,
-  row,
+function LockboxCodesTable({
+  rows,
+  onDelete,
+  onSave,
+  onUpdate,
 }: {
-  props: CodesTableProps
-  row: EditableDoorCode | EditableLockboxCode
+  rows: EditableLockboxCode[]
+  onDelete: (code: EditableLockboxCode) => void
+  onSave: (code: EditableLockboxCode) => void
+  onUpdate: (id: string, updates: Partial<EditableLockboxCode>) => void
 }) {
-  const isDoor = props.type === 'door'
-  const doorRow = row as EditableDoorCode
-  const lockboxRow = row as EditableLockboxCode
-
-  function saveRow() {
-    if (props.type === 'door') {
-      props.onSave(doorRow)
-      return
-    }
-    props.onSave(lockboxRow)
-  }
-
   return (
-            <tr>
+    <div className="table-scroll">
+      <table className="codes-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Apartment</th>
+            <th>Old code</th>
+            <th>Current code</th>
+            <th>Date changed</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className={row.isNew ? 'row-new' : row.isDirty ? 'row-dirty' : ''}>
               <td>
-                {isDoor ? (
-                  <strong>{row.apartmentNumber}</strong>
-                ) : (
-                  <input
-                    placeholder="Lockbox name"
-                    type="text"
-                    value={row.apartmentNumber}
-                    onChange={(event) => {
-                      if (props.type === 'lockbox') {
-                        props.onUpdate(row.id, { apartmentNumber: event.target.value })
-                      }
-                    }}
-                  />
-                )}
+                <input
+                  placeholder="e.g. Main entrance"
+                  type="text"
+                  value={row.name}
+                  onChange={(e) => onUpdate(row.id, { name: e.target.value })}
+                />
               </td>
               <td>
                 <input
-                  readOnly
+                  placeholder="Apt number"
                   type="text"
-                  value={row.oldCode}
+                  value={row.apartmentNumber}
+                  onChange={(e) => onUpdate(row.id, { apartmentNumber: e.target.value })}
                 />
+              </td>
+              <td>
+                <input readOnly type="text" value={row.oldCode} />
               </td>
               <td>
                 <input
                   type="text"
                   value={row.newCode}
-                  onChange={(event) => props.onUpdate(row.id, { newCode: event.target.value } as never)}
+                  onChange={(e) => onUpdate(row.id, { newCode: e.target.value })}
                 />
               </td>
               <td>
@@ -267,37 +382,24 @@ function CodeTableRow({
                 <input
                   type="text"
                   value={row.notes}
-                  onChange={(event) => props.onUpdate(row.id, { notes: event.target.value } as never)}
+                  onChange={(e) => onUpdate(row.id, { notes: e.target.value })}
                 />
               </td>
               <td>
-                {isDoor && doorRow.needsChange ? (
-                  <span className="code-warning">
-                    Not changed since last reservation
-                    {doorRow.lastCheckout ? ` (${formatDisplayDate(doorRow.lastCheckout)})` : ''}
-                  </span>
-                ) : (
-                  <span className="code-ok">OK</span>
-                )}
-              </td>
-              <td>
                 <div className="table-actions">
-                  <button disabled={!row.isDirty} onClick={saveRow}>
+                  <CopyButton text={buildLockboxCopyText(row)} />
+                  <button disabled={!row.isDirty} onClick={() => onSave(row)}>
                     Save
                   </button>
-                  {!isDoor && props.type === 'lockbox' && (
-                    <button onClick={() => props.onDelete(lockboxRow)}>Delete</button>
-                  )}
+                  <button className="danger-text-btn" onClick={() => onDelete(row)}>
+                    Delete
+                  </button>
                 </div>
               </td>
             </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
-}
-
-function toCodePayload(code: EditableDoorCode | EditableLockboxCode): CodePayload {
-  return {
-    apartmentNumber: 'apartmentNumber' in code ? code.apartmentNumber : undefined,
-    newCode: code.newCode,
-    notes: code.notes,
-  }
 }

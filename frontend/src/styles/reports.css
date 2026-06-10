@@ -13,9 +13,9 @@
 .reports-header {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
   padding: 18px;
 }
 
@@ -25,32 +25,34 @@
 }
 
 .reports-header svg {
-  color: #1f6f5b;
+  color: var(--accent-mid);
 }
 
 .reports-filters {
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
   padding: 14px;
 }
 
 .reports-filters label {
   display: grid;
   gap: 7px;
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.84rem;
   font-weight: 700;
+  min-width: 140px;
 }
 
 .reports-filters select {
   min-height: 40px;
-  border: 1px solid #cbd5d0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #1d2522;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   padding: 0 10px;
 }
 
@@ -71,10 +73,10 @@
   align-items: center;
   gap: 8px;
   min-height: 36px;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fbfcfa;
-  color: #2a3530;
+  background: var(--bg-table-head);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 700;
@@ -84,7 +86,7 @@
 .excluded-apartment-option input {
   width: 16px;
   height: 16px;
-  accent-color: #9b3f20;
+  accent-color: var(--danger);
 }
 
 .reports-table {
@@ -103,7 +105,7 @@
 }
 
 .reports-table-header {
-  color: #68746f;
+  color: var(--text-muted);
   font-size: 0.78rem;
   padding: 0 0 10px;
 }
@@ -125,7 +127,7 @@
 }
 
 .reports-table-header button:hover {
-  color: #1f6f5b;
+  color: var(--accent-mid);
 }
 
 .reports-table-header button svg {
@@ -133,13 +135,13 @@
 }
 
 .reports-row {
-  border-top: 1px solid #edf0eb;
+  border-top: 1px solid var(--border-light);
   min-height: 48px;
   padding: 10px 0;
 }
 
 .reports-row span {
-  color: #4d5a55;
+  color: var(--text-secondary);
 }
 
 /* ── Stats sections ── */
@@ -150,7 +152,7 @@
 .stats-section-title {
   margin: 0 0 14px;
   font-size: 0.95rem;
-  color: #2a3530;
+  color: var(--text-primary);
 }
 
 .stats-section {
@@ -170,6 +172,39 @@
   margin: 0;
 }
 
+.stay-duration-header {
+  align-items: end;
+}
+
+.stay-duration-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.stay-duration-filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stay-duration-filters select {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  padding: 0 10px;
+}
+
+.occupancy-header {
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
 /* Stay duration cards */
 .stats-grid {
   display: grid;
@@ -180,14 +215,14 @@
 .stats-card {
   display: grid;
   gap: 4px;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fbfcfa;
+  background: var(--bg-table-head);
   padding: 14px;
 }
 
 .stats-card-label {
-  color: #68746f;
+  color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -202,14 +237,14 @@
 }
 
 .stats-card-sub {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 
 .stats-bar-bg {
   height: 7px;
   border-radius: 999px;
-  background: #e5eae3;
+  background: var(--occupancy-bar-bg);
   margin-top: 8px;
   overflow: hidden;
 }
@@ -217,69 +252,13 @@
 .stats-bar-fill {
   height: 100%;
   border-radius: inherit;
-  background: #1f6f5b;
-}
-
-/* Country table */
-.country-table {
-  display: grid;
-  font-size: 0.85rem;
-}
-
-.country-header,
-.country-row {
-  display: grid;
-  grid-template-columns: minmax(160px, 1fr) 100px 140px 120px;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 4px;
-}
-
-.country-header {
-  color: #68746f;
-  font-size: 0.78rem;
-  font-weight: 700;
-  border-bottom: 2px solid #dfe5dd;
-  padding-bottom: 8px;
-}
-
-.country-row {
-  border-bottom: 1px solid #edf0eb;
-}
-
-.country-row span {
-  color: #4d5a55;
-}
-
-.inline-bar {
-  margin-top: 4px;
-}
-
-/* Prefix editor */
-.prefix-editor {
-  display: grid;
-  gap: 10px;
-  border: 1px solid #cbd5d0;
-  border-radius: 8px;
-  padding: 14px;
-  background: #f7f9f7;
-}
-
-.prefix-textarea {
-  width: 100%;
-  min-height: 200px;
-  border: 1px solid #cbd5d0;
-  border-radius: 8px;
-  font-family: monospace;
-  font-size: 0.82rem;
-  padding: 10px;
-  resize: vertical;
+  background: var(--accent-mid);
 }
 
 /* Fully booked list */
 .fully-booked-list {
   font-size: 0.82rem;
-  color: #4d5a55;
+  color: var(--text-secondary);
   margin-top: 10px;
   line-height: 1.6;
 }
@@ -302,9 +281,181 @@
 
 .perf-metrics span {
   font-size: 0.8rem;
-  color: #68746f;
+  color: var(--text-muted);
 }
 
 .perf-metrics strong {
-  color: #1d2522;
+  color: var(--text-primary);
 }
+
+/* ── View / Compare toggle group ── */
+.toggle-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-group button {
+  flex: 1;
+  min-height: 38px;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+.toggle-group button + button {
+  border-left: 1px solid var(--border);
+}
+
+.toggle-group button.active {
+  background: var(--text-primary);
+  color: var(--bg-panel);
+}
+
+/* ── Compare panel ── */
+.compare-panel {
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.compare-names-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.compare-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.compare-name.primary-name {
+  color: var(--accent-mid);
+}
+
+.compare-name.secondary-name {
+  color: #56649a;
+}
+
+.compare-vs {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.compare-metrics-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.compare-metric-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(110px, auto) 1fr;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+  border-top: 1px solid var(--border-light);
+  padding: 10px 0;
+}
+
+.compare-value {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.compare-value:first-child {
+  text-align: right;
+}
+
+.compare-value.winner {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.compare-metric-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Yearly breakdown table ── */
+.yearly-breakdown-scroll {
+  overflow-x: auto;
+}
+
+.yearly-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  min-width: 600px;
+}
+
+.yearly-breakdown-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid #dfe5dd;
+}
+
+.yearly-breakdown-table td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+
+.yearly-breakdown-table .month-col {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.yearly-breakdown-table tbody tr.row-empty td {
+  color: #adb8b4;
+}
+
+.yearly-breakdown-table tfoot .year-total-row td {
+  border-top: 2px solid var(--border);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  font-weight: 700;
+}
+
+.reports-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media print {
+  .sidebar,
+  .reports-filters,
+  .exclusions-panel,
+  .reports-header-actions button {
+    display: none !important;
+  }
+
+  .reports-page {
+    gap: 12px;
+  }
+}
+

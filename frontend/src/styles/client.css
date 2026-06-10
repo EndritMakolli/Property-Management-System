@@ -1,0 +1,11 @@
+/* Shared layout helpers for the public (client-facing) site. */
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0 16px; }
+}

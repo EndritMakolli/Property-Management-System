@@ -15,7 +15,7 @@ export function RequireAuth() {
   }
 
   if (!canAccess(user.role, location.pathname)) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to="/dashboard" />
   }
 
   return <Outlet />

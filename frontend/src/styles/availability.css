@@ -181,3 +181,255 @@
   color: #68746f;
   margin-top: 6px;
 }
+
+/* ── Change Apartment page ── */
+
+/* Step 1 – reservation picker */
+.change-apt-search-row {
+  display: flex;
+}
+
+.change-apt-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 520px;
+}
+
+.change-apt-search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.change-apt-search-input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  padding: 0 40px 0 42px;
+  outline: none;
+}
+
+.change-apt-search-input:focus {
+  border-color: var(--accent);
+}
+
+.change-apt-search-clear {
+  position: absolute;
+  right: 10px;
+  min-height: 28px;
+  width: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.change-apt-reservation-list {
+  display: grid;
+  gap: 6px;
+}
+
+.change-apt-reservation-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.change-apt-reservation-row:hover {
+  border-color: var(--accent);
+  background: #f3faf7;
+}
+
+.change-apt-res-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+
+.change-apt-res-photo-placeholder {
+  background: linear-gradient(135deg, #dfe5dd, #f6f7f4);
+}
+
+.change-apt-res-info {
+  display: grid;
+  gap: 3px;
+}
+
+.change-apt-res-info strong {
+  font-size: 0.9rem;
+}
+
+.change-apt-res-info span {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.change-apt-res-info small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.change-apt-res-type {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  background: #edf0eb;
+  color: #42514b;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.change-apt-type-airbnb { background: #ffe6e6; color: #c2182f; }
+.change-apt-type-booking { background: #dceeff; color: #0f3460; }
+.change-apt-type-private { background: #e8f7ef; color: #1a6845; }
+
+.change-apt-res-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Step 2 – selected bar */
+.change-apt-selected-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #dfe5dd;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 14px 18px;
+  flex-wrap: wrap;
+}
+
+.change-apt-selected-info {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.change-apt-selected-info strong {
+  font-size: 0.92rem;
+}
+
+.change-apt-selected-info span {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.change-apt-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 0 10px;
+  margin-bottom: 8px;
+}
+
+.change-apt-guest-info {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  margin: 6px 0 0;
+}
+
+.change-apt-swap-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+
+.change-apt-swap-detail {
+  display: grid;
+  gap: 4px;
+}
+
+.change-apt-swap-label {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.change-apt-swap-detail strong {
+  font-size: 0.92rem;
+}
+
+.change-apt-swap-detail p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.change-apt-from {
+  font-weight: 700;
+  color: var(--badge-danger-text);
+}
+
+.change-apt-to {
+  font-weight: 700;
+  color: #1a6845;
+}
+
+.change-apt-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.change-apt-then {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0 !important;
+}
+
+.change-apt-success {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: #1a6845;
+}
+
+.change-apt-success h2 {
+  margin: 0;
+}
+
+.change-apt-success p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.change-apt-success-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
+}

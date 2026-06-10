@@ -98,6 +98,10 @@ export function reservationLabel(reservation: ReservationRecord) {
     return reservation.guestName || 'Suggested stay'
   }
 
+  if (reservation.reservationType === 'maintenance') {
+    return reservation.notes ? `Maintenance – ${reservation.notes}` : 'Maintenance'
+  }
+
   if (
     reservation.reservationType === 'airbnb' &&
     (reservation.guestName === 'Airbnb' || !reservation.guestName) &&

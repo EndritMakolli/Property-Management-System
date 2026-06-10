@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   createProperty,
+  deleteProperty,
   fetchProperties,
   updateProperty,
   type PropertyEditPayload,
@@ -42,30 +43,39 @@ export function PropertiesPage() {
     }
   }, [])
 
-  async function handleCreateProperty(payload: PropertyPayload | PropertyEditPayload) {
+  async function handleCreateProperty(payload: PropertyPayload | PropertyEditPayload): Promise<import('../types/domain').PropertyListing> {
     setSaving(true)
     setCreateError('')
 
     try {
       const property = await createProperty({
-        ...payload,
-        photo: 'photo' in payload ? payload.photo : null,
+        name: payload.name,
+        bedrooms: payload.bedrooms,
+        basePriceEur: payload.basePriceEur,
+        address: payload.address,
+        floor: payload.floor || '',
+        wifiName: payload.wifiName || '',
+        wifiPassword: payload.wifiPassword || '',
+        photo: 'photo' in payload ? (payload.photo ?? null) : null,
+        description: payload.description,
+        listingActive: payload.listingActive,
+        maxGuests: payload.maxGuests,
       })
       setProperties((current) => [...current, property].sort((a, b) => a.name.localeCompare(b.name)))
       setCreateOpen(false)
+      return property
     } catch (caughtError) {
       setCreateError(
         caughtError instanceof Error ? caughtError.message : 'Could not create property.',
       )
+      throw caughtError
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleUpdateProperty(payload: PropertyPayload | PropertyEditPayload) {
-    if (!editingProperty) {
-      return
-    }
+  async function handleUpdateProperty(payload: PropertyPayload | PropertyEditPayload): Promise<import('../types/domain').PropertyListing> {
+    if (!editingProperty) throw new Error('No property selected.')
 
     setSaving(true)
     setCreateError('')
@@ -76,6 +86,13 @@ export function PropertiesPage() {
         bedrooms: payload.bedrooms,
         basePriceEur: payload.basePriceEur,
         address: payload.address,
+        floor: payload.floor || '',
+        wifiName: payload.wifiName || '',
+        wifiPassword: payload.wifiPassword || '',
+        photo: 'photo' in payload ? (payload.photo ?? null) : null,
+        description: payload.description,
+        listingActive: payload.listingActive,
+        maxGuests: payload.maxGuests,
       })
       setProperties((current) =>
         current
@@ -83,12 +100,24 @@ export function PropertiesPage() {
           .sort((a, b) => a.name.localeCompare(b.name)),
       )
       setEditingProperty(null)
+      return property
     } catch (caughtError) {
       setCreateError(
         caughtError instanceof Error ? caughtError.message : 'Could not update property.',
       )
+      throw caughtError
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDeleteProperty(property: PropertyListing) {
+    try {
+      await deleteProperty(property.id)
+      setProperties((current) => current.filter((p) => p.id !== property.id))
+      if (editingProperty?.id === property.id) setEditingProperty(null)
+    } catch {
+      // leave the card in place; the user can try again
     }
   }
 
@@ -124,6 +153,7 @@ export function PropertiesPage() {
           setCreateOpen(false)
           setEditingProperty(property)
         }}
+        onDelete={handleDeleteProperty}
       />
     </>
   )

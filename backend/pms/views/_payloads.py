@@ -46,6 +46,8 @@ def apply_finance_expense_payload(expense, payload):
         expense.end_year = int(payload.get("endYear")) if payload.get("endYear") else None
     if "endMonth" in payload:
         expense.end_month = int(payload.get("endMonth")) if payload.get("endMonth") else None
+    if "platform" in payload:
+        expense.platform = payload.get("platform") or None
     if "notes" in payload:
         expense.notes = payload.get("notes") or ""
 
@@ -105,19 +107,22 @@ def apply_obligation_payload(obligation, payload):
     return obligation
 
 
-def apply_door_code_payload(code, payload):
+def apply_door_code_payload(code, payload, changed_by=""):
     if "newCode" in payload:
         new_code = (payload.get("newCode") or "").strip()
         if new_code != code.new_code:
             code.old_code = code.new_code
             code.new_code = new_code
             code.date_changed = date.today()
+            code.changed_by = changed_by
     if "notes" in payload:
         code.notes = payload.get("notes") or ""
     return code
 
 
-def apply_lockbox_code_payload(code, payload):
+def apply_lockbox_code_payload(code, payload, changed_by=""):
+    if "name" in payload:
+        code.name = (payload.get("name") or "").strip()
     if "apartmentNumber" in payload:
         code.apartment_number = (payload.get("apartmentNumber") or "").strip()
     if "newCode" in payload:
@@ -126,6 +131,7 @@ def apply_lockbox_code_payload(code, payload):
             code.old_code = code.new_code
             code.new_code = new_code
             code.date_changed = date.today()
+            code.changed_by = changed_by
     if "notes" in payload:
         code.notes = payload.get("notes") or ""
     return code

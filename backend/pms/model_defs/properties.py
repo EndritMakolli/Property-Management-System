@@ -7,6 +7,16 @@ from .base import TimeStampedModel
 
 
 class Property(TimeStampedModel):
+    class Platform(models.TextChoices):
+        AIRSTAY = "airstay", "AirStay"
+        FLEET = "fleet", "Fleet"
+
+    platform = models.CharField(
+        max_length=20,
+        choices=Platform.choices,
+        default=Platform.AIRSTAY,
+        db_index=True,
+    )
     name = models.CharField(max_length=255)
     unit_code = models.CharField(max_length=50, blank=True)
     address = models.TextField(blank=True)
@@ -22,6 +32,13 @@ class Property(TimeStampedModel):
     photo = models.FileField(upload_to="properties/", blank=True, null=True)
     notes = models.TextField(blank=True)
     active = models.BooleanField(default=True)
+    floor = models.CharField(max_length=50, blank=True)
+    wifi_name = models.CharField(max_length=255, blank=True)
+    wifi_password = models.CharField(max_length=255, blank=True)
+    auto_sync_enabled = models.BooleanField(default=False)
+    sync_interval_hours = models.PositiveIntegerField(default=24)
+    description = models.TextField(blank=True)
+    listing_active = models.BooleanField(default=True, help_text="Show on the public booking website")
 
     class Meta:
         ordering = ["name"]

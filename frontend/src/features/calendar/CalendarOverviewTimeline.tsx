@@ -18,6 +18,7 @@ type CalendarOverviewTimelineProps = {
   emptyMessage?: string
   onDayClick?: (property: PropertyListing, dayKey: string) => void
   onBedroomFilterChange?: (value: string) => void
+  onJumpToDate?: (date: Date) => void
   onMoveRange: (days: number) => void
   onReservationClick?: (reservation: ReservationRecord) => void
   onSearchChange?: (value: string) => void
@@ -40,12 +41,27 @@ const defaultVisibleDays = 21
 const monthFormatter = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' })
 const dayFormatter = new Intl.DateTimeFormat('en', { weekday: 'short' })
 
+function buildMonthOptions() {
+  const options: { label: string; value: string }[] = []
+  const now = new Date()
+  for (let i = -3; i <= 18; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    const label = d.toLocaleDateString('en', { month: 'long', year: 'numeric' })
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    options.push({ label, value })
+  }
+  return options
+}
+
+const monthOptions = buildMonthOptions()
+
 export function CalendarOverviewTimeline({
   bedroomFilter = 'any',
   bedroomOptions = [],
   emptyMessage = 'No listings to show.',
   onDayClick,
   onBedroomFilterChange,
+  onJumpToDate,
   onMoveRange,
   onReservationClick,
   onSearchChange,
@@ -63,6 +79,7 @@ export function CalendarOverviewTimeline({
   title,
   visibleDays = defaultVisibleDays,
 }: CalendarOverviewTimelineProps) {
+  const currentMonthValue = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`
   const days = buildDateRange(startDate, visibleDays)
   const visibleKeys = days.map((day) => day.key)
 
@@ -111,11 +128,25 @@ export function CalendarOverviewTimeline({
           </div>
         )}
         <div className="calendar-range-actions">
-          <button aria-label="Previous dates" onClick={() => onMoveRange(-7)}>
+          {onJumpToDate && (
+            <select
+              aria-label="Jump to month"
+              value={currentMonthValue}
+              onChange={(e) => {
+                const [year, month] = e.target.value.split('-').map(Number)
+                onJumpToDate(new Date(year, month - 1, 1))
+              }}
+            >
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          )}
+          <button aria-label="Previous dates" onClick={() => onMoveRange(-1)}>
             <ChevronLeft size={18} />
           </button>
           <button onClick={() => onMoveRange(0)}>Today</button>
-          <button aria-label="Next dates" onClick={() => onMoveRange(7)}>
+          <button aria-label="Next dates" onClick={() => onMoveRange(1)}>
             <ChevronRight size={18} />
           </button>
         </div>

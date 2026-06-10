@@ -436,6 +436,8 @@ function buildRecommendationReservations(segments: StaySegment[]): ReservationRe
     totalNights: segment.nights,
     nightlyPrice: '0.00',
     totalPaid: '0',
+    isArchived: false,
+    archivedAt: '',
   }))
 }
 

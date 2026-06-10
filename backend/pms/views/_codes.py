@@ -4,14 +4,14 @@ from django.views.decorators.csrf import csrf_exempt
 
 from ..models import DoorCode, LockboxCode, Property
 from ._payloads import apply_door_code_payload, apply_lockbox_code_payload
-from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
+from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
 from ._serializers import serialize_door_code, serialize_lockbox_code
 from ._utils import json_payload
 
 
 @csrf_exempt
 def door_code_list(request):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
         return denied
 
@@ -41,7 +41,7 @@ def door_code_detail(request, code_id):
     if request.method == "PATCH":
         try:
             payload = json_payload(request)
-            apply_door_code_payload(door_code, payload)
+            apply_door_code_payload(door_code, payload, changed_by=request.user.username)
             door_code.save()
         except ValidationError as error:
             return JsonResponse(
@@ -55,7 +55,7 @@ def door_code_detail(request, code_id):
 
 @csrf_exempt
 def lockbox_code_list(request):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
         return denied
 
@@ -66,7 +66,7 @@ def lockbox_code_list(request):
     if request.method == "POST":
         try:
             payload = json_payload(request)
-            lockbox_code = apply_lockbox_code_payload(LockboxCode(), payload)
+            lockbox_code = apply_lockbox_code_payload(LockboxCode(), payload, changed_by=request.user.username)
             lockbox_code.save()
         except ValidationError as error:
             return JsonResponse(
@@ -92,7 +92,7 @@ def lockbox_code_detail(request, code_id):
     if request.method == "PATCH":
         try:
             payload = json_payload(request)
-            apply_lockbox_code_payload(lockbox_code, payload)
+            apply_lockbox_code_payload(lockbox_code, payload, changed_by=request.user.username)
             lockbox_code.save()
         except ValidationError as error:
             return JsonResponse(

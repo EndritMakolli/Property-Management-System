@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   createReservation,
   deleteReservation,
+  fetchMaintenanceIssues,
   fetchProperties,
   updateReservation,
   type ReservationPayload,
 } from '../../api/pmsApi'
 import { DateInput } from '../../components/shared/DateInput'
-import type { PropertyListing, ReservationPlatform, ReservationRecord } from '../../types/domain'
+import type { MaintenanceIssueRecord, PropertyListing, ReservationPlatform, ReservationRecord } from '../../types/domain'
 import { calculateNights, toDateInputValue } from '../../utils/date'
 import { reservationTypeOptions } from './reservationOptions'
 
@@ -34,6 +35,7 @@ export function NewReservationModal({
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
 
   const [properties, setProperties] = useState<PropertyListing[]>([])
+  const [maintenanceIssues, setMaintenanceIssues] = useState<MaintenanceIssueRecord[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'error'>('idle')
   const [error, setError] = useState('')
   const [totalDraft, setTotalDraft] = useState<string | null>(null)
@@ -63,12 +65,13 @@ export function NewReservationModal({
       try {
         setStatus('loading')
         setError('')
-        const rows = await fetchProperties()
+        const [rows, issueRows] = await Promise.all([fetchProperties(), fetchMaintenanceIssues()])
         if (ignore) {
           return
         }
 
         setProperties(rows)
+        setMaintenanceIssues(issueRows)
         setForm((current) => {
           const selectedProperty = rows.find((property) => property.id === current.propertyId) || rows[0]
           return {
@@ -118,8 +121,13 @@ export function NewReservationModal({
     setTotalDraft(null)
   }, [initialValues, mode, open, reservation])
 
+  const isMaintenance = form.reservationType === 'maintenance'
   const selectedProperty = properties.find((property) => property.id === form.propertyId)
   const nights = calculateNights(form.checkIn, form.checkOut)
+  const issuesForProperty = useMemo(
+    () => maintenanceIssues.filter((i) => i.propertyId === form.propertyId),
+    [maintenanceIssues, form.propertyId],
+  )
   const total = useMemo(() => {
     const nightlyPrice = Number(form.nightlyPrice)
     return Number.isFinite(nightlyPrice) && nights > 0 ? (nightlyPrice * nights).toFixed(2) : '0.00'
@@ -213,22 +221,26 @@ export function NewReservationModal({
         {error && <p className="form-error">{error}</p>}
 
         <form className="reservation-modal-form" onSubmit={saveReservation}>
-          <label>
-            Guest name
-            <input
-              type="text"
-              value={form.guestName}
-              onChange={(event) => updateForm({ guestName: event.target.value })}
-            />
-          </label>
-          <label>
-            Phone
-            <input
-              type="tel"
-              value={form.guestPhone}
-              onChange={(event) => updateForm({ guestPhone: event.target.value })}
-            />
-          </label>
+          {!isMaintenance && (
+            <label>
+              Guest name
+              <input
+                type="text"
+                value={form.guestName}
+                onChange={(event) => updateForm({ guestName: event.target.value })}
+              />
+            </label>
+          )}
+          {!isMaintenance && (
+            <label>
+              Phone
+              <input
+                type="tel"
+                value={form.guestPhone}
+                onChange={(event) => updateForm({ guestPhone: event.target.value })}
+              />
+            </label>
+          )}
           <label>
             Property
             <select
@@ -270,38 +282,42 @@ export function NewReservationModal({
             Check-out
             <DateInput required ariaLabel="Check-out" min={form.checkIn} value={form.checkOut} onChange={(value) => updateForm({ checkOut: value })} />
           </label>
-          <label>
-            Nightly price
-            <input
-              min="0"
-              step="0.01"
-              type="number"
-              value={form.nightlyPrice}
-              onChange={(event) => updateForm({ nightlyPrice: event.target.value })}
-            />
-          </label>
-          <label>
-            Total price
-            <input
-              min="0"
-              step="0.01"
-              type="number"
-              value={totalDraft ?? total}
-              onChange={(event) => updateTotalPrice(event.target.value)}
-            />
-          </label>
-          <label>
-            Payment due
-            <DateInput ariaLabel="Payment due" value={form.paymentDue} onChange={(value) => updateForm({ paymentDue: value })} />
-          </label>
-          <label className="checkbox-field">
-            <input
-              checked={form.paid}
-              type="checkbox"
-              onChange={(event) => updateForm({ paid: event.target.checked })}
-            />
-            Paid
-          </label>
+          {!isMaintenance && (
+            <>
+              <label>
+                Nightly price
+                <input
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  value={form.nightlyPrice}
+                  onChange={(event) => updateForm({ nightlyPrice: event.target.value })}
+                />
+              </label>
+              <label>
+                Total price
+                <input
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  value={totalDraft ?? total}
+                  onChange={(event) => updateTotalPrice(event.target.value)}
+                />
+              </label>
+              <label>
+                Payment due
+                <DateInput ariaLabel="Payment due" value={form.paymentDue} onChange={(value) => updateForm({ paymentDue: value })} />
+              </label>
+              <label className="checkbox-field">
+                <input
+                  checked={form.paid}
+                  type="checkbox"
+                  onChange={(event) => updateForm({ paid: event.target.checked })}
+                />
+                Paid
+              </label>
+            </>
+          )}
           <label className="wide-field">
             Notes
             <textarea
@@ -310,10 +326,38 @@ export function NewReservationModal({
             />
           </label>
 
+          {/* ── Issue picker: shown when maintenance type + property has open issues ── */}
+          {isMaintenance && issuesForProperty.length > 0 && (
+            <div className="maintenance-issue-picker wide-field">
+              <p className="maintenance-issue-picker-label">
+                Open issues for {selectedProperty?.name} — click to prefill notes
+              </p>
+              <div className="maintenance-issue-picker-list">
+                {issuesForProperty.map((issue) => (
+                  <button
+                    key={issue.id}
+                    className="maintenance-issue-picker-item"
+                    type="button"
+                    onClick={() =>
+                      updateForm({
+                        notes: form.notes
+                          ? `${form.notes}\n\nIssue: ${issue.description}`
+                          : `Issue: ${issue.description}`,
+                      })
+                    }
+                  >
+                    <strong>{issue.description}</strong>
+                    <small>Reported {issue.reportedAt}{issue.reporterName ? ` by ${issue.reporterName}` : ''}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="reservation-modal-summary">
             <span>{selectedProperty?.apartmentType || 'Choose property'}</span>
             <strong>
-              {nights} nights - {total} EUR
+              {nights} {nights === 1 ? 'night' : 'nights'}{!isMaintenance ? ` - ${total} EUR` : ''}
             </strong>
           </div>
 

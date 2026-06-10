@@ -8,7 +8,7 @@
 .property-form label {
   display: grid;
   gap: 7px;
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -17,10 +17,10 @@
 .property-form textarea {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #cbd5d0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #1d2522;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   padding: 9px 11px;
 }
 
@@ -37,9 +37,9 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 12px;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--bg-panel);
   margin-bottom: 24px;
   padding: 16px;
 }
@@ -47,7 +47,7 @@
 .property-create-form label {
   display: grid;
   gap: 7px;
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.84rem;
   font-weight: 700;
 }
@@ -55,10 +55,10 @@
 .property-create-form input,
 .property-create-form textarea {
   min-height: 40px;
-  border: 1px solid #cbd5d0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #1d2522;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   padding: 0 10px;
 }
 
@@ -133,7 +133,7 @@
 }
 
 .listings-message {
-  color: #68746f;
+  color: var(--text-muted);
   margin: 0 0 18px;
 }
 
@@ -169,7 +169,7 @@
 .photo-placeholder {
   display: grid;
   place-items: center;
-  color: #68746f;
+  color: var(--text-muted);
 }
 
 .listed-badge {
@@ -181,9 +181,9 @@
   gap: 6px;
   min-height: 28px;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--bg-panel);
   box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
-  color: #1d2522;
+  color: var(--text-primary);
   font-size: 0.76rem;
   font-weight: 700;
   padding: 0 11px;
@@ -209,21 +209,161 @@
 
 .listing-info span,
 .listing-info small {
-  color: #4d5a55;
+  color: var(--text-secondary);
 }
 
 .listing-info small {
   font-size: 0.82rem;
 }
 
-.listing-edit-button {
-  justify-self: start;
+.listing-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.listing-edit-button,
+.listing-delete-button {
   min-height: 30px;
   border-radius: 6px;
-  margin-top: 4px;
   padding: 0 10px;
+  font-size: 0.82rem;
+}
+
+.listing-edit-button {
   color: #1f6f5b;
   background: #eef8f3;
   border: 1px solid #c5e5d8;
+}
+
+.listing-delete-button {
+  color: #7a3320;
+  background: #fdf2ee;
+  border: 1px solid #efc5b5;
+}
+
+.listing-delete-button.confirm {
+  color: #ffffff;
+  background: #9b3f20;
+  border-color: #9b3f20;
+}
+
+/* Photo upload preview in create/edit form */
+.photo-upload-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.photo-thumb {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.photo-thumb-placeholder {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  border: 1px dashed #cbd5d0;
+  color: var(--text-muted);
+  background: #f6f7f4;
+}
+
+.listed-badge.unlisted i {
+  background: #b45309;
+}
+
+.wifi-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
   font-size: 0.82rem;
+}
+
+/* Property detail modal */
+.property-detail-modal {
+  max-width: 500px;
+  width: 100%;
+}
+
+.property-detail-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.property-detail-fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.detail-value {
+  color: var(--text-primary);
+  text-align: right;
+}
+
+/* Modal shared styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.modal {
+  background: var(--bg-panel);
+  border-radius: 14px;
+  padding: 24px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.modal-footer button {
+  min-height: 38px;
+  padding: 0 14px;
 }

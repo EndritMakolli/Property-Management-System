@@ -1,0 +1,99 @@
+:root,
+[data-theme="light"] {
+  --bg-app: #f6f7f4;
+  --bg-sidebar: #fffdf8;
+  --bg-panel: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #f0f4ee;
+  --bg-table-head: #f3f4f3;
+  --bg-table-row-alt: #fafbf9;
+  --border: #dfe5dd;
+  --border-light: #edf0eb;
+  --text-primary: #1d2522;
+  --text-secondary: #4a5754;
+  --text-muted: #68746f;
+  --text-link: #1a5e3a;
+  --accent: #1a5e3a;
+  --accent-mid: #1f6f5b;
+  --accent-bg: #e8f5ee;
+  --accent-bg-mid: #eef8f3;
+  --accent-border: #c5e5d8;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --sidebar-width: 260px;
+  /* Semantic status badges */
+  --badge-success-bg: #d4f0e6;
+  --badge-success-text: #1a6845;
+  --badge-danger-bg: #fde8df;
+  --badge-danger-text: #9b3f20;
+  --badge-warning-bg: #fff1d8;
+  --badge-warning-text: #8a5418;
+  --badge-neutral-bg: #eef2f0;
+  --badge-neutral-text: #42514b;
+  --badge-airbnb-bg: #ffe6e6;
+  --badge-airbnb-text: #7f1021;
+  /* Table header (branded blue) */
+  --table-header-bg: #56649a;
+  --table-header-text: #ffffff;
+  /* Row highlights */
+  --row-new-bg: #eef8f3;
+  --row-dirty-bg: #fdf8ec;
+  --row-error-bg: #ffe6e6;
+  --row-today-bg: #eef8f3;
+  /* Occupancy bar */
+  --occupancy-bar-bg: #edf0eb;
+  --occupancy-bar-fill: #2f8f74;
+}
+
+[data-theme="dark"] {
+  --bg-app: #111614;
+  --bg-sidebar: #161b18;
+  --bg-panel: #1c2320;
+  --bg-input: #222a27;
+  --bg-hover: #222a27;
+  --bg-table-head: #1a2220;
+  --bg-table-row-alt: #1e2623;
+  --border: #2d3a36;
+  --border-light: #243028;
+  --text-primary: #e8ecea;
+  --text-secondary: #a8b8b2;
+  --text-muted: #6b8078;
+  --text-link: #5acea0;
+  --accent: #5acea0;
+  --accent-mid: #5acea0;
+  --accent-bg: #1a3028;
+  --accent-bg-mid: #1a3028;
+  --accent-border: #2d5040;
+  --danger: #f87171;
+  --danger-bg: #2a1a1a;
+  --warning: #fbbf24;
+  --warning-bg: #2a2010;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  /* Semantic status badges */
+  --badge-success-bg: #1a3028;
+  --badge-success-text: #5acea0;
+  --badge-danger-bg: #2a1a1a;
+  --badge-danger-text: #f87171;
+  --badge-warning-bg: #2a2010;
+  --badge-warning-text: #fbbf24;
+  --badge-neutral-bg: #222a27;
+  --badge-neutral-text: #a8b8b2;
+  --badge-airbnb-bg: #2a1a1a;
+  --badge-airbnb-text: #f87171;
+  /* Table header (branded blue) */
+  --table-header-bg: #2c3d72;
+  --table-header-text: #e8ecea;
+  /* Row highlights */
+  --row-new-bg: #1a3028;
+  --row-dirty-bg: #2a2010;
+  --row-error-bg: #2a1a1a;
+  --row-today-bg: #1a3028;
+  /* Occupancy bar */
+  --occupancy-bar-bg: #243028;
+  --occupancy-bar-fill: #5acea0;
+}

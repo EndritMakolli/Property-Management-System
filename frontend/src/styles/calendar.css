@@ -3,18 +3,18 @@
   grid-template-columns: repeat(7, minmax(120px, 1fr));
   gap: 1px;
   overflow-x: auto;
-  border: 1px solid #d8ddd7;
-  background: #d8ddd7;
+  border: 1px solid var(--border);
+  background: var(--border);
 }
 
 .calendar-day-name,
 .calendar-cell {
-  background: #ffffff;
+  background: var(--bg-panel);
   padding: 10px;
 }
 
 .calendar-day-name {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.82rem;
 }
 
@@ -28,14 +28,14 @@
 }
 
 .calendar-cell span {
-  color: #68746f;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .calendar-cell b {
   border-radius: 6px;
-  background: #e7f1ed;
-  color: #184b3f;
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
   font-size: 0.78rem;
   padding: 5px 7px;
 }
@@ -45,15 +45,15 @@
   grid-template-columns: minmax(0, 1fr);
   min-height: calc(100vh - 96px);
   overflow: hidden;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
 }
 
 .calendar-listings-rail {
   min-width: 0;
-  border-right: 1px solid #dfe5dd;
-  background: #fbfcfa;
+  border-right: 1px solid var(--border);
+  background: var(--bg-table-head);
   padding: 16px 10px;
 }
 
@@ -66,10 +66,10 @@
   display: flex;
   align-items: center;
   min-height: 34px;
-  border: 1px solid #d8ddd7;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #68746f;
+  background: var(--bg-panel);
+  color: var(--text-muted);
   font-size: 0.82rem;
   margin: 0 0 10px;
   padding: 0 10px;
@@ -160,7 +160,7 @@
 }
 
 .property-calendar-header p {
-  color: #68746f;
+  color: var(--text-muted);
   margin: 5px 0 0;
 }
 
@@ -189,7 +189,7 @@
 }
 
 .property-calendar-weekdays span {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   padding: 0 14px 8px;
   text-align: center;
@@ -204,15 +204,15 @@
   position: relative;
   min-height: 96px;
   overflow: visible;
-  border: 1px solid #d8ddd7;
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--bg-panel);
   padding: 13px 14px;
 }
 
 .property-calendar-cell.muted {
   background: #f4f5f3;
-  color: #68746f;
+  color: var(--text-muted);
 }
 
 .property-calendar-date {
@@ -225,7 +225,7 @@
 }
 
 .property-calendar-date small {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -300,12 +300,17 @@
   background: #1f6f5b;
 }
 
+.calendar-reservation-pill.platform-maintenance,
+.timeline-reservation-bar.platform-maintenance {
+  background: #16a34a;
+}
+
 .calendar-overview {
   min-height: calc(100vh - 96px);
   overflow: hidden;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
 }
 
 .calendar-overview-header,
@@ -332,7 +337,7 @@
 }
 
 .calendar-overview-header p {
-  color: #68746f;
+  color: var(--text-muted);
   margin-top: 3px;
 }
 
@@ -349,9 +354,9 @@
 .calendar-overview-filters input,
 .calendar-overview-filters select {
   min-height: 36px;
-  border: 1px solid #d8ddd7;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--bg-panel);
   color: #1d2522;
   padding: 0 12px;
 }
@@ -384,7 +389,7 @@
 .timeline-date-cell,
 .timeline-property-cell,
 .timeline-day-cell {
-  border-right: 1px solid #dfe5dd;
+  border-right: 1px solid var(--border);
   border-bottom: 1px solid #dfe5dd;
 }
 
@@ -393,7 +398,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #ffffff;
+  background: var(--bg-panel);
 }
 
 .timeline-corner {
@@ -402,7 +407,7 @@
   display: flex;
   align-items: center;
   min-height: 64px;
-  color: #68746f;
+  color: var(--text-muted);
   font-size: 0.84rem;
   padding: 0 14px;
 }
@@ -416,7 +421,7 @@
 }
 
 .timeline-date-cell strong {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.76rem;
 }
 
@@ -437,7 +442,7 @@
   min-height: 68px;
   border-left: 0;
   border-radius: 0;
-  background: #fbfcfa;
+  background: var(--bg-table-head);
   padding: 8px;
   text-align: left;
 }
@@ -511,7 +516,7 @@
   position: absolute;
   right: 8px;
   bottom: 8px;
-  color: #68746f;
+  color: var(--text-muted);
   font-size: 0.76rem;
 }
 
@@ -571,9 +576,9 @@
   z-index: 60;
   display: none;
   min-width: 210px;
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
   box-shadow: 0 14px 36px rgb(0 0 0 / 18%);
   color: #1d2522;
   padding: 10px;
@@ -591,6 +596,6 @@
 }
 
 .reservation-popover span {
-  color: #4d5a55;
+  color: var(--text-secondary);
   font-size: 0.78rem;
 }

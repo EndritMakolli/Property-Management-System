@@ -1,0 +1,119 @@
+.booking-requests-page { display: grid; gap: 18px; }
+
+.booking-requests-page h2 { margin: 0; font-size: 1.35rem; }
+
+.br-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.br-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.br-section-header h3 { margin: 0; font-size: 1rem; }
+
+.br-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.br-empty { padding: 28px 18px; color: var(--text-secondary); font-size: 0.9rem; }
+
+.br-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.br-card:last-child { border-bottom: none; }
+
+.br-card-info { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+
+.br-card-info strong { font-size: 0.95rem; }
+
+.br-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.br-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.br-reject-form {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-table-head);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.br-reject-form textarea {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  padding: 8px;
+  font-size: 0.88rem;
+  resize: vertical;
+}
+
+.br-reject-actions { display: flex; gap: 8px; }
+
+.br-confirmed-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+
+.br-confirmed-table th {
+  background: var(--bg-table-head);
+  color: #fff;
+  font-weight: 700;
+  text-align: left;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.br-confirmed-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 10px;
+  vertical-align: middle;
+}
+
+.br-confirmed-table tr:last-child td { border-bottom: none; }
+
+.br-status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.br-status-pending { background: #fef3c7; color: #92400e; }
+.br-status-approved { background: #dcfce7; color: #15803d; }
+.br-status-rejected { background: #fee2e2; color: #991b1b; }
+.br-status-expired { background: var(--bg-table-head); color: var(--text-secondary); }
+
+.br-load-more { padding: 12px 18px; border-top: 1px solid var(--border); }

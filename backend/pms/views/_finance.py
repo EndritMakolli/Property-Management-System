@@ -1,6 +1,6 @@
 import calendar
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
@@ -34,10 +34,8 @@ def finance_summary(request):
 
     month_start = date(year, month, 1)
     month_end = date(year, month, calendar.monthrange(year, month)[1])
-    reservations = Reservation.objects.filter(check_in__lte=month_end, check_out__gt=month_start)
-    turnover = sum((r.total_price_eur for r in reservations), Decimal("0.00"))
 
-    expenses = [
+    all_expenses = [
         e for e in FinanceExpense.objects.filter(start_year__lte=year).select_related("category")
         if is_active_for_month(e, year, month)
     ]
@@ -46,25 +44,40 @@ def finance_summary(request):
         if is_active_for_month(l, year, month)
     ]
     obligations = FinancialObligation.objects.all()
-
-    expenses_total = sum((e.amount_eur for e in expenses), Decimal("0.00"))
     loan_total = sum((l.monthly_value_eur for l in loans), Decimal("0.00"))
     unpaid_obligations_total = sum(
         (o.amount_eur for o in obligations if not o.paid), Decimal("0.00")
     )
-    profit = turnover - expenses_total
-    profit_after_loans = profit - loan_total
+
+    def platform_summary(property_platform):
+        platform_reservations = Reservation.objects.filter(
+            check_in__lte=month_end,
+            check_out__gt=month_start,
+            is_archived=False,
+            platform__in=["airbnb", "booking", "private"],
+            property__platform=property_platform,
+        )
+        turnover = sum(
+            (reservation_revenue_inside_month(r, month_start, month_end) for r in platform_reservations),
+            Decimal("0.00"),
+        )
+        # Include platform-specific expenses + shared (platform=None) expenses
+        platform_expenses = [e for e in all_expenses if e.platform == property_platform or e.platform is None]
+        expenses_total = sum((e.amount_eur for e in platform_expenses), Decimal("0.00"))
+        return {
+            "turnoverEur": str(turnover),
+            "expensesEur": str(expenses_total),
+            "profitEur": str(turnover - expenses_total),
+        }
 
     return JsonResponse({
         "summary": {
-            "turnoverEur": str(turnover),
-            "expensesEur": str(expenses_total),
+            "airstay": platform_summary("airstay"),
+            "fleet": platform_summary("fleet"),
             "loanPaymentsEur": str(loan_total),
-            "profitEur": str(profit),
-            "profitAfterLoansEur": str(profit_after_loans),
             "totalDebtEur": str(unpaid_obligations_total),
         },
-        "expenses": [serialize_finance_expense(e) for e in expenses],
+        "expenses": [serialize_finance_expense(e) for e in all_expenses],
         "loans": [serialize_loan(l) for l in loans],
         "obligations": [serialize_financial_obligation(o) for o in obligations],
     })
@@ -86,7 +99,11 @@ def expense_category_list(request):
             name = (payload.get("name") or "").strip()
             if not name:
                 raise ValidationError({"name": "Enter a category name."})
-            category, _created = ExpenseCategory.objects.get_or_create(name=name)
+            color = (payload.get("color") or "#6b7280").strip()
+            category, _created = ExpenseCategory.objects.get_or_create(name=name, defaults={"color": color})
+            if not _created and "color" in payload:
+                category.color = color
+                category.save(update_fields=["color"])
         except ValidationError as error:
             return JsonResponse(
                 {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
@@ -95,6 +112,68 @@ def expense_category_list(request):
         return JsonResponse({"category": serialize_expense_category(category)}, status=201)
 
     return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+@csrf_exempt
+def expense_category_detail(request, category_id):
+    denied = require_roles(request, [ROLE_ADMIN])
+    if denied:
+        return denied
+
+    try:
+        category = ExpenseCategory.objects.get(pk=category_id)
+    except ExpenseCategory.DoesNotExist:
+        return JsonResponse({"error": "Category not found."}, status=404)
+
+    if request.method == "PATCH":
+        try:
+            payload = json_payload(request)
+            fields = []
+            name = (payload.get("name") or "").strip()
+            if name:
+                category.name = name
+                fields.append("name")
+            color = (payload.get("color") or "").strip()
+            if color:
+                category.color = color
+                fields.append("color")
+            if fields:
+                category.save(update_fields=fields)
+        except ValidationError as error:
+            return JsonResponse(
+                {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
+                status=400,
+            )
+        return JsonResponse({"category": serialize_expense_category(category)})
+
+    if request.method == "DELETE":
+        if category.finance_expenses.exists():
+            return JsonResponse(
+                {"error": "Cannot delete a category that has expenses assigned to it."},
+                status=400,
+            )
+        category.delete()
+        return JsonResponse({"deleted": True})
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+def reservation_revenue_inside_month(reservation, month_start, month_end):
+    if not reservation.nights:
+        return Decimal("0.00")
+
+    overlap_start = max(reservation.check_in, month_start)
+    overlap_end = min(reservation.check_out, month_end + date.resolution)
+    nights_in_month = max((overlap_end - overlap_start).days, 0)
+
+    if nights_in_month <= 0:
+        return Decimal("0.00")
+
+    cents = Decimal("0.01")
+    nightly_share = reservation.total_price_eur / Decimal(reservation.nights)
+    return (nightly_share * Decimal(nights_in_month)).quantize(
+        cents, rounding=ROUND_HALF_UP
+    )
 
 
 @csrf_exempt
@@ -136,6 +215,22 @@ def finance_expense_detail(request, expense_id):
         expense = FinanceExpense.objects.select_related("category").get(pk=expense_id)
     except FinanceExpense.DoesNotExist:
         return JsonResponse({"error": "Expense not found."}, status=404)
+
+    if request.method == "PATCH":
+        try:
+            payload = json_payload(request)
+            expense = apply_finance_expense_payload(expense, payload)
+            expense.save()
+        except (ExpenseCategory.DoesNotExist, ValueError):
+            return JsonResponse(
+                {"error": "Choose a valid expense category and date range."}, status=400
+            )
+        except ValidationError as error:
+            return JsonResponse(
+                {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
+                status=400,
+            )
+        return JsonResponse({"expense": serialize_finance_expense(expense)})
 
     if request.method == "DELETE":
         expense.delete()

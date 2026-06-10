@@ -13,17 +13,25 @@
 }
 
 .report-toolbar {
+  display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 18px;
-  border-bottom: 1px solid #dfe5dd;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 18px;
+}
+
+.report-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .report-toolbar input {
   min-height: 42px;
-  border: 1px solid #cbd5d0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
   color: #1d2522;
   padding: 0 12px;
 }
@@ -36,9 +44,9 @@
 
 .metric,
 .panel {
-  border: 1px solid #dfe5dd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-panel);
 }
 
 .metric {
@@ -51,7 +59,7 @@
 .property-row span,
 .recommendation p,
 .empty-state p {
-  color: #68746f;
+  color: var(--text-muted);
 }
 
 .metric strong {
@@ -103,8 +111,8 @@
 }
 
 .list-empty {
-  border-top: 1px solid #edf0eb;
-  color: #68746f;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-muted);
   margin: 0;
   padding: 12px 0;
 }
@@ -112,7 +120,7 @@
 .reservation-item,
 .pending-item,
 .property-row {
-  border-top: 1px solid #edf0eb;
+  border-top: 1px solid var(--border-light);
   gap: 12px;
   padding: 12px 0;
 }
@@ -132,7 +140,7 @@
 }
 
 .reservation-item small {
-  color: #68746f;
+  color: var(--text-muted);
   margin-top: 3px;
 }
 
@@ -140,8 +148,8 @@
 .priority {
   align-self: flex-start;
   border-radius: 999px;
-  background: #eef2f0;
-  color: #42514b;
+  background: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
   font-size: 0.78rem;
   padding: 4px 8px;
 }
@@ -157,9 +165,9 @@
   border-radius: 6px;
   margin-top: 10px;
   padding: 0 10px;
-  color: #1f6f5b;
-  background: #eef8f3;
-  border: 1px solid #c5e5d8;
+  color: var(--accent-mid);
+  background: var(--accent-bg-mid);
+  border: 1px solid var(--accent-border);
   font-size: 0.82rem;
 }
 
@@ -173,8 +181,8 @@
 }
 
 .priority.high {
-  background: #fde8df;
-  color: #9b3f20;
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
 }
 
 .property-table {
@@ -190,14 +198,14 @@
   height: 9px;
   overflow: hidden;
   border-radius: 999px;
-  background: #edf0eb;
+  background: var(--occupancy-bar-bg);
 }
 
 .occupancy-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #2f8f74;
+  background: var(--occupancy-bar-fill);
 }
 
 .recommendation {
@@ -238,7 +246,7 @@
 }
 
 .upcoming-table th {
-  background: #56649a;
+  background: var(--table-header-bg);
   color: #ffffff;
   font-weight: 700;
   text-align: left;
@@ -257,17 +265,17 @@
 }
 
 .upcoming-table td small {
-  color: #68746f;
+  color: var(--text-muted);
   font-size: 0.78rem;
   display: block;
 }
 
 .upcoming-table tbody tr:hover {
-  background: #f7f9f7;
+  background: var(--bg-hover);
 }
 
 .upcoming-today {
-  background: #eef8f3 !important;
+  background: var(--row-today-bg) !important;
 }
 
 .payment-badge {
@@ -281,13 +289,13 @@
 }
 
 .payment-badge.paid {
-  background: #d4f0e6;
-  color: #1a6845;
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
 }
 
 .payment-badge.unpaid {
-  background: #fde8df;
-  color: #9b3f20;
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
 }
 
 .upcoming-actions {
@@ -300,16 +308,160 @@
   border-radius: 6px;
   font-size: 0.8rem;
   padding: 0 8px;
-  color: #1f6f5b;
-  background: #eef8f3;
-  border: 1px solid #c5e5d8;
+  color: var(--accent-mid);
+  background: var(--accent-bg-mid);
+  border: 1px solid var(--accent-border);
 }
 
 .action-link:hover {
-  background: #d8f0e8;
+  background: var(--accent-bg);
 }
 
 .col-narrow {
   text-align: center;
   width: 44px;
+}
+
+/* ── Free Apartments Panel ── */
+.free-apartments-panel {
+  grid-column: 1 / -1;
+}
+
+.free-apartments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.free-apartment-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.free-apartment-card strong {
+  font-size: 0.9rem;
+}
+
+.free-apartment-card span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.free-apartment-card small {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.free-apartment-card.has-fix-opportunity {
+  border-color: #f4c09a;
+  background: #fdf6f0;
+}
+
+.fix-opportunity-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  color: #7a3320;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.fix-opportunity-link {
+  min-height: 20px;
+  border-radius: 6px;
+  border: 1px solid #f4c09a;
+  background: transparent;
+  color: #7a3320;
+  font-size: 0.74rem;
+  padding: 0 8px;
+  margin-left: auto;
+}
+
+.cleaner-fix-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #7a3320 !important;
+  font-weight: 600 !important;
+}
+
+.clean-badge {
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  margin-top: 4px;
+}
+
+.clean-badge.cleaned {
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+
+.clean-badge.dirty {
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+/* ── Cleaner Dashboard ── */
+.cleaner-apt-list {
+  display: grid;
+  gap: 0;
+}
+
+.cleaner-apt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border-light);
+  padding: 10px 0;
+}
+
+.cleaner-apt-info {
+  display: grid;
+  gap: 2px;
+}
+
+.cleaner-apt-info strong {
+  font-size: 0.9rem;
+}
+
+.cleaner-apt-info span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.cleaner-apt-info small {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.cleaner-mark-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  padding: 0 12px;
+  white-space: nowrap;
+  background: var(--bg-table-head);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.cleaner-mark-btn.cleaned {
+  background: var(--badge-success-bg);
+  border-color: var(--accent-border);
+  color: var(--badge-success-text);
 }

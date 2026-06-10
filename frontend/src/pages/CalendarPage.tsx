@@ -15,11 +15,7 @@ export function CalendarPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
-  const [timelineStartDate, setTimelineStartDate] = useState(() => {
-    const date = new Date(today)
-    date.setDate(today.getDate() - 1)
-    return date
-  })
+  const [timelineStartDate, setTimelineStartDate] = useState(() => new Date(today))
   const [calendarView, setCalendarView] = useState<'overview' | 'property'>('overview')
   const [calendarSearch, setCalendarSearch] = useState('')
   const [bedroomFilter, setBedroomFilter] = useState('any')
@@ -147,9 +143,7 @@ export function CalendarPage() {
 
   function moveTimeline(days: number) {
     if (days === 0) {
-      const date = new Date()
-      date.setDate(date.getDate() - 1)
-      setTimelineStartDate(date)
+      setTimelineStartDate(new Date())
       return
     }
 
@@ -179,6 +173,7 @@ export function CalendarPage() {
       <>
         <CalendarOverviewTimeline
           onDayClick={handleCalendarDayClick}
+          onJumpToDate={setTimelineStartDate}
           onMoveRange={moveTimeline}
           onReservationClick={handleReservationClick}
           onSelectProperty={selectProperty}

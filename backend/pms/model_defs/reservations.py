@@ -16,6 +16,13 @@ class Reservation(TimeStampedModel):
         PRIVATE = "private", "Private"
         AIRBNB = "airbnb", "Airbnb"
         BOOKING = "booking", "Booking.com"
+        MAINTENANCE = "maintenance", "Maintenance"
+        DIRECT = "direct", "Direct Booking"
+
+    class OnlinePaymentStatus(models.TextChoices):
+        NONE = "none", "No Online Payment"
+        FIRST_NIGHT = "first_night", "First Night Paid"
+        FULL = "full", "Fully Paid Online"
 
     property = models.ForeignKey(Property, on_delete=models.PROTECT, related_name="reservations")
     guest = models.ForeignKey(
@@ -43,6 +50,19 @@ class Reservation(TimeStampedModel):
         max_digits=10, decimal_places=2, editable=False, default=Decimal("0.00")
     )
     notes = models.TextField(blank=True, null=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(blank=True, null=True)
+    # Direct booking fields (null for PMS-entered and synced reservations)
+    guest_email = models.EmailField(blank=True)
+    booking_token = models.UUIDField(unique=True, null=True, blank=True)
+    online_payment_status = models.CharField(
+        max_length=20,
+        choices=OnlinePaymentStatus.choices,
+        default=OnlinePaymentStatus.NONE,
+    )
+    online_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    is_non_refundable = models.BooleanField(default=False)
+    price_breakdown_json = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["check_in"]
@@ -85,7 +105,7 @@ class Reservation(TimeStampedModel):
                 f"({self.property.max_guests})."
             )
 
-        if not (self.guest_name or self.guest_phone):
+        if self.platform != self.Platform.MAINTENANCE and not (self.guest_name or self.guest_phone):
             errors["guest_name"] = "Enter either a guest name or phone number."
 
         if self.check_in and self.check_out and self.property_id:
@@ -93,8 +113,9 @@ class Reservation(TimeStampedModel):
                 property=self.property,
                 check_in__lt=self.check_out,
                 check_out__gt=self.check_in,
-            ).exclude(pk=self.pk)
-            if overlapping.exists():
+                is_archived=False,
+            ).exclude(pk=self.pk).exclude(platform=self.Platform.MAINTENANCE)
+            if overlapping.exists() and self.platform != self.Platform.MAINTENANCE:
                 conflict = overlapping.first()
                 errors["check_in"] = f"Reservation overlaps with {conflict}."
 
@@ -121,9 +142,10 @@ class Reservation(TimeStampedModel):
     @builtin_property
     def calendar_color(self):
         colors = {
-            self.Platform.PRIVATE: "#7C3AED",
+            self.Platform.PRIVATE: "#111111",
             self.Platform.AIRBNB: "#FF5A5F",
             self.Platform.BOOKING: "#003580",
+            self.Platform.MAINTENANCE: "#16a34a",
         }
         return colors.get(self.platform, "#6B7280")
 

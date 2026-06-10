@@ -1,4 +1,4 @@
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Download, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -28,18 +28,24 @@ export function ReservationsPage() {
   const navigate = useNavigate()
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [reservations, setReservations] = useState<EditableReservation[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedPropertyId, setSelectedPropertyId] = useState('')
+  const [selectedPlatform, setSelectedPlatform] = useState('')
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    const stored = window.localStorage.getItem('pms.reservations.month')
+    return stored ? Number(stored) : new Date().getMonth() + 1
+  })
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const stored = window.localStorage.getItem('pms.reservations.year')
+    return stored ? Number(stored) : new Date().getFullYear()
+  })
   const autosaveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const savingReservations = useRef(new Set<string>())
   const [sort, setSort] = useState<ReservationSort>(() => {
     const stored = window.localStorage.getItem(reservationSortStorageKey)
-    if (!stored) {
-      return defaultSort
-    }
-
+    if (!stored) return defaultSort
     try {
       return { ...defaultSort, ...JSON.parse(stored) } as ReservationSort
     } catch {
@@ -54,7 +60,11 @@ export function ReservationsPage() {
     try {
       const [propertyRows, reservationRows] = await Promise.all([
         fetchProperties(),
-        fetchReservations({ month: selectedMonth, year: selectedYear }),
+        fetchReservations({
+          month: selectedMonth,
+          year: selectedYear,
+          propertyId: selectedPropertyId || undefined,
+        }),
       ])
       setProperties(propertyRows)
       setReservations(reservationRows.map((item) => ({ ...item, isDirty: false })))
@@ -63,7 +73,7 @@ export function ReservationsPage() {
       setStatus('error')
       setError('Start the Django server, then refresh this page.')
     }
-  }, [selectedMonth, selectedYear])
+  }, [selectedMonth, selectedYear, selectedPropertyId])
 
   useEffect(() => {
     loadReservationData()
@@ -90,7 +100,9 @@ export function ReservationsPage() {
   }, [loadReservationData])
 
   useEffect(() => {
-    const dirtyIds = new Set(reservations.filter((reservation) => reservation.isDirty).map((reservation) => reservation.id))
+    const dirtyIds = new Set(
+      reservations.filter((reservation) => reservation.isDirty).map((reservation) => reservation.id),
+    )
 
     autosaveTimers.current.forEach((timer, id) => {
       if (!dirtyIds.has(id)) {
@@ -100,14 +112,10 @@ export function ReservationsPage() {
     })
 
     reservations.forEach((reservation) => {
-      if (!reservation.isDirty || savingReservations.current.has(reservation.id)) {
-        return
-      }
+      if (!reservation.isDirty || savingReservations.current.has(reservation.id)) return
 
       const existingTimer = autosaveTimers.current.get(reservation.id)
-      if (existingTimer) {
-        clearTimeout(existingTimer)
-      }
+      if (existingTimer) clearTimeout(existingTimer)
 
       const timer = setTimeout(() => {
         autosaveTimers.current.delete(reservation.id)
@@ -128,13 +136,54 @@ export function ReservationsPage() {
           return (Number(leftValue) - Number(rightValue)) * direction
         }
 
-        return String(leftValue).localeCompare(String(rightValue), undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        }) * direction
+        return (
+          String(leftValue).localeCompare(String(rightValue), undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          }) * direction
+        )
       }),
     [reservations, sort],
   )
+
+  const filteredReservations = useMemo(() => {
+    let result = sortedReservations
+    if (selectedPlatform) {
+      result = result.filter((r) => r.reservationType === selectedPlatform)
+    }
+    const query = searchQuery.trim()
+    if (!query) return result
+    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean)
+    return result.filter((r) => {
+      const haystack = [r.guestName, r.guestPhone, r.apartment, r.reservationType, r.checkIn, r.checkOut, r.notes]
+        .join(' ')
+        .toLowerCase()
+      return tokens.every((token) => haystack.includes(token))
+    })
+  }, [sortedReservations, searchQuery, selectedPlatform])
+
+  function exportToCSV() {
+    const headers = [
+      'Guest', 'Phone', 'Apartment', 'Type', 'Check-in', 'Check-out',
+      'Nights', 'Nightly Price', 'Total', 'Paid', 'Payment Due', 'Notes',
+    ]
+    const csvRows = filteredReservations.map((r) => [
+      r.guestName, r.guestPhone, r.apartment, r.reservationType,
+      r.checkIn, r.checkOut, String(r.totalNights), r.nightlyPrice,
+      r.totalPaid, r.paid ? 'Yes' : 'No', r.paymentDue, r.notes,
+    ])
+    const csv = [headers, ...csvRows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reservations-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   function updateSort(key: ReservationSortKey) {
     setSort((current) => ({
@@ -173,6 +222,8 @@ export function ReservationsPage() {
         totalNights: 1,
         nightlyPrice: '0.00',
         totalPaid: '0.00',
+        isArchived: false,
+        archivedAt: '',
         isNew: true,
         isDirty: true,
       },
@@ -187,13 +238,13 @@ export function ReservationsPage() {
     }
 
     const defaultProperty = properties[0]
-    const validTypes = new Set(['private', 'airbnb', 'booking'])
+    const validTypes = new Set(['private', 'airbnb', 'booking', 'maintenance'])
 
     const newRows: EditableReservation[] = pastedRows.map((row, index) => {
       const guestName = (row.guestName || '').trim()
       const guestPhone = (row.guestPhone || '').trim()
-      const checkIn = normalizeDate(row.checkIn || '')
-      const checkOut = normalizeDate(row.checkOut || '')
+      const checkIn = normalizeDate(row.checkIn || '', selectedYear)
+      const checkOut = normalizeDate(row.checkOut || '', selectedYear)
       const rawType = (row.reservationType || '').trim().toLowerCase()
       const reservationType = validTypes.has(rawType) ? rawType : 'private'
       const nights = checkIn && checkOut ? calculateNights(checkIn, checkOut) : 0
@@ -206,9 +257,8 @@ export function ReservationsPage() {
             ? pastedTotal / nights
             : pastedNightlyPrice
       const paid = (row.paid || '').trim().toUpperCase() === 'TRUE'
-      const paymentDue = normalizeDate(row.paymentDue || '')
+      const paymentDue = normalizeDate(row.paymentDue || '', selectedYear)
 
-      // Try to match apartment ref (e.g. "2") to a property by number or name
       const matchedProperty = matchProperty(row.apartmentRef || '', properties) ?? defaultProperty
 
       return {
@@ -218,7 +268,7 @@ export function ReservationsPage() {
         paymentDue,
         paid,
         notes: (row.notes || '').trim(),
-        reservationType: reservationType as 'private' | 'airbnb' | 'booking',
+        reservationType: reservationType as 'private' | 'airbnb' | 'booking' | 'maintenance',
         propertyId: matchedProperty.id,
         apartment: matchedProperty.name,
         apartmentType: matchedProperty.apartmentType,
@@ -227,6 +277,8 @@ export function ReservationsPage() {
         totalNights: nights,
         nightlyPrice: nightlyPrice.toFixed(2),
         totalPaid: (pastedTotal ?? nightlyPrice * nights).toFixed(2),
+        isArchived: false,
+        archivedAt: '',
         isNew: true,
         isDirty: true,
       }
@@ -238,9 +290,7 @@ export function ReservationsPage() {
   function updateReservation(id: string, updates: Partial<EditableReservation>) {
     setReservations((current) =>
       current.map((reservation) => {
-        if (reservation.id !== id) {
-          return reservation
-        }
+        if (reservation.id !== id) return reservation
 
         const next = { ...reservation, ...updates, isDirty: true }
         const nights = calculateNights(next.checkIn, next.checkOut)
@@ -255,9 +305,11 @@ export function ReservationsPage() {
         }
 
         const nightlyPrice = Number(next.nightlyPrice)
-
         next.totalNights = nights
-        next.totalPaid = Number.isFinite(nightlyPrice) && nights > 0 ? (nightlyPrice * nights).toFixed(2) : '0.00'
+        next.totalPaid =
+          Number.isFinite(nightlyPrice) && nights > 0
+            ? (nightlyPrice * nights).toFixed(2)
+            : '0.00'
 
         return next
       }),
@@ -265,9 +317,7 @@ export function ReservationsPage() {
   }
 
   async function autoSaveReservation(reservation: EditableReservation) {
-    if (!canAutoSaveReservation(reservation)) {
-      return
-    }
+    if (!canAutoSaveReservation(reservation)) return
 
     savingReservations.current.add(reservation.id)
     setError('')
@@ -291,9 +341,7 @@ export function ReservationsPage() {
         : await updateReservationRequest(reservation.id, payload)
 
       setReservations((current) =>
-        current.map((item) =>
-          item.id === reservation.id ? { ...saved, isDirty: false } : item,
-        ),
+        current.map((item) => (item.id === reservation.id ? { ...saved, isDirty: false } : item)),
       )
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Could not save reservation.')
@@ -303,21 +351,22 @@ export function ReservationsPage() {
   }
 
   async function deleteThisMonthReservations() {
-    const rowsToDelete = reservations
-    if (rowsToDelete.length === 0) {
-      return
-    }
+    if (reservations.length === 0) return
 
-    const monthLabel = monthOptions.find((month) => month.value === selectedMonth)?.label || selectedMonth
-    if (!window.confirm(`Delete all ${rowsToDelete.length} reservations for ${monthLabel} ${selectedYear}?`)) {
+    const monthLabel =
+      monthOptions.find((month) => month.value === selectedMonth)?.label || selectedMonth
+    if (
+      !window.confirm(
+        `Delete all ${reservations.length} reservations for ${monthLabel} ${selectedYear}?`,
+      )
+    )
       return
-    }
 
     setError('')
 
     try {
       await Promise.all(
-        rowsToDelete
+        reservations
           .filter((reservation) => !reservation.isNew)
           .map((reservation) => deleteReservationRequest(reservation.id)),
       )
@@ -348,15 +397,26 @@ export function ReservationsPage() {
     navigate('/invoice', { state: { reservation } })
   }
 
+  function openChangeApartment(reservation: EditableReservation) {
+    navigate('/search-reservations', { state: { reservation } })
+  }
+
+  const monthLabel = monthOptions.find((m) => m.value === selectedMonth)?.label || selectedMonth
+
   return (
     <section className="panel reservations-table-panel page-panel">
       <PanelHeader icon={CalendarDays} title="Reservations" action="Add row" onAction={addReservation} />
+
       <div className="reservation-filters">
         <label>
           Year
           <select
             value={selectedYear}
-            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            onChange={(event) => {
+              const year = Number(event.target.value)
+              setSelectedYear(year)
+              window.localStorage.setItem('pms.reservations.year', String(year))
+            }}
           >
             {yearOptions().map((year) => (
               <option key={year} value={year}>
@@ -369,7 +429,11 @@ export function ReservationsPage() {
           Month
           <select
             value={selectedMonth}
-            onChange={(event) => setSelectedMonth(Number(event.target.value))}
+            onChange={(event) => {
+              const month = Number(event.target.value)
+              setSelectedMonth(month)
+              window.localStorage.setItem('pms.reservations.month', String(month))
+            }}
           >
             {monthOptions.map((month) => (
               <option key={month.value} value={month.value}>
@@ -378,25 +442,91 @@ export function ReservationsPage() {
             ))}
           </select>
         </label>
-        <button
-          className="danger-button reservation-bulk-delete"
-          disabled={reservations.length === 0}
-          type="button"
-          onClick={deleteThisMonthReservations}
-        >
-          Delete this month
-        </button>
+        <label>
+          Apartment
+          <select
+            value={selectedPropertyId}
+            onChange={(e) => setSelectedPropertyId(e.target.value)}
+          >
+            <option value="">All apartments</option>
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Platform
+          <select
+            value={selectedPlatform}
+            onChange={(e) => setSelectedPlatform(e.target.value)}
+          >
+            <option value="">All platforms</option>
+            <option value="private">Private</option>
+            <option value="airbnb">Airbnb</option>
+            <option value="booking">Booking.com</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </label>
+        <label>
+          Search
+          <input
+            className="reservation-search"
+            placeholder="Guest, phone..."
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </label>
+        <div className="reservation-filter-actions">
+          <button
+            className="icon-row-button"
+            title="Export to Excel (CSV)"
+            type="button"
+            onClick={exportToCSV}
+          >
+            <Download size={15} />
+            Export
+          </button>
+          <button
+            className="icon-row-button"
+            title="Print / export to PDF"
+            type="button"
+            onClick={() => window.print()}
+          >
+            <Printer size={15} />
+            Print
+          </button>
+          <button
+            className="danger-button reservation-bulk-delete"
+            disabled={reservations.length === 0}
+            type="button"
+            onClick={deleteThisMonthReservations}
+          >
+            Delete this month
+          </button>
+        </div>
       </div>
+
       {status === 'loading' && <p className="listings-message">Loading reservations...</p>}
       {status === 'error' && <p className="form-error">{error}</p>}
       {status === 'ready' && properties.length === 0 && (
         <p className="form-error">Add a property first. Reservations must belong to a property.</p>
       )}
       {error && status === 'ready' && <p className="form-error">{error}</p>}
+
+      {searchQuery && (
+        <p className="reservation-search-count">
+          {filteredReservations.length} of {reservations.length} reservations match &ldquo;{searchQuery}&rdquo;
+        </p>
+      )}
+
       {status === 'ready' && (
         <ReservationsTable
           properties={properties}
-          rows={sortedReservations}
+          rows={filteredReservations}
+          onChangeApartment={openChangeApartment}
           onDelete={deleteReservation}
           onInvoice={openInvoice}
           onPasteRows={handlePasteRows}
@@ -405,6 +535,10 @@ export function ReservationsPage() {
           sort={sort}
         />
       )}
+
+      <div className="reservations-print-header" aria-hidden="true">
+        <strong>Reservations — {monthLabel} {selectedYear}</strong>
+      </div>
     </section>
   )
 }
@@ -419,7 +553,9 @@ function canAutoSaveReservation(reservation: EditableReservation) {
       reservation.checkIn &&
       reservation.checkOut &&
       calculateNights(reservation.checkIn, reservation.checkOut) > 0 &&
-      (reservation.guestName.trim() || reservation.guestPhone.trim()),
+      (reservation.reservationType === 'maintenance' ||
+        reservation.guestName.trim() ||
+        reservation.guestPhone.trim()),
   )
 }
 
@@ -428,30 +564,22 @@ const MONTH_ABBR: Record<string, number> = {
   jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
 }
 
-function normalizeDate(value: string): string {
+function normalizeDate(value: string, contextYear?: number): string {
   const trimmed = value.trim()
   if (!trimmed) return ''
 
-  // Already ISO: 2025-05-01
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
 
-  // Excel "D-Mon-Weekday" format: "1-May-Fri" or "6-May-Wed"
-  // Also handles "1-May" without weekday
   const monMatch = trimmed.match(/^(\d{1,2})-([A-Za-z]{3})(?:-[A-Za-z]{3})?$/)
   if (monMatch) {
     const day = parseInt(monMatch[1], 10)
     const monthIndex = MONTH_ABBR[monMatch[2].toLowerCase()]
     if (monthIndex !== undefined) {
-      const now = new Date()
-      let year = now.getFullYear()
-      // If the date already passed by more than 60 days, push to next year
-      const candidate = new Date(year, monthIndex - 1, day)
-      if ((candidate.getTime() - now.getTime()) / 86_400_000 < -60) year++
+      const year = contextYear ?? new Date().getFullYear()
       return `${year}-${String(monthIndex).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     }
   }
 
-  // DD/MM/YYYY or DD-MM-YYYY
   const slashMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
   if (slashMatch) {
     const [, a, b, y] = slashMatch
@@ -473,18 +601,15 @@ function matchProperty(ref: string, properties: PropertyListing[]): PropertyList
   const cleaned = ref.trim()
   if (!cleaned) return null
 
-  // 1. Exact name match
   const exact = properties.find((p) => p.name === cleaned)
   if (exact) return exact
 
-  // 2. Name contains the ref (e.g. "2" matches "Apartamenti 2", "Banesa 2")
   const contains = properties.find((p) => {
     const digits = p.name.match(/\d+/g) || ([] as string[])
     return digits.includes(cleaned)
   })
   if (contains) return contains
 
-  // 3. Partial case-insensitive name match
   const lower = cleaned.toLowerCase()
   const partial = properties.find((p) => p.name.toLowerCase().includes(lower))
   return partial || null

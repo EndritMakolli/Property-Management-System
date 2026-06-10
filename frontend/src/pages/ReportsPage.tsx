@@ -1,155 +1,63 @@
-import { ArrowUpDown, BarChart3 } from 'lucide-react'
+import { BarChart3, Printer } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { fetchProperties, fetchReservations } from '../api/pmsApi'
 import { Metric } from '../components/shared/Metric'
+import { usePlatform } from '../context/PlatformContext'
+import { ApartmentStatsTable } from '../features/reports/ApartmentStatsTable'
+import { ApartmentYearlyBreakdown } from '../features/reports/ApartmentYearlyBreakdown'
+import { ComparePanel } from '../features/reports/ComparePanel'
+import {
+  CompareRevenueChart,
+  DailyOccupancyChart,
+  MonthlyRevenueChart,
+} from '../features/reports/ReportCharts'
+import {
+  buildPropertyReportStats,
+  buildPropertyYearStats,
+  monthNames,
+  revenueInsideMonth,
+  sortPropertyStats,
+  stayBuckets,
+  toIsoDate,
+  type PropertyReportSort,
+  type PropertyReportSortKey,
+} from '../features/reports/reportCalculations'
 import { monthOptions, yearOptions } from '../features/reservations/monthOptions'
+import { useLocalStorageState } from '../hooks/useLocalStorageState'
 import type { PropertyListing, ReservationRecord } from '../types/domain'
-import { calculateNights, nextDateValue } from '../utils/date'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type PropertyReportStat = {
-  averageNightlyPrice: number
-  bookedNights: number
-  freeNights: number
-  id: string
-  name: string
-  basePriceEur: number
-  bedrooms: number
-  occupancy: number
-  reservations: number
-  turnover: number
-}
-
-type StayBucket = {
-  label: string
-  min: number
-  max: number
-}
-
-type PropertyReportSortKey =
-  | 'name'
-  | 'reservations'
-  | 'bookedNights'
-  | 'freeNights'
-  | 'occupancy'
-  | 'averageNightlyPrice'
-  | 'turnover'
-
-type PropertyReportSort = {
-  direction: 'asc' | 'desc'
-  key: PropertyReportSortKey
-}
-
-const stayBuckets: StayBucket[] = [
-  { label: '0–1 day', min: 0, max: 1 },
-  { label: '2–7 days', min: 2, max: 7 },
-  { label: '8–21 days', min: 8, max: 21 },
-  { label: '22–28 days', min: 22, max: 28 },
-  { label: '29+ days', min: 29, max: Infinity },
-]
-
-// Phone prefix → country mapping (editable via settings panel)
-const defaultPhonePrefixes: Record<string, string> = {
-  '+41': 'Switzerland',
-  '+383': 'Kosovo',
-  '+355': 'Albania',
-  '+44': 'United Kingdom',
-  '+45': 'Denmark',
-  '+49': 'Germany',
-  '+33': 'France',
-  '+39': 'Italy',
-  '+34': 'Spain',
-  '+31': 'Netherlands',
-  '+43': 'Austria',
-  '+386': 'Slovenia',
-  '+385': 'Croatia',
-  '+381': 'Serbia',
-  '+389': 'North Macedonia',
-  '+1': 'USA / Canada',
-}
-
-const phonePrefixStorageKey = 'pms.reports.phonePrefixes'
 const excludedPropertyStorageKey = 'pms.reports.excludedProperties'
 
-function loadPhonePrefixes(): Record<string, string> {
-  try {
-    const stored = window.localStorage.getItem(phonePrefixStorageKey)
-    if (stored) return { ...defaultPhonePrefixes, ...JSON.parse(stored) }
-  } catch {
-    // ignore
-  }
-  return { ...defaultPhonePrefixes }
-}
-
-function savePhonePrefixes(map: Record<string, string>) {
-  window.localStorage.setItem(phonePrefixStorageKey, JSON.stringify(map))
-}
-
-function loadExcludedPropertyIds(): string[] {
-  try {
-    const stored = window.localStorage.getItem(excludedPropertyStorageKey)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
-
-function detectCountry(phone: string, prefixes: Record<string, string>): string {
-  if (!phone) return 'Unknown'
-  const cleaned = normalizePhoneDigits(phone)
-  const sorted = Object.keys(prefixes).sort(
-    (a, b) => normalizePhoneDigits(b).length - normalizePhoneDigits(a).length,
-  )
-  for (const prefix of sorted) {
-    const normalizedPrefix = normalizePhoneDigits(prefix)
-    if (normalizedPrefix && cleaned.startsWith(normalizedPrefix)) return prefixes[prefix]
-  }
-  return 'Other'
-}
-
-function normalizePhoneDigits(value: string): string {
-  const trimmed = value.trim()
-  const digits = trimmed.replace(/\D/g, '')
-  return digits.startsWith('00') ? digits.slice(2) : digits
-}
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+type ViewMode = 'monthly' | 'yearly' | 'all_time'
 
 export function ReportsPage() {
   const today = new Date()
+  const { platform } = usePlatform()
+
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [reservations, setReservations] = useState<ReservationRecord[]>([])
   const [allReservations, setAllReservations] = useState<ReservationRecord[]>([])
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
+  const [occupancyMonth, setOccupancyMonth] = useState(today.getMonth() + 1)
+  const [occupancyYear, setOccupancyYear] = useState(today.getFullYear())
   const [selectedPropertyId, setSelectedPropertyId] = useState('all')
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [phonePrefixes, setPhonePrefixes] = useState<Record<string, string>>(loadPhonePrefixes)
-  const [editingPrefixes, setEditingPrefixes] = useState(false)
-  const [prefixDraft, setPrefixDraft] = useState('')
+  const [stayDurationMode, setStayDurationMode] = useState<'all_time' | 'monthly'>('all_time')
+  const [stayDurationMonth, setStayDurationMonth] = useState(today.getMonth() + 1)
+  const [stayDurationYear, setStayDurationYear] = useState(today.getFullYear())
   const [propertySort, setPropertySort] = useState<PropertyReportSort>({
     key: 'turnover',
     direction: 'desc',
   })
   const [showAllApartments, setShowAllApartments] = useState(false)
-  const [excludedPropertyIds, setExcludedPropertyIds] = useState<string[]>(loadExcludedPropertyIds)
+  const [excludedPropertyIds, setExcludedPropertyIds] = useLocalStorageState<string[]>(
+    excludedPropertyStorageKey,
+    [],
+  )
+  const [viewMode, setViewMode] = useState<ViewMode>('monthly')
+  const [compareMode, setCompareMode] = useState(false)
+  const [comparePropertyId, setComparePropertyId] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -184,14 +92,18 @@ export function ReportsPage() {
   }, [selectedMonth, selectedYear])
 
   useEffect(() => {
-    window.localStorage.setItem(excludedPropertyStorageKey, JSON.stringify(excludedPropertyIds))
-  }, [excludedPropertyIds])
-
-  useEffect(() => {
     if (selectedPropertyId !== 'all' && excludedPropertyIds.includes(selectedPropertyId)) {
       setSelectedPropertyId('all')
     }
   }, [excludedPropertyIds, selectedPropertyId])
+
+  // When switching to compare mode, if 'all' is selected pick the first property
+  useEffect(() => {
+    if (compareMode && selectedPropertyId === 'all' && includedProperties.length > 0) {
+      setSelectedPropertyId(includedProperties[0].id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareMode])
 
   const excludedPropertySet = useMemo(
     () => new Set(excludedPropertyIds),
@@ -199,17 +111,17 @@ export function ReportsPage() {
   )
 
   const includedProperties = useMemo(
-    () => properties.filter((property) => !excludedPropertySet.has(property.id)),
+    () => properties.filter((p) => !excludedPropertySet.has(p.id)),
     [excludedPropertySet, properties],
   )
 
   const includedReservations = useMemo(
-    () => reservations.filter((reservation) => !excludedPropertySet.has(reservation.propertyId)),
+    () => reservations.filter((r) => !excludedPropertySet.has(r.propertyId)),
     [excludedPropertySet, reservations],
   )
 
   const includedAllReservations = useMemo(
-    () => allReservations.filter((reservation) => !excludedPropertySet.has(reservation.propertyId)),
+    () => allReservations.filter((r) => !excludedPropertySet.has(r.propertyId)),
     [allReservations, excludedPropertySet],
   )
 
@@ -217,14 +129,19 @@ export function ReportsPage() {
     () =>
       selectedPropertyId === 'all'
         ? includedProperties
-        : includedProperties.filter((property) => property.id === selectedPropertyId),
+        : includedProperties.filter((p) => p.id === selectedPropertyId),
     [includedProperties, selectedPropertyId],
   )
 
-  const stats = useMemo(
-    () => buildPropertyReportStats(visibleProperties, includedReservations, selectedYear, selectedMonth),
-    [includedReservations, selectedMonth, selectedYear, visibleProperties],
-  )
+  const stats = useMemo(() => {
+    if (viewMode === 'yearly') {
+      return buildPropertyYearStats(visibleProperties, includedAllReservations, selectedYear)
+    }
+    if (viewMode === 'all_time') {
+      return buildPropertyReportStats(visibleProperties, includedAllReservations, selectedYear, 0)
+    }
+    return buildPropertyReportStats(visibleProperties, includedReservations, selectedYear, selectedMonth)
+  }, [viewMode, visibleProperties, includedAllReservations, includedReservations, selectedYear, selectedMonth])
 
   const sortedStats = useMemo(
     () => sortPropertyStats(stats, propertySort),
@@ -242,14 +159,104 @@ export function ReportsPage() {
       : 0
   const averageNightlyPrice = bookedNights > 0 ? totalTurnover / bookedNights : 0
 
-  // Stay duration categories (all-time)
+  // Specific property for yearly breakdown
+  const selectedProperty = useMemo(
+    () =>
+      selectedPropertyId !== 'all'
+        ? includedProperties.find((p) => p.id === selectedPropertyId) ?? null
+        : null,
+    [includedProperties, selectedPropertyId],
+  )
+
+  // Compare: secondary property stats
+  const compareProperty = useMemo(
+    () =>
+      compareMode && comparePropertyId
+        ? includedProperties.find((p) => p.id === comparePropertyId) ?? null
+        : null,
+    [compareMode, comparePropertyId, includedProperties],
+  )
+
+  const primaryCompareStat = useMemo(() => {
+    if (!compareMode || !selectedProperty) return null
+    return stats[0] ?? null
+  }, [compareMode, selectedProperty, stats])
+
+  const secondaryCompareStat = useMemo(() => {
+    if (!compareProperty) return null
+    if (viewMode === 'yearly') {
+      const [stat] = buildPropertyYearStats([compareProperty], includedAllReservations, selectedYear)
+      return stat ?? null
+    }
+    const reservations = viewMode === 'all_time' ? includedAllReservations : includedReservations
+    const month = viewMode === 'all_time' ? 0 : selectedMonth
+    const [stat] = buildPropertyReportStats([compareProperty], reservations, selectedYear, month)
+    return stat ?? null
+  }, [compareProperty, viewMode, includedAllReservations, includedReservations, selectedYear, selectedMonth])
+
+  // Monthly revenue for single-property or all — filtered by selectedPropertyId
+  const monthlyRevenue = useMemo(() => {
+    const source =
+      selectedPropertyId === 'all'
+        ? includedAllReservations
+        : includedAllReservations.filter((r) => r.propertyId === selectedPropertyId)
+    return monthNames.map((label, idx) => {
+      const month = idx + 1
+      const revenue = source.reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
+      return { label, revenue }
+    })
+  }, [includedAllReservations, selectedPropertyId, selectedYear])
+
+  // Compare revenue chart data
+  const compareChartData = useMemo(() => {
+    if (!compareMode || !selectedProperty || !compareProperty) return null
+    return monthNames.map((label, idx) => {
+      const month = idx + 1
+      const primary = includedAllReservations
+        .filter((r) => r.propertyId === selectedPropertyId)
+        .reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
+      const secondary = includedAllReservations
+        .filter((r) => r.propertyId === comparePropertyId)
+        .reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
+      return { label, primary, secondary }
+    })
+  }, [
+    compareMode,
+    selectedProperty,
+    compareProperty,
+    includedAllReservations,
+    selectedPropertyId,
+    comparePropertyId,
+    selectedYear,
+  ])
+
+  const stayDurationReservations = useMemo(() => {
+    if (stayDurationMode === 'all_time') return includedAllReservations
+
+    const monthStart = `${stayDurationYear}-${String(stayDurationMonth).padStart(2, '0')}-01`
+    const monthEnd = `${stayDurationYear}-${String(stayDurationMonth).padStart(2, '0')}-${String(
+      new Date(stayDurationYear, stayDurationMonth, 0).getDate(),
+    ).padStart(2, '0')}`
+
+    return includedAllReservations.filter(
+      (r) => r.checkIn <= monthEnd && r.checkOut > monthStart,
+    )
+  }, [includedAllReservations, stayDurationMode, stayDurationMonth, stayDurationYear])
+
   const stayDurationStats = useMemo(() => {
-    const total = includedAllReservations.length || 1
+    const total = stayDurationReservations.length || 1
     return stayBuckets.map((bucket) => {
-      const matches = includedAllReservations.filter(
+      const matches = stayDurationReservations.filter(
         (r) => r.totalNights >= bucket.min && r.totalNights <= bucket.max,
       )
-      const revenue = matches.reduce((sum, r) => sum + Number(r.totalPaid), 0)
+      const revenue = matches.reduce(
+        (sum, r) =>
+          sum +
+          (stayDurationMode === 'monthly'
+            ? revenueInsideMonth(r, stayDurationYear, stayDurationMonth)
+            : Number(r.totalPaid)),
+        0,
+      )
       return {
         label: bucket.label,
         count: matches.length,
@@ -257,107 +264,51 @@ export function ReportsPage() {
         revenue,
       }
     })
-  }, [includedAllReservations])
+  }, [stayDurationReservations, stayDurationMode, stayDurationYear, stayDurationMonth])
 
-  // Guest country stats (all-time)
-  const countryStats = useMemo(() => {
-    const map: Record<string, { count: number; revenue: number }> = {}
-    for (const r of includedAllReservations) {
-      const country = detectCountry(r.guestPhone, phonePrefixes)
-      if (!map[country]) map[country] = { count: 0, revenue: 0 }
-      map[country].count++
-      map[country].revenue += Number(r.totalPaid)
-    }
-    const total = includedAllReservations.length || 1
-    return Object.entries(map)
-      .map(([country, { count, revenue }]) => ({
-        country,
-        count,
-        pct: Math.round((count / total) * 100),
-        revenue,
-      }))
-      .sort((a, b) => b.count - a.count)
-  }, [includedAllReservations, phonePrefixes])
-
-  // Monthly revenue chart (selected year)
-  const monthlyRevenue = useMemo(() => {
-    return MONTH_NAMES.map((label, idx) => {
-      const month = idx + 1
-      const monthStr = String(month).padStart(2, '0')
-      const start = `${selectedYear}-${monthStr}-01`
-      const end = `${selectedYear}-${monthStr}-31`
-      const revenue = includedAllReservations
-        .filter((r) => r.checkIn >= start && r.checkIn <= end)
-        .reduce((sum, r) => sum + Number(r.totalPaid), 0)
-      return { label, revenue }
-    })
-  }, [includedAllReservations, selectedYear])
-
-  // Occupancy trends: daily occupancy % across all properties (last 90 days and next 90 from today)
   const occupancyTrends = useMemo(() => {
-    if (!includedProperties.length || !includedAllReservations.length) return []
+    if (!includedProperties.length) return []
     const totalProps = includedProperties.length
+    const daysInMonth = new Date(occupancyYear, occupancyMonth, 0).getDate()
     const result: { date: string; label: string; pct: number }[] = []
-    const base = new Date()
-    base.setDate(base.getDate() - 45)
-    for (let i = 0; i < 90; i++) {
-      const d = new Date(base)
-      d.setDate(base.getDate() + i)
-      const key = d.toISOString().slice(0, 10)
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(occupancyYear, occupancyMonth - 1, day)
+      const key = toIsoDate(d)
       const occupied = includedAllReservations.filter(
         (r) => r.checkIn <= key && r.checkOut > key,
       ).length
       result.push({
         date: key,
-        label: `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`,
+        label: `${day}`,
         pct: Math.round((occupied / totalProps) * 100),
       })
     }
     return result
-  }, [includedAllReservations, includedProperties])
+  }, [includedAllReservations, includedProperties, occupancyMonth, occupancyYear])
 
-  // Fully booked dates (all properties occupied)
-  const fullyBookedDates = useMemo(() => {
-    return occupancyTrends.filter((d) => d.pct >= 100)
-  }, [occupancyTrends])
-
-  // Lowest performing apartments per bedroom category
   const lowestPerformers = useMemo(() => {
     const bedroomGroups = [...new Set(includedProperties.map((p) => p.bedrooms))].sort()
-    return bedroomGroups.map((beds) => {
-      const group = buildPropertyReportStats(
-        includedProperties.filter((property) => property.bedrooms === beds),
-        includedAllReservations,
-        selectedYear,
-        0,
-      )
-      const lowest = [...group].sort((a, b) => a.turnover - b.turnover)[0]
-      return { beds, lowest }
-    }).filter((g) => g.lowest)
-  }, [includedAllReservations, includedProperties, selectedYear])
-
-  // Prefix editor helpers
-  function savePrefixDraft() {
-    try {
-      const parsed = JSON.parse(prefixDraft)
-      setPhonePrefixes(parsed)
-      savePhonePrefixes(parsed)
-      setEditingPrefixes(false)
-    } catch {
-      // keep editing
-    }
-  }
+    return bedroomGroups
+      .map((beds) => {
+        const group = (() => {
+          const props = includedProperties.filter((p) => p.bedrooms === beds)
+          if (viewMode === 'yearly') return buildPropertyYearStats(props, includedAllReservations, selectedYear)
+          const reservations = viewMode === 'all_time' ? includedAllReservations : includedReservations
+          const month = viewMode === 'all_time' ? 0 : selectedMonth
+          return buildPropertyReportStats(props, reservations, selectedYear, month)
+        })()
+        const lowest = [...group].sort((a, b) => a.turnover - b.turnover)[0]
+        return { beds, lowest }
+      })
+      .filter((g) => g.lowest)
+  }, [viewMode, includedAllReservations, includedReservations, includedProperties, selectedYear, selectedMonth])
 
   function updatePropertySort(key: PropertyReportSortKey) {
     setPropertySort((current) => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }))
-  }
-
-  function sortLabel(key: PropertyReportSortKey) {
-    if (propertySort.key !== key) return 'Sort'
-    return propertySort.direction === 'asc' ? 'Ascending' : 'Descending'
   }
 
   function toggleExcludedProperty(propertyId: string) {
@@ -368,42 +319,144 @@ export function ReportsPage() {
     )
   }
 
+  function handleViewMode(mode: ViewMode) {
+    setViewMode(mode)
+  }
+
+  const periodLabel =
+    viewMode === 'all_time'
+      ? 'All time'
+      : viewMode === 'yearly'
+      ? String(selectedYear)
+      : `${monthNames[selectedMonth - 1]} ${selectedYear}`
+
+  const showCompare =
+    compareMode &&
+    selectedPropertyId !== 'all' &&
+    !!comparePropertyId &&
+    comparePropertyId !== selectedPropertyId &&
+    !!primaryCompareStat &&
+    !!secondaryCompareStat
+
+  const showYearlyBreakdown =
+    viewMode === 'yearly' && !compareMode
+
+  // Properties available for the compare picker (exclude current primary)
+  const compareOptions = includedProperties.filter((p) => p.id !== selectedPropertyId)
+
   return (
     <section className="reports-page">
       <div className="reports-header">
         <div>
           <p className="eyebrow">Reports</p>
-          <h2>Apartment performance</h2>
+          <h2>{platform.unitSingular} performance</h2>
         </div>
-        <BarChart3 size={26} />
+        <div className="reports-header-actions">
+          <BarChart3 size={26} />
+          <button className="icon-row-button" onClick={() => window.print()} title="Print / Export PDF">
+            <Printer size={18} />
+            Export PDF
+          </button>
+        </div>
       </div>
 
       <div className="reports-filters">
         <label>
-          Year
-          <select value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
-            {yearOptions().map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
+          View
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={viewMode === 'monthly' ? 'active' : ''}
+              onClick={() => handleViewMode('monthly')}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'yearly' ? 'active' : ''}
+              onClick={() => handleViewMode('yearly')}
+            >
+              Yearly
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'all_time' ? 'active' : ''}
+              onClick={() => handleViewMode('all_time')}
+            >
+              All time
+            </button>
+          </div>
         </label>
+
+        {viewMode !== 'all_time' && (
+          <label>
+            Year
+            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+              {yearOptions().map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {viewMode === 'monthly' && (
+          <label>
+            Month
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))}>
+              {monthOptions.map((month) => (
+                <option key={month.value} value={month.value}>{month.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <label>
-          Month
-          <select value={selectedMonth} onChange={(event) => setSelectedMonth(Number(event.target.value))}>
-            {monthOptions.map((month) => (
-              <option key={month.value} value={month.value}>{month.label}</option>
+          {platform.unitSingular}
+          <select
+            value={selectedPropertyId}
+            onChange={(e) => setSelectedPropertyId(e.target.value)}
+          >
+            {!compareMode && <option value="all">All {platform.unitPlural}</option>}
+            {includedProperties.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </label>
+
         <label>
-          Apartment
-          <select value={selectedPropertyId} onChange={(event) => setSelectedPropertyId(event.target.value)}>
-            <option value="all">All apartments</option>
-            {includedProperties.map((property) => (
-              <option key={property.id} value={property.id}>{property.name}</option>
-            ))}
-          </select>
+          Compare
+          <div className="toggle-group">
+            <button
+              type="button"
+              className={!compareMode ? 'active' : ''}
+              onClick={() => setCompareMode(false)}
+            >
+              Off
+            </button>
+            <button
+              type="button"
+              className={compareMode ? 'active' : ''}
+              onClick={() => setCompareMode(true)}
+            >
+              On
+            </button>
+          </div>
         </label>
+
+        {compareMode && (
+          <label>
+            vs.
+            <select
+              value={comparePropertyId}
+              onChange={(e) => setComparePropertyId(e.target.value)}
+            >
+              <option value="">Select {platform.unitSingular}</option>
+              {compareOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {status === 'loading' && <p className="listings-message">Loading reports...</p>}
@@ -411,7 +464,6 @@ export function ReportsPage() {
 
       {status === 'ready' && (
         <>
-          {/* ── Monthly performance table ── */}
           <section className="panel exclusions-panel">
             <div className="stats-section-header">
               <h3 className="stats-section-title">Exclude from statistics</h3>
@@ -426,14 +478,14 @@ export function ReportsPage() {
               )}
             </div>
             <div className="excluded-apartment-grid">
-              {properties.map((property) => (
-                <label className="excluded-apartment-option" key={property.id}>
+              {properties.map((p) => (
+                <label className="excluded-apartment-option" key={p.id}>
                   <input
                     type="checkbox"
-                    checked={excludedPropertySet.has(property.id)}
-                    onChange={() => toggleExcludedProperty(property.id)}
+                    checked={excludedPropertySet.has(p.id)}
+                    onChange={() => toggleExcludedProperty(p.id)}
                   />
-                  <span>{property.name}</span>
+                  <span>{p.name}</span>
                 </label>
               ))}
             </div>
@@ -448,91 +500,97 @@ export function ReportsPage() {
             <Metric label="Avg nightly" value={`EUR ${averageNightlyPrice.toFixed(2)}`} />
           </section>
 
-          <section className="panel property-panel">
-            <div className="reports-table-header">
-              <button onClick={() => updatePropertySort('name')}>Apartment <ArrowUpDown size={14} aria-label={sortLabel('name')} /></button>
-              <button onClick={() => updatePropertySort('reservations')}>Reservations <ArrowUpDown size={14} aria-label={sortLabel('reservations')} /></button>
-              <button onClick={() => updatePropertySort('bookedNights')}>Nights Booked <ArrowUpDown size={14} aria-label={sortLabel('bookedNights')} /></button>
-              <button onClick={() => updatePropertySort('freeNights')}>Free Nights <ArrowUpDown size={14} aria-label={sortLabel('freeNights')} /></button>
-              <button onClick={() => updatePropertySort('occupancy')}>Occupancy <ArrowUpDown size={14} aria-label={sortLabel('occupancy')} /></button>
-              <button onClick={() => updatePropertySort('averageNightlyPrice')}>Avg Nightly <ArrowUpDown size={14} aria-label={sortLabel('averageNightlyPrice')} /></button>
-              <button onClick={() => updatePropertySort('turnover')}>Turnover <ArrowUpDown size={14} aria-label={sortLabel('turnover')} /></button>
-            </div>
-            <div className="reports-table">
-              {visibleStats.map((property) => (
-                <article className="reports-row" key={property.id}>
-                  <strong>{property.name}</strong>
-                  <span>{property.reservations}</span>
-                  <span>{property.bookedNights}</span>
-                  <span>{property.freeNights}</span>
-                  <span>{property.occupancy}%</span>
-                  <span>EUR {property.averageNightlyPrice.toFixed(2)}</span>
-                  <strong>EUR {property.turnover.toLocaleString()}</strong>
-                </article>
-              ))}
-            </div>
-            {sortedStats.length > 6 && (
-              <button
-                className="show-more-button"
-                type="button"
-                onClick={() => setShowAllApartments((current) => !current)}
-              >
-                {showAllApartments ? 'Show less' : `Show more (${sortedStats.length - visibleStats.length})`}
-              </button>
-            )}
-          </section>
+          <ApartmentStatsTable
+            onSort={updatePropertySort}
+            propertySort={propertySort}
+            showAllApartments={showAllApartments}
+            sortedStats={sortedStats}
+            visibleStats={visibleStats}
+            unitSingular={platform.unitSingular}
+            onToggleShowAll={() => setShowAllApartments((v) => !v)}
+          />
 
-          {/* ── Monthly revenue chart ── */}
-          <section className="panel stats-chart-panel">
-            <h3 className="stats-section-title">Monthly Revenue — {selectedYear}</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={monthlyRevenue} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `€${v.toLocaleString()}`} width={70} />
-                <Tooltip formatter={(value) => [`EUR ${Number(value ?? 0).toLocaleString()}`, 'Revenue']} />
-                <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                  {monthlyRevenue.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={entry.label === MONTH_NAMES[today.getMonth()] ? '#1f6f5b' : '#56649a'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </section>
+          {showCompare && primaryCompareStat && secondaryCompareStat ? (
+            <>
+              <ComparePanel
+                primary={primaryCompareStat}
+                secondary={secondaryCompareStat}
+                periodLabel={periodLabel}
+              />
+              {compareChartData && (
+                <CompareRevenueChart
+                  data={compareChartData}
+                  year={selectedYear}
+                  primaryName={primaryCompareStat.name}
+                  secondaryName={secondaryCompareStat.name}
+                />
+              )}
+            </>
+          ) : (
+            <MonthlyRevenueChart data={monthlyRevenue} selectedYear={selectedYear} today={today} />
+          )}
 
-          {/* ── Occupancy trends ── */}
-          <section className="panel stats-chart-panel">
-            <h3 className="stats-section-title">Daily Occupancy — last 45 days + next 45 days</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={occupancyTrends} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={6} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} width={45} domain={[0, 100]} />
-                <Tooltip formatter={(value) => [`${Number(value ?? 0)}%`, 'Occupancy']} />
-                <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
-                  {occupancyTrends.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={entry.pct >= 100 ? '#9b3f20' : entry.pct >= 60 ? '#1f6f5b' : '#adc8be'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            {fullyBookedDates.length > 0 && (
-              <div className="fully-booked-list">
-                <strong>Fully booked dates ({fullyBookedDates.length}):</strong>{' '}
-                {fullyBookedDates.map((d) => d.date).join(', ')}
-              </div>
-            )}
-          </section>
+          {showYearlyBreakdown && selectedProperty && (
+            <ApartmentYearlyBreakdown
+              property={selectedProperty}
+              allReservations={includedAllReservations}
+              year={selectedYear}
+              unitSingular={platform.unitSingular}
+            />
+          )}
 
-          {/* ── Stay duration categories ── */}
+          <DailyOccupancyChart
+            data={occupancyTrends}
+            month={occupancyMonth}
+            year={occupancyYear}
+            onMonthChange={setOccupancyMonth}
+            onYearChange={setOccupancyYear}
+          />
+
           <section className="panel stats-section">
-            <h3 className="stats-section-title">Stay Duration (all-time)</h3>
+            <div className="stats-section-header stay-duration-header">
+              <h3 className="stats-section-title">Stay Duration</h3>
+              <div className="stay-duration-filters">
+                <label>
+                  Period
+                  <select
+                    value={stayDurationMode}
+                    onChange={(e) =>
+                      setStayDurationMode(e.target.value as 'all_time' | 'monthly')
+                    }
+                  >
+                    <option value="all_time">All-time</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+                {stayDurationMode === 'monthly' && (
+                  <>
+                    <label>
+                      Month
+                      <select
+                        value={stayDurationMonth}
+                        onChange={(e) => setStayDurationMonth(Number(e.target.value))}
+                      >
+                        {monthOptions.map((month) => (
+                          <option key={month.value} value={month.value}>{month.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Year
+                      <select
+                        value={stayDurationYear}
+                        onChange={(e) => setStayDurationYear(Number(e.target.value))}
+                      >
+                        {yearOptions().map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
+              </div>
+            </div>
             <div className="stats-grid">
               {stayDurationStats.map((row) => (
                 <div className="stats-card" key={row.label}>
@@ -548,59 +606,11 @@ export function ReportsPage() {
             </div>
           </section>
 
-          {/* ── Guest country stats ── */}
-          <section className="panel stats-section">
-            <div className="stats-section-header">
-              <h3 className="stats-section-title">Guest Countries (all-time)</h3>
-              <button
-                className="action-link"
-                onClick={() => {
-                  setPrefixDraft(JSON.stringify(phonePrefixes, null, 2))
-                  setEditingPrefixes(!editingPrefixes)
-                }}
-              >
-                {editingPrefixes ? 'Cancel' : 'Edit prefixes'}
-              </button>
-            </div>
-            {editingPrefixes && (
-              <div className="prefix-editor">
-                <p className="paste-hint">Edit the JSON map of phone prefixes to country names, then save.</p>
-                <textarea
-                  className="prefix-textarea"
-                  value={prefixDraft}
-                  onChange={(e) => setPrefixDraft(e.target.value)}
-                  rows={12}
-                />
-                <button className="primary-button" onClick={savePrefixDraft}>Save prefixes</button>
-              </div>
-            )}
-            <div className="country-table">
-              <div className="country-header">
-                <span>Country</span>
-                <span>Reservations</span>
-                <span>% of guests</span>
-                <span>Revenue</span>
-              </div>
-              {countryStats.map((row) => (
-                <div className="country-row" key={row.country}>
-                  <strong>{row.country}</strong>
-                  <span>{row.count}</span>
-                  <span>
-                    {row.pct}%
-                    <div className="stats-bar-bg inline-bar">
-                      <div className="stats-bar-fill" style={{ width: `${row.pct}%` }} />
-                    </div>
-                  </span>
-                  <span>EUR {row.revenue.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ── Lowest performing apartments ── */}
           {lowestPerformers.length > 0 && (
             <section className="panel stats-section">
-              <h3 className="stats-section-title">Lowest Performing Apartments by Category</h3>
+              <h3 className="stats-section-title">
+                Lowest Performing {platform.unitPlural} — {periodLabel}
+              </h3>
               <div className="stats-grid">
                 {lowestPerformers.map(({ beds, lowest }) => (
                   <div className="stats-card perf-card" key={beds}>
@@ -621,74 +631,4 @@ export function ReportsPage() {
       )}
     </section>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Utility functions
-// ---------------------------------------------------------------------------
-
-function buildPropertyReportStats(
-  properties: PropertyListing[],
-  reservations: ReservationRecord[],
-  year: number,
-  month: number,
-): PropertyReportStat[] {
-  // month=0 means all-time (no month filtering)
-  const useAllTime = month === 0
-  const daysInMonth = useAllTime ? 365 : new Date(year, month, 0).getDate()
-  const monthStart = useAllTime ? '1900-01-01' : `${year}-${String(month).padStart(2, '0')}-01`
-  const monthEnd = useAllTime ? '2999-12-31' : `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
-
-  return properties.map((property) => {
-    const propertyReservations = reservations.filter((r) => r.propertyId === property.id)
-    const turnover = propertyReservations.reduce((sum, r) => sum + Number(r.totalPaid), 0)
-    const bookedNights = propertyReservations.reduce(
-      (sum, r) => sum + (useAllTime ? r.totalNights : nightsInsideMonth(r, monthStart, monthEnd)),
-      0,
-    )
-    const freeNights = useAllTime ? 0 : Math.max(daysInMonth - bookedNights, 0)
-    const occupancy = useAllTime
-      ? 0
-      : Math.round((bookedNights / daysInMonth) * 100)
-
-    return {
-      averageNightlyPrice: bookedNights > 0 ? turnover / bookedNights : 0,
-      basePriceEur: Number(property.basePriceEur || 0),
-      bedrooms: property.bedrooms,
-      bookedNights,
-      freeNights,
-      id: property.id,
-      name: property.name,
-      occupancy,
-      reservations: propertyReservations.length,
-      turnover,
-    }
-  })
-}
-
-function sortPropertyStats(stats: PropertyReportStat[], sort: PropertyReportSort): PropertyReportStat[] {
-  const direction = sort.direction === 'asc' ? 1 : -1
-  return [...stats].sort((left, right) => {
-    const leftValue = left[sort.key]
-    const rightValue = right[sort.key]
-
-    if (typeof leftValue === 'number' && typeof rightValue === 'number') {
-      return (leftValue - rightValue) * direction
-    }
-
-    return String(leftValue).localeCompare(String(rightValue), undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    }) * direction
-  })
-}
-
-function nightsInsideMonth(reservation: ReservationRecord, monthStart: string, monthEnd: string) {
-  const start = reservation.checkIn > monthStart ? reservation.checkIn : monthStart
-  const end = reservation.checkOut < monthEnd ? reservation.checkOut : nextDay(monthEnd)
-  return calculateNights(start, end)
-}
-
-function nextDay(dateValue: string) {
-  return nextDateValue(dateValue)
 }

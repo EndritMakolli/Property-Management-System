@@ -96,6 +96,7 @@ class FinancialReport(models.Model):
 
 class ExpenseCategory(TimeStampedModel):
     name = models.CharField(max_length=120, unique=True)
+    color = models.CharField(max_length=20, blank=True, default="#6b7280")
 
     class Meta:
         ordering = ["name"]
@@ -110,6 +111,10 @@ class FinanceExpense(TimeStampedModel):
         ONE_TIME = "one_time", "One time"
         REPEATED = "repeated", "Repeated"
 
+    class Platform(models.TextChoices):
+        AIRSTAY = "airstay", "AirStay"
+        FLEET = "fleet", "Fleet"
+
     name = models.CharField(max_length=255)
     category = models.ForeignKey(
         ExpenseCategory, on_delete=models.PROTECT, related_name="finance_expenses"
@@ -122,6 +127,13 @@ class FinanceExpense(TimeStampedModel):
     start_month = models.PositiveIntegerField()
     end_year = models.PositiveIntegerField(blank=True, null=True)
     end_month = models.PositiveIntegerField(blank=True, null=True)
+    platform = models.CharField(
+        max_length=20,
+        choices=Platform.choices,
+        blank=True,
+        null=True,
+        default=None,
+    )
     notes = models.TextField(blank=True)
 
     class Meta:

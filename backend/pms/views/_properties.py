@@ -4,9 +4,10 @@ from urllib.error import URLError
 
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
+from django.http.multipartparser import MultiPartParser
 from django.views.decorators.csrf import csrf_exempt
 
-from ..models import Property, Reservation
+from ..models import Property, Reservation, SyncLog
 from ._ical import escape_ical, fetch_ical_events, import_ical_reservations, reservation_label_for_export
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
 from ._serializers import serialize_property
@@ -19,7 +20,8 @@ def property_list(request):
         denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
         if denied:
             return denied
-        properties = Property.objects.filter(active=True).order_by("name")
+        platform = request.GET.get("platform") or Property.Platform.AIRSTAY
+        properties = Property.objects.filter(active=True, platform=platform).order_by("name")
         return JsonResponse({"properties": [serialize_property(prop, request) for prop in properties]})
 
     if request.method == "POST":
@@ -33,12 +35,25 @@ def property_list(request):
             bedrooms = int(request.POST.get("bedrooms") or "1")
             if bedrooms < 0:
                 raise ValidationError({"bedrooms": "Bedrooms cannot be negative."})
+            platform = request.POST.get("platform") or Property.Platform.AIRSTAY
+            if platform not in Property.Platform.values:
+                platform = Property.Platform.AIRSTAY
+            listing_active_raw = request.POST.get("listingActive", "true")
+            listing_active = listing_active_raw not in ("false", "0", "False")
+            max_guests_raw = request.POST.get("maxGuests")
             prop = Property(
                 name=name,
                 bedrooms=bedrooms,
                 address=request.POST.get("address") or "",
+                floor=request.POST.get("floor") or "",
+                wifi_name=request.POST.get("wifiName") or "",
+                wifi_password=request.POST.get("wifiPassword") or "",
                 base_price_eur=decimal_value(request.POST.get("basePriceEur"), "basePriceEur"),
+                platform=platform,
                 active=True,
+                description=request.POST.get("description") or "",
+                listing_active=listing_active,
+                max_guests=int(max_guests_raw) if max_guests_raw else None,
             )
             if request.FILES.get("photo"):
                 prop.photo = request.FILES["photo"]
@@ -68,7 +83,15 @@ def property_detail(request, property_id):
 
     if request.method == "PATCH":
         try:
-            payload = json_payload(request)
+            is_multipart = request.content_type and request.content_type.startswith("multipart/")
+            if is_multipart:
+                parser = MultiPartParser(request.META, request, request.upload_handlers)
+                post_data, files = parser.parse()
+                payload = post_data
+            else:
+                payload = json_payload(request)
+                files = {}
+
             if "name" in payload:
                 prop.name = (payload.get("name") or "").strip()
                 if not prop.name:
@@ -81,10 +104,31 @@ def property_detail(request, property_id):
                 prop.base_price_eur = decimal_value(payload.get("basePriceEur"), "basePriceEur")
             if "address" in payload:
                 prop.address = payload.get("address") or ""
-            if "airbnbIcalUrl" in payload:
-                prop.airbnb_ical_url = (payload.get("airbnbIcalUrl") or "").strip() or None
-            if "bookingIcalUrl" in payload:
-                prop.booking_ical_url = (payload.get("bookingIcalUrl") or "").strip() or None
+            if "floor" in payload:
+                prop.floor = payload.get("floor") or ""
+            if "wifiName" in payload:
+                prop.wifi_name = payload.get("wifiName") or ""
+            if "wifiPassword" in payload:
+                prop.wifi_password = payload.get("wifiPassword") or ""
+            if "autoSyncEnabled" in payload:
+                prop.auto_sync_enabled = bool(payload.get("autoSyncEnabled"))
+            if "syncIntervalHours" in payload:
+                prop.sync_interval_hours = int(payload.get("syncIntervalHours") or 24)
+            if "description" in payload:
+                prop.description = payload.get("description") or ""
+            if "listingActive" in payload:
+                raw = payload.get("listingActive")
+                prop.listing_active = raw not in ("false", "0", "False", False)
+            if "maxGuests" in payload:
+                raw_mg = payload.get("maxGuests")
+                prop.max_guests = int(raw_mg) if raw_mg else None
+            if not is_multipart:
+                if "airbnbIcalUrl" in payload:
+                    prop.airbnb_ical_url = (payload.get("airbnbIcalUrl") or "").strip() or None
+                if "bookingIcalUrl" in payload:
+                    prop.booking_ical_url = (payload.get("bookingIcalUrl") or "").strip() or None
+            if files.get("photo"):
+                prop.photo = files["photo"]
             prop.full_clean()
             prop.save()
         except ValueError:
@@ -95,6 +139,14 @@ def property_detail(request, property_id):
                 status=400,
             )
         return JsonResponse({"property": serialize_property(prop, request)})
+
+    if request.method == "DELETE":
+        denied = require_roles(request, [ROLE_ADMIN])
+        if denied:
+            return denied
+        prop.active = False
+        prop.save(update_fields=["active"])
+        return JsonResponse({}, status=204)
 
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
@@ -116,14 +168,37 @@ def property_sync(request, property_id):
     try:
         payload = json_payload(request)
         channel = payload.get("channel") or "airbnb"
-        if channel != Reservation.Platform.AIRBNB:
-            return JsonResponse({"error": "Only Airbnb iCal sync is available right now."}, status=400)
-        if not prop.airbnb_ical_url:
-            return JsonResponse({"error": "Add an Airbnb iCal link first."}, status=400)
-        events = fetch_ical_events(prop.airbnb_ical_url)
-        result = import_ical_reservations(prop, Reservation.Platform.AIRBNB, events)
+        if channel == Reservation.Platform.AIRBNB:
+            ical_url = prop.airbnb_ical_url
+            if not ical_url:
+                return JsonResponse({"error": "Add an Airbnb iCal link first."}, status=400)
+        elif channel == Reservation.Platform.BOOKING:
+            ical_url = prop.booking_ical_url
+            if not ical_url:
+                return JsonResponse({"error": "Add a Booking.com iCal link first."}, status=400)
+        else:
+            return JsonResponse({"error": "Choose airbnb or booking as the channel."}, status=400)
+
+        events = fetch_ical_events(ical_url)
+        result = import_ical_reservations(prop, channel, events)
+        SyncLog.objects.create(
+            property=prop,
+            channel=channel,
+            status="completed",
+            imported_count=result["imported"],
+            updated_count=result["updated"],
+            skipped_count=result["skipped"],
+            conflict_count=0,
+            error_message="; ".join(result["errors"]) if result["errors"] else "",
+        )
     except (URLError, TimeoutError):
-        return JsonResponse({"error": "Could not reach the Airbnb calendar link."}, status=400)
+        SyncLog.objects.create(
+            property=prop,
+            channel=payload.get("channel", "airbnb"),
+            status="failed",
+            error_message="Could not reach the calendar link.",
+        )
+        return JsonResponse({"error": "Could not reach the calendar link."}, status=400)
     except ValidationError as error:
         return JsonResponse(
             {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
