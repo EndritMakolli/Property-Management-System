@@ -1,12 +1,10 @@
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import Property, SyncLog
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
 from ._serializers import serialize_sync_log
 
 
-@csrf_exempt
 def sync_log_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:

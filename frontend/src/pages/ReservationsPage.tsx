@@ -80,9 +80,10 @@ export function ReservationsPage() {
   }, [loadReservationData])
 
   useEffect(() => {
+    const timers = autosaveTimers.current
     return () => {
-      autosaveTimers.current.forEach((timer) => clearTimeout(timer))
-      autosaveTimers.current.clear()
+      timers.forEach((timer) => clearTimeout(timer))
+      timers.clear()
     }
   }, [])
 
@@ -580,7 +581,7 @@ function normalizeDate(value: string, contextYear?: number): string {
     }
   }
 
-  const slashMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+  const slashMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/)
   if (slashMatch) {
     const [, a, b, y] = slashMatch
     const year = y.length === 2 ? `20${y}` : y

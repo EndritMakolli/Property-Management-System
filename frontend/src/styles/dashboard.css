@@ -106,8 +106,38 @@
 }
 
 .reservation-list h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 0.9rem;
+}
+
+.reservation-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.reservation-day-total {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent, #1f6f5b);
+  white-space: nowrap;
+}
+
+.reservation-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.reservation-amount {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .list-empty {
@@ -464,4 +494,42 @@
   background: var(--badge-success-bg);
   border-color: var(--accent-border);
   color: var(--badge-success-text);
+}
+
+/* ── Forecast panels (workload + end-of-month) ── */
+.forecast-workload-panel,
+.month-forecast-panel {
+  grid-column: 1 / -1;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.month-forecast-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.month-forecast-note {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
 }

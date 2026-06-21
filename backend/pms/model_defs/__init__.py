@@ -26,6 +26,7 @@ from .guests import Guest
 from .maintenance import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto
 from .properties import Property
 from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
+from .reviews import PropertyReview
 from .reservations import GuestStay, Reservation
 from .sync_log import SyncLog
 from .taxes import MonthlyTax
@@ -58,6 +59,7 @@ __all__ = [
     "Property",
     "PropertyAmenity",
     "PropertyPhoto",
+    "PropertyReview",
     "ReceiptItem",
     "ReceiptItemReservation",
     "Reservation",

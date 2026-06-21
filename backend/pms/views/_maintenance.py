@@ -2,7 +2,6 @@ from datetime import timezone, datetime
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto, Property
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
@@ -10,7 +9,6 @@ from ._serializers import serialize_clean_status, serialize_maintenance_issue
 from ._utils import json_payload
 
 
-@csrf_exempt
 def maintenance_issue_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
@@ -56,7 +54,6 @@ def maintenance_issue_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def maintenance_issue_detail(request, issue_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
@@ -89,7 +86,6 @@ def maintenance_issue_detail(request, issue_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def maintenance_photo_delete(request, photo_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -108,7 +104,6 @@ def maintenance_photo_delete(request, photo_id):
     return JsonResponse({"deleted": True})
 
 
-@csrf_exempt
 def clean_status_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
@@ -134,7 +129,6 @@ def clean_status_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def clean_status_mark(request, property_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:

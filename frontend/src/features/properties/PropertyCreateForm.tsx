@@ -1,16 +1,20 @@
 import { Building2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import {
+  createAmenity,
+  createPropertyReview,
   deletePropertyPhoto,
+  deletePropertyReview,
   fetchAmenities,
   fetchPropertyPhotos,
+  fetchPropertyReviews,
   reorderPropertyPhotos,
   updatePropertyAmenities,
   uploadPropertyPhoto,
   type PropertyEditPayload,
   type PropertyPayload,
 } from '../../api/pmsApi'
-import type { AmenityRecord, PropertyListing, PropertyPhotoRecord } from '../../types/domain'
+import type { AmenityRecord, PropertyListing, PropertyPhotoRecord, PropertyReviewRecord } from '../../types/domain'
 
 type PropertyCreateFormProps = {
   error: string
@@ -38,12 +42,18 @@ export function PropertyCreateForm({
   const [selectedAmenities, setSelectedAmenities] = useState<Set<string>>(
     new Set(property?.amenityIds ?? [])
   )
+  const [newAmenityName, setNewAmenityName] = useState('')
+  const [addingAmenity, setAddingAmenity] = useState(false)
 
   const [galleryPhotos, setGalleryPhotos] = useState<PropertyPhotoRecord[]>([])
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([])
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [photoError, setPhotoError] = useState('')
+
+  const [reviews, setReviews] = useState<PropertyReviewRecord[]>([])
+  const [newReview, setNewReview] = useState({ guestName: '', rating: 5, comment: '', stayLabel: '' })
+  const [savingReview, setSavingReview] = useState(false)
 
   useEffect(() => {
     fetchAmenities()
@@ -54,8 +64,35 @@ export function PropertyCreateForm({
       fetchPropertyPhotos(property.id)
         .then(setGalleryPhotos)
         .catch(() => {})
+      fetchPropertyReviews(property.id)
+        .then(setReviews)
+        .catch(() => {})
     }
   }, [property?.id])
+
+  async function handleAddReview() {
+    if (!property?.id || !newReview.guestName.trim()) return
+    setSavingReview(true)
+    try {
+      const created = await createPropertyReview(property.id, newReview)
+      setReviews((prev) => [created, ...prev])
+      setNewReview({ guestName: '', rating: 5, comment: '', stayLabel: '' })
+    } catch {
+      /* non-critical */
+    } finally {
+      setSavingReview(false)
+    }
+  }
+
+  async function handleDeleteReview(reviewId: string) {
+    if (!property?.id) return
+    try {
+      await deletePropertyReview(property.id, reviewId)
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId))
+    } catch {
+      /* non-critical */
+    }
+  }
 
   function handleFileChange() {
     const file = fileInputRef.current?.files?.[0]
@@ -110,6 +147,29 @@ export function PropertyCreateForm({
     })
   }
 
+  async function handleAddAmenity() {
+    const name = newAmenityName.trim()
+    if (!name) return
+    // Reuse an existing amenity if the name already exists.
+    const existing = amenities.find((a) => a.name.toLowerCase() === name.toLowerCase())
+    if (existing) {
+      setSelectedAmenities((prev) => new Set(prev).add(existing.id))
+      setNewAmenityName('')
+      return
+    }
+    setAddingAmenity(true)
+    try {
+      const created = await createAmenity({ name, icon: '', sortOrder: amenities.length })
+      setAmenities((prev) => [...prev, created])
+      setSelectedAmenities((prev) => new Set(prev).add(created.id))
+      setNewAmenityName('')
+    } catch {
+      /* non-critical */
+    } finally {
+      setAddingAmenity(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setPhotoError('')
@@ -128,6 +188,11 @@ export function PropertyCreateForm({
       description,
       listingActive,
       maxGuests: Number(form.get('maxGuests') || 0),
+      beds: Number(form.get('beds') || 1),
+      bathrooms: Number(form.get('bathrooms') || 1),
+      locationLabel: String(form.get('locationLabel') || ''),
+      rating: String(form.get('rating') || ''),
+      reviewCount: Number(form.get('reviewCount') || 0),
     }
 
     let savedProperty: PropertyListing
@@ -177,8 +242,28 @@ export function PropertyCreateForm({
         <input min="1" name="maxGuests" placeholder="4" type="number" defaultValue={property?.maxGuests || ''} />
       </label>
       <label>
+        Beds
+        <input min="1" name="beds" placeholder="3" type="number" defaultValue={property?.beds ?? ''} />
+      </label>
+      <label>
+        Bathrooms
+        <input min="1" name="bathrooms" placeholder="1" type="number" defaultValue={property?.bathrooms ?? ''} />
+      </label>
+      <label>
         Floor
         <input name="floor" placeholder="3rd floor" type="text" defaultValue={property?.floor || ''} />
+      </label>
+      <label>
+        Location label (guest-facing)
+        <input name="locationLabel" placeholder="Prishtina, Kosovo" type="text" defaultValue={property?.locationLabel || ''} />
+      </label>
+      <label>
+        Rating (0–5)
+        <input min="0" max="5" step="0.01" name="rating" placeholder="4.92" type="number" defaultValue={property?.rating || ''} />
+      </label>
+      <label>
+        Review count
+        <input min="0" name="reviewCount" placeholder="128" type="number" defaultValue={property?.reviewCount ?? ''} />
       </label>
       <label>
         Price per night
@@ -223,10 +308,10 @@ export function PropertyCreateForm({
         Show on booking website
       </label>
 
-      {amenities.length > 0 && (
-        <div className="wide-field">
-          <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: '0.9rem' }}>Amenities</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
+      <div className="wide-field">
+        <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: '0.9rem' }}>Amenities (what this place offers)</p>
+        {amenities.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 10 }}>
             {amenities.map((a) => (
               <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.88rem', cursor: 'pointer' }}>
                 <input
@@ -238,8 +323,21 @@ export function PropertyCreateForm({
               </label>
             ))}
           </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Add an amenity, e.g. Balcony"
+            value={newAmenityName}
+            onChange={(e) => setNewAmenityName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAmenity() } }}
+            style={{ flex: '1 1 200px', minHeight: 34, padding: '0 10px' }}
+          />
+          <button type="button" className="btn btn-sm btn-primary" onClick={handleAddAmenity} disabled={addingAmenity || !newAmenityName.trim()}>
+            <Plus size={13} /> Add amenity
+          </button>
         </div>
-      )}
+      </div>
 
       <div className="wide-field">
         <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: '0.9rem' }}>Gallery photos</p>
@@ -288,14 +386,78 @@ export function PropertyCreateForm({
             ))}
           </div>
         )}
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.85rem' }}>
-          <Plus size={13} />
-          Add photos
+        <label
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem',
+            border: '1.5px dashed var(--border)', borderRadius: 8, padding: '10px 16px', fontWeight: 600,
+          }}
+        >
+          <Plus size={15} />
+          Select photos to upload (you can pick several at once)
           <input accept="image/*" multiple type="file" ref={galleryInputRef} onChange={handleGalleryFiles} style={{ display: 'none' }} />
         </label>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
+          Use the ↑ ↓ buttons under each photo to set their order. The first photo is shown first to guests.
+        </p>
         {photoError && <p style={{ color: 'var(--error)', fontSize: '0.85rem', margin: '4px 0 0' }}>{photoError}</p>}
         {uploadingPhotos && <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>Uploading photos…</p>}
       </div>
+
+      {isEditing && (
+        <div className="wide-field">
+          <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: '0.9rem' }}>Guest reviews</p>
+          {reviews.length > 0 && (
+            <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+              {reviews.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      {r.guestName} · {'★'.repeat(r.rating)}{r.stayLabel ? ` · ${r.stayLabel}` : ''}
+                    </div>
+                    {r.comment && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 2 }}>{r.comment}</div>}
+                  </div>
+                  <button type="button" className="btn btn-sm btn-outline" style={{ padding: '2px 6px' }} onClick={() => handleDeleteReview(r.id)} title="Delete">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Guest name"
+              value={newReview.guestName}
+              onChange={(e) => setNewReview((p) => ({ ...p, guestName: e.target.value }))}
+              style={{ flex: '1 1 140px', minHeight: 34, padding: '0 8px' }}
+            />
+            <select
+              value={newReview.rating}
+              onChange={(e) => setNewReview((p) => ({ ...p, rating: Number(e.target.value) }))}
+              style={{ minHeight: 34, padding: '0 6px' }}
+            >
+              {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
+            </select>
+            <input
+              type="text"
+              placeholder="May 2026"
+              value={newReview.stayLabel}
+              onChange={(e) => setNewReview((p) => ({ ...p, stayLabel: e.target.value }))}
+              style={{ flex: '0 1 110px', minHeight: 34, padding: '0 8px' }}
+            />
+            <input
+              type="text"
+              placeholder="Comment"
+              value={newReview.comment}
+              onChange={(e) => setNewReview((p) => ({ ...p, comment: e.target.value }))}
+              style={{ flex: '2 1 200px', minHeight: 34, padding: '0 8px' }}
+            />
+            <button type="button" className="btn btn-sm btn-primary" onClick={handleAddReview} disabled={savingReview || !newReview.guestName.trim()}>
+              <Plus size={13} /> Add
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && <p className="form-error">{error}</p>}
       <div className="property-create-actions">

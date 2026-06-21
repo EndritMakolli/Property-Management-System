@@ -3,7 +3,6 @@ from datetime import date, timezone, datetime, timedelta
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import Property, Reservation, ReservationAuditLog, ReservationAttachment
 from ._payloads import apply_reservation_payload
@@ -43,7 +42,6 @@ def _snapshot(reservation):
     return {field: getattr(reservation, field, None) for field, _ in TRACKED_FIELDS}
 
 
-@csrf_exempt
 def reservation_list(request):
     if request.method == "GET":
         denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
@@ -111,7 +109,6 @@ def reservation_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def reservation_detail(request, reservation_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -159,7 +156,6 @@ def reservation_detail(request, reservation_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def reservation_restore(request, reservation_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -186,7 +182,6 @@ def reservation_restore(request, reservation_id):
     return JsonResponse({"reservation": serialize_reservation(reservation)})
 
 
-@csrf_exempt
 def reservation_history(request, reservation_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -199,7 +194,6 @@ def reservation_history(request, reservation_id):
     return JsonResponse({"history": [serialize_reservation_audit(log) for log in logs]})
 
 
-@csrf_exempt
 def reservation_attachment_list(request, reservation_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -245,7 +239,6 @@ def reservation_attachment_list(request, reservation_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def reservation_attachment_detail(request, reservation_id, attachment_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:

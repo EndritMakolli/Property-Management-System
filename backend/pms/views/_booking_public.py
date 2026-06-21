@@ -35,6 +35,11 @@ def _serialize_public_property(prop, request, price_breakdown=None):
         for p in prop.photos.order_by("sort_order", "id")
         if p.photo
     ]
+    # Include the property's main photo first so it always has an image.
+    if prop.photo:
+        main_photo = request.build_absolute_uri(prop.photo.url)
+        if main_photo not in photos:
+            photos.insert(0, main_photo)
     amenity_ids = list(
         PropertyAmenity.objects.filter(property=prop)
         .values_list("amenity_id", flat=True)
@@ -43,13 +48,28 @@ def _serialize_public_property(prop, request, price_breakdown=None):
         "id": str(prop.id),
         "name": prop.name,
         "bedrooms": prop.bedrooms,
+        "beds": prop.beds,
+        "bathrooms": prop.bathrooms,
         "maxGuests": prop.max_guests,
         "apartmentType": f"{prop.bedrooms} {'bedroom' if prop.bedrooms == 1 else 'bedrooms'}",
         "basePriceEur": str(prop.base_price_eur),
         "description": prop.description or "",
+        "locationLabel": prop.location_label or "",
+        "rating": str(prop.rating) if prop.rating is not None else "",
+        "reviewCount": prop.review_count,
         "photos": photos,
         "amenityIds": amenity_ids,
         "priceBreakdown": price_breakdown,
+    }
+
+
+def _serialize_review(review):
+    return {
+        "id": str(review.id),
+        "guestName": review.guest_name,
+        "rating": review.rating,
+        "comment": review.comment,
+        "stayLabel": review.stay_label,
     }
 
 
@@ -247,7 +267,43 @@ def booking_property_detail(request, property_id):
 
     data = _serialize_public_property(prop, request)
     data["amenities"] = amenities
+    data["reviews"] = [_serialize_review(r) for r in prop.reviews.all()]
     return JsonResponse({"property": data})
+
+
+@csrf_exempt
+def booking_property_calendar(request, property_id):
+    """GET — blocked date ranges for a property over the next 12 months."""
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    try:
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+    except Property.DoesNotExist:
+        return JsonResponse({"error": "Property not found."}, status=404)
+
+    today = date.today()
+    horizon = today + timedelta(days=365)
+
+    reservations = Reservation.objects.filter(
+        property_id=prop.id,
+        is_archived=False,
+        check_out__gt=today,
+        check_in__lt=horizon,
+    ).values("check_in", "check_out")
+
+    pending = BookingRequest.objects.filter(
+        property_id=prop.id,
+        status=BookingRequest.Status.PENDING,
+        check_out__gt=today,
+        check_in__lt=horizon,
+    ).values("check_in", "check_out")
+
+    blocked = [
+        {"checkIn": row["check_in"].isoformat(), "checkOut": row["check_out"].isoformat()}
+        for row in list(reservations) + list(pending)
+    ]
+    return JsonResponse({"blocked": blocked})
 
 
 @csrf_exempt

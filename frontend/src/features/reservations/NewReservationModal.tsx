@@ -119,6 +119,9 @@ export function NewReservationModal({
 
     setForm({ ...defaultForm, ...initialValues })
     setTotalDraft(null)
+    // `defaultForm` is a fresh object each render; the form should only
+    // re-seed when the modal (re)opens or switches reservation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues, mode, open, reservation])
 
   const isMaintenance = form.reservationType === 'maintenance'

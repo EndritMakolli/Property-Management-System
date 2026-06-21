@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_GROUPS, require_roles
 from ._serializers import serialize_managed_user, serialize_user
@@ -20,7 +20,9 @@ def set_user_role(user, role):
         user.is_superuser = False
 
 
-@csrf_exempt
+# ensure_csrf_cookie: the SPA calls this on every load, which guarantees the
+# csrftoken cookie exists before any POST/PATCH/DELETE is attempted.
+@ensure_csrf_cookie
 def auth_me(request):
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed."}, status=405)
@@ -29,7 +31,6 @@ def auth_me(request):
     return JsonResponse({"user": serialize_user(request.user)})
 
 
-@csrf_exempt
 def auth_login(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
@@ -50,7 +51,6 @@ def auth_login(request):
     return JsonResponse({"user": serialize_user(user)})
 
 
-@csrf_exempt
 def auth_logout(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
@@ -58,7 +58,6 @@ def auth_logout(request):
     return JsonResponse({"user": {"isAuthenticated": False, "role": "", "username": ""}})
 
 
-@csrf_exempt
 def user_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -101,7 +100,6 @@ def user_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def user_detail(request, user_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:

@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import styles from './ClientHeader.module.css'
 
 // Dead-placeholder nav links + a working "Staff Login" that enters the PMS.
 export default function ClientHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const isHome = useLocation().pathname === '/'
 
   return (
-    <header className={styles.header}>
+    <header className={isHome ? styles.header : styles.headerSolid}>
       <div className={styles.inner}>
         <Link to="/" className={styles.logo}>
           AirStay<span className={styles.logoDot}>com</span>

@@ -1,9 +1,10 @@
-import { ArrowRight, Check, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowRight, Check, Pencil, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { fetchProperties, fetchReservations, updateReservation } from '../api/pmsApi'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
+import { NewReservationModal } from '../features/reservations/NewReservationModal'
 import type { PropertyListing, ReservationRecord } from '../types/domain'
 import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../utils/date'
 
@@ -93,6 +94,9 @@ export function SearchReservationsPage() {
   const [allReservations, setAllReservations] = useState<ReservationRecord[]>([])
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [query, setQuery] = useState('')
+  const [apartmentFilter, setApartmentFilter] = useState('')
+  const [monthFilter, setMonthFilter] = useState('')
+  const [editing, setEditing] = useState<ReservationRecord | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const inputRef = useRef<HTMLInputElement>(null)
   const changePanelRef = useRef<HTMLDivElement>(null)
@@ -129,6 +133,14 @@ export function SearchReservationsPage() {
     return () => { ignore = true }
   }, [])
 
+  async function refetchReservations() {
+    try {
+      setAllReservations(await fetchReservations())
+    } catch {
+      /* keep the current list if the refresh fails */
+    }
+  }
+
   useEffect(() => { inputRef.current?.focus() }, [status])
 
   // Scroll change panel into view when it opens
@@ -143,17 +155,33 @@ export function SearchReservationsPage() {
     if (changing) setTimelineStart(parseDateValue(changing.checkIn))
   }, [changing])
 
-  // ── Search results ──
+  // ── Search results (text query + apartment/month filters) ──
   const results = useMemo(() => {
+    let pool = allReservations
+    if (apartmentFilter) pool = pool.filter((r) => r.propertyId === apartmentFilter)
+    if (monthFilter) {
+      // Keep reservations whose stay overlaps the selected month.
+      pool = pool.filter(
+        (r) => r.checkIn.slice(0, 7) <= monthFilter && r.checkOut.slice(0, 7) >= monthFilter,
+      )
+    }
+
     const q = query.trim()
-    if (q.length < 2) return []
-    return allReservations
-      .map((r) => ({ r, score: scoreReservation(q, r) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score || a.r.checkIn.localeCompare(b.r.checkIn))
-      .slice(0, 60)
-      .map(({ r }) => r)
-  }, [query, allReservations])
+    if (q.length >= 2) {
+      return pool
+        .map((r) => ({ r, score: scoreReservation(q, r) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score || a.r.checkIn.localeCompare(b.r.checkIn))
+        .slice(0, 100)
+        .map(({ r }) => r)
+    }
+
+    // No text query: only show results once a filter narrows things down.
+    if (!apartmentFilter && !monthFilter) return []
+    return [...pool].sort((a, b) => a.checkIn.localeCompare(b.checkIn)).slice(0, 100)
+  }, [query, apartmentFilter, monthFilter, allReservations])
+
+  const hasCriteria = query.trim().length >= 2 || !!apartmentFilter || !!monthFilter
 
   const propMap = useMemo(() => {
     const m = new Map<string, PropertyListing>()
@@ -161,7 +189,7 @@ export function SearchReservationsPage() {
     return m
   }, [properties])
 
-  const isEmpty = query.trim().length >= 2 && results.length === 0 && status === 'ready'
+  const isEmpty = hasCriteria && results.length === 0 && status === 'ready'
 
   // ── Change-apartment availability logic ──
   const changeCheckIn = changing?.checkIn ?? ''
@@ -307,17 +335,50 @@ export function SearchReservationsPage() {
         )}
       </div>
 
+      {/* ── Filters ── */}
+      <div className="search-res-filters">
+        <select
+          aria-label="Filter by apartment"
+          className="search-res-filter"
+          value={apartmentFilter}
+          onChange={(e) => setApartmentFilter(e.target.value)}
+        >
+          <option value="">All apartments</option>
+          {properties.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <input
+          aria-label="Filter by month"
+          className="search-res-filter"
+          type="month"
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+        />
+        {(apartmentFilter || monthFilter) && (
+          <button
+            className="search-res-filter-clear"
+            type="button"
+            onClick={() => { setApartmentFilter(''); setMonthFilter('') }}
+          >
+            <X size={14} /> Clear filters
+          </button>
+        )}
+      </div>
+
       {status === 'loading' && <p className="listings-message">Loading reservations…</p>}
       {status === 'error' && <p className="form-error">Could not load reservations.</p>}
 
-      {status === 'ready' && query.trim().length < 2 && !changing && (
+      {status === 'ready' && !hasCriteria && !changing && (
         <p className="search-res-hint">
-          Type at least 2 characters to search. Typos are OK — we'll find the closest match.
+          Type at least 2 characters, or filter by apartment or month, to find a reservation.
+          Typos are OK — we'll find the closest match.
         </p>
       )}
       {isEmpty && (
         <p className="search-res-hint">
-          No reservations match <strong>"{query}"</strong>. Try a different name, phone, or date.
+          No reservations match{query.trim() ? <> <strong>"{query}"</strong></> : ' those filters'}.
+          Try a different name, phone, date, apartment, or month.
         </p>
       )}
 
@@ -335,7 +396,14 @@ export function SearchReservationsPage() {
                     ? <img alt="" className="search-res-card-photo" src={prop.photoUrl} />
                     : <span className="search-res-card-photo search-res-card-photo-placeholder" />}
 
-                  <div className="search-res-card-main">
+                  <div
+                    className="search-res-card-main search-res-card-main-clickable"
+                    role="button"
+                    tabIndex={0}
+                    title="Edit reservation"
+                    onClick={() => setEditing(r)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(r) } }}
+                  >
                     <strong className="search-res-card-guest">{r.guestName || r.guestPhone || 'Guest'}</strong>
                     {r.guestName && r.guestPhone && <span className="search-res-card-phone">{r.guestPhone}</span>}
                     <span className="search-res-card-apt">{r.apartment}</span>
@@ -363,6 +431,13 @@ export function SearchReservationsPage() {
                   </div>
 
                   <div className="search-res-card-actions">
+                    <button
+                      className="search-res-action-btn"
+                      type="button"
+                      onClick={() => setEditing(r)}
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
                     <button
                       className="search-res-action-btn"
                       type="button"
@@ -523,6 +598,14 @@ export function SearchReservationsPage() {
           )}
         </div>
       )}
+
+      <NewReservationModal
+        open={!!editing}
+        mode="edit"
+        reservation={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); refetchReservations() }}
+      />
 
       {modalState && (
         <div className="modal-backdrop" onClick={closeModal}>

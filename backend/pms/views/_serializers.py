@@ -47,6 +47,8 @@ def serialize_property(prop, request):
         "id": str(prop.id),
         "name": prop.name,
         "bedrooms": prop.bedrooms,
+        "beds": prop.beds,
+        "bathrooms": prop.bathrooms,
         "floor": prop.floor or "",
         "wifiName": prop.wifi_name or "",
         "wifiPassword": prop.wifi_password or "",
@@ -64,6 +66,9 @@ def serialize_property(prop, request):
         "description": prop.description or "",
         "listingActive": prop.listing_active,
         "maxGuests": prop.max_guests or 0,
+        "locationLabel": prop.location_label or "",
+        "rating": str(prop.rating) if prop.rating is not None else "",
+        "reviewCount": prop.review_count,
         "amenityIds": [str(aid) for aid in prop.property_amenities.values_list("amenity_id", flat=True).order_by()],
     }
 

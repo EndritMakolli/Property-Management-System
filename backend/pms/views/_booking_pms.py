@@ -6,7 +6,6 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.http.multipartparser import MultiPartParser
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import (
     Amenity,
@@ -149,7 +148,6 @@ def _serialize_property_photo(photo, request):
 # Booking Requests
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def booking_request_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -187,7 +185,6 @@ def booking_request_list(request):
     })
 
 
-@csrf_exempt
 def booking_request_approve(request, request_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -248,7 +245,6 @@ def booking_request_approve(request, request_id):
     })
 
 
-@csrf_exempt
 def booking_request_reject(request, request_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -282,7 +278,6 @@ def booking_request_reject(request, request_id):
 # Pricing Rules
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def pricing_rule_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -304,7 +299,6 @@ def pricing_rule_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def pricing_rule_detail(request, rule_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -371,7 +365,6 @@ def _apply_pricing_rule_payload(rule, payload):
 # Promo Codes
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def promo_code_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -393,7 +386,6 @@ def promo_code_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def promo_code_detail(request, code_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -447,7 +439,6 @@ def _apply_promo_payload(promo, payload):
 # Cancellation Policies
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def cancellation_policy_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -469,7 +460,6 @@ def cancellation_policy_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def cancellation_policy_detail(request, policy_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -522,7 +512,6 @@ def _apply_policy_payload(policy, payload):
 # Amenities
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def amenity_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -551,7 +540,6 @@ def amenity_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def amenity_detail(request, amenity_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -587,7 +575,6 @@ def amenity_detail(request, amenity_id):
 # House Rules
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def house_rule_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -616,7 +603,6 @@ def house_rule_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def house_rule_detail(request, rule_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -652,7 +638,6 @@ def house_rule_detail(request, rule_id):
 # Booking Site Settings
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def booking_settings_pms(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -695,7 +680,6 @@ def booking_settings_pms(request):
 # Property Photos
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def property_photo_list(request, property_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -723,7 +707,6 @@ def property_photo_list(request, property_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def property_photo_detail(request, property_id, photo_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -742,7 +725,6 @@ def property_photo_detail(request, property_id, photo_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def property_photo_reorder(request, property_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -770,7 +752,6 @@ def property_photo_reorder(request, property_id):
 # Property Amenities (assign amenities to a property)
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
 def property_amenity_update(request, property_id):
     """PATCH — set the full list of amenity IDs for a property."""
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])

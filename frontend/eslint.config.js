@@ -23,6 +23,19 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      // Allow `const { id, ...rest } = obj` to intentionally omit a field,
+      // and `_`-prefixed args for deliberately-unused parameters.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { ignoreRestSiblings: true, argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    // Context modules co-locate a provider component with its hook by design.
+    files: ['src/context/**/*.tsx', 'src/auth/AuthContext.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 )

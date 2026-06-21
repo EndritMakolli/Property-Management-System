@@ -1,0 +1,115 @@
+.cal {
+  position: relative;
+  background: var(--c-paper);
+  border: 1px solid var(--c-border-strong);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 14px 40px rgba(20, 14, 9, 0.18);
+}
+
+.nav {
+  position: absolute;
+  top: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 2;
+}
+.nav:hover:not(:disabled) { background: var(--c-divider); }
+.nav:disabled { opacity: 0.35; cursor: default; }
+.prev { left: 14px; }
+.next { right: 14px; }
+
+.months {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 26px;
+}
+
+.monthLabel {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--c-ink);
+  margin-bottom: 12px;
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.weekdays {
+  margin-bottom: 6px;
+}
+.weekdays span {
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--c-muted-3);
+}
+
+.grid {
+  gap: 2px 0;
+}
+
+.day {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  cursor: pointer;
+  border-radius: 50%;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.day.open:hover { background: var(--c-cream-2); }
+
+.past {
+  color: #cdc4b5;
+  cursor: default;
+  text-decoration: none;
+}
+
+.blocked {
+  color: #c4b8a6;
+  cursor: default;
+  text-decoration: line-through;
+}
+
+.sel {
+  background: var(--c-cream-2);
+  border-radius: 0;
+}
+.edge {
+  background: var(--c-dark) !important;
+  color: #fff !important;
+  border-radius: 50%;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-divider);
+  font-size: 0.76rem;
+  color: var(--c-muted);
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legOpen { background: var(--c-cream-2); border: 1px solid #d8cbb4; }
+.legBlocked { background: repeating-linear-gradient(45deg, var(--c-cream-2), var(--c-cream-2) 3px, #cdc4b5 3px, #cdc4b5 5px); }
+
+@media (max-width: 560px) {
+  .months { grid-template-columns: 1fr; gap: 18px; }
+}

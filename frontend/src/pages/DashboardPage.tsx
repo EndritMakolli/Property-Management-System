@@ -1,6 +1,7 @@
-import { CalendarDays, CheckSquare, Home, Plus, Square, Wrench } from 'lucide-react'
+import { Activity, CalendarDays, CheckSquare, Home, Plus, Square, TrendingUp, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   fetchCleanStatuses,
   fetchMaintenanceIssues,
@@ -8,14 +9,13 @@ import {
   fetchReservations,
   markApartmentCleaned,
 } from '../api/pmsApi'
+import { fetchDashboardForecast, type DashboardForecast } from '../api/forecast'
 import { NewReservationModal } from '../features/reservations/NewReservationModal'
-import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { Metric } from '../components/shared/Metric'
 import { PanelHeader } from '../components/shared/PanelHeader'
 import { DateInput } from '../components/shared/DateInput'
 import { ReservationList } from '../features/dashboard/ReservationList'
-import { reportDateChanged } from '../features/dashboard/dashboardSlice'
 import { buildPropertyReportStats } from '../features/reports/reportCalculations'
 import type {
   CleanStatusRecord,
@@ -33,16 +33,21 @@ const platformLabels: Record<string, string> = {
   maintenance: 'Maintenance',
 }
 
+function shortDate(iso: string) {
+  const d = new Date(`${iso}T00:00:00`)
+  return `${d.getDate()}/${d.getMonth() + 1}`
+}
+
 export function DashboardPage() {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const reportDate = useAppSelector((state) => state.dashboard.reportDate)
+  const [reportDate, setReportDate] = useState(toDateInputValue(new Date()))
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [reservations, setReservations] = useState<ReservationRecord[]>([])
   const [allReservations, setAllReservations] = useState<ReservationRecord[]>([])
   const [cleanStatuses, setCleanStatuses] = useState<CleanStatusRecord[]>([])
   const [maintenanceIssues, setMaintenanceIssues] = useState<MaintenanceIssueRecord[]>([])
+  const [forecast, setForecast] = useState<DashboardForecast | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [addReservationOpen, setAddReservationOpen] = useState(false)
 
@@ -85,6 +90,17 @@ export function DashboardPage() {
       ignore = true
     }
   }, [reportMonth, reportYear])
+
+  // Forecast (workload + end-of-month turnover) is admin/management only and
+  // loaded separately so a 403 for cleaners never breaks the main dashboard.
+  useEffect(() => {
+    if (user.role === 'cleaning') return
+    let ignore = false
+    fetchDashboardForecast()
+      .then((data) => { if (!ignore) setForecast(data) })
+      .catch(() => { if (!ignore) setForecast(null) })
+    return () => { ignore = true }
+  }, [user.role])
 
   async function handleMarkCleaned(propertyId: string, isCleaned: boolean) {
     const updated = await markApartmentCleaned(propertyId, isCleaned)
@@ -186,6 +202,16 @@ export function DashboardPage() {
     [allReservations, today],
   )
 
+  const workloadData = useMemo(
+    () =>
+      (forecast?.workload.days ?? []).map((d) => ({
+        ...d,
+        day: `${d.weekday} ${shortDate(d.date)}`,
+      })),
+    [forecast],
+  )
+  const monthForecast = forecast?.monthForecast ?? null
+
   if (user.role === 'cleaning') {
     return (
       <CleanerDashboard
@@ -195,7 +221,7 @@ export function DashboardPage() {
         freeToday={freeToday}
         onMarkCleaned={handleMarkCleaned}
         reportDate={reportDate}
-        onDateChange={(value) => dispatch(reportDateChanged(value))}
+        onDateChange={(value) => setReportDate(value)}
         status={status}
       />
     )
@@ -212,7 +238,7 @@ export function DashboardPage() {
           <DateInput
             aria-label="Report date"
             value={reportDate}
-            onChange={(value) => dispatch(reportDateChanged(value))}
+            onChange={setReportDate}
           />
           <button className="primary-button" onClick={() => setAddReservationOpen(true)}>
             <Plus size={17} />
@@ -249,6 +275,41 @@ export function DashboardPage() {
               <ReservationList title="Currently staying" items={currentlyStaying} initialVisibleCount={6} />
             </div>
           </section>
+
+          {workloadData.length > 0 && (
+            <section className="panel forecast-workload-panel">
+              <PanelHeader icon={Activity} title="Workload · next 14 days" />
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={workloadData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} interval={0} angle={-30} textAnchor="end" height={50} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="checkIns" name="Check-ins" fill="#1f6f5b" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="checkOuts" name="Check-outs" fill="#9bb8ad" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="chart-legend">
+                <span><i style={{ background: '#1f6f5b' }} /> Check-ins</span>
+                <span><i style={{ background: '#9bb8ad' }} /> Check-outs</span>
+              </div>
+            </section>
+          )}
+
+          {user.role === 'admin' && monthForecast && (
+            <section className="panel month-forecast-panel">
+              <PanelHeader icon={TrendingUp} title={`End-of-month forecast · ${monthForecast.monthLabel}`} />
+              <div className="metric-row month-forecast-metrics">
+                <Metric label="Projected turnover" value={`EUR ${monthForecast.projectedTurnoverEur.toLocaleString()}`} />
+                <Metric label="On the books" value={`EUR ${monthForecast.onBooksTurnoverEur.toLocaleString()}`} />
+                <Metric label="Expected pickup" value={`EUR ${monthForecast.expectedPickupEur.toLocaleString()}`} />
+              </div>
+              <p className="month-forecast-note">
+                {monthForecast.freeNightsRemaining} free nights left this month · usual{' '}
+                {monthForecast.usualOccupancyPct}% occupancy · ~EUR{' '}
+                {Math.round(monthForecast.avgNightlyEur).toLocaleString()}/night
+              </p>
+            </section>
+          )}
 
           <section className="panel free-apartments-panel">
             <PanelHeader icon={Home} title={`Free on ${formatDisplayDate(reportDate)} (${freeToday.length})`} />
@@ -423,9 +484,9 @@ function CleanerDashboard({
           <section className="panel schedule-panel">
             <PanelHeader icon={Home} title="Daily movement" />
             <div className="schedule-columns three-columns">
-              <ReservationList title="Check-ins" items={checkIns} />
-              <ReservationList title="Check-outs" items={checkOuts} />
-              <ReservationList title="Currently hosting" items={currentlyStaying} initialVisibleCount={6} />
+              <ReservationList title="Check-ins" items={checkIns.map(withoutAmount)} />
+              <ReservationList title="Check-outs" items={checkOuts.map(withoutAmount)} />
+              <ReservationList title="Currently hosting" items={currentlyStaying.map(withoutAmount)} initialVisibleCount={6} />
             </div>
           </section>
 
@@ -479,6 +540,11 @@ function CleanerDashboard({
   )
 }
 
+// Payment amounts are management-only; cleaners never see guest money.
+function withoutAmount(stay: DashboardStay): DashboardStay {
+  return { ...stay, amount: undefined }
+}
+
 function toDashboardStay(reservation: ReservationRecord, detail: string): DashboardStay {
   return {
     detail,
@@ -486,5 +552,6 @@ function toDashboardStay(reservation: ReservationRecord, detail: string): Dashbo
     id: reservation.id,
     platform: platformLabels[reservation.reservationType] || reservation.reservationType,
     propertyName: reservation.apartment,
+    amount: Number(reservation.totalPaid) || 0,
   }
 }

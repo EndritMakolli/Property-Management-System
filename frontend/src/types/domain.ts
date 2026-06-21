@@ -4,6 +4,11 @@ export type PropertyListing = {
   id: string
   name: string
   bedrooms: number
+  beds: number
+  bathrooms: number
+  locationLabel: string
+  rating: string
+  reviewCount: number
   floor: string
   wifiName: string
   wifiPassword: string
@@ -72,6 +77,7 @@ export type DashboardStay = {
   propertyName: string
   platform: string
   detail: string
+  amount?: number
 }
 
 export type DoorCodeRecord = {
@@ -327,6 +333,14 @@ export type PropertyPhotoRecord = {
   id: string
   url: string
   sortOrder: number
+}
+
+export type PropertyReviewRecord = {
+  id: string
+  guestName: string
+  rating: number
+  comment: string
+  stayLabel: string
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

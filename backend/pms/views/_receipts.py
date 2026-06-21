@@ -3,7 +3,6 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import DailyEntry, ReceiptItem, ReceiptItemReservation, Reservation
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
@@ -52,7 +51,6 @@ def _safe_decimal(value, default="0.00"):
 
 # ── Monthly view ─────────────────────────────────────────────────────────────
 
-@csrf_exempt
 def receipt_monthly_view(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -129,7 +127,6 @@ def receipt_monthly_view(request):
 
 # ── Daily entry upsert ───────────────────────────────────────────────────────
 
-@csrf_exempt
 def receipt_day_upsert(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -163,7 +160,6 @@ def receipt_day_upsert(request):
 
 # ── Day detail ────────────────────────────────────────────────────────────────
 
-@csrf_exempt
 def receipt_day_detail(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -201,7 +197,6 @@ def receipt_day_detail(request):
 
 # ── Receipt items ─────────────────────────────────────────────────────────────
 
-@csrf_exempt
 def receipt_item_list(request):
     """POST: create a new receipt item for a day."""
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
@@ -245,7 +240,6 @@ def receipt_item_list(request):
     return JsonResponse({"item": _serialize_item(item)}, status=201)
 
 
-@csrf_exempt
 def receipt_item_detail(request, item_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -295,7 +289,6 @@ def receipt_item_detail(request, item_id):
 
 # ── Available reservations for linking ────────────────────────────────────────
 
-@csrf_exempt
 def receipt_available_reservations(request):
     """GET: reservations for a month that can be linked to a receipt item."""
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])

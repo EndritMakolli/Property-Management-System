@@ -114,3 +114,48 @@
   min-height: 36px;
   padding: 0 12px;
 }
+
+/* ── Backup & restore ── */
+.admin-backup-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.admin-backup-card h3 {
+  margin: 0;
+}
+
+.admin-backup-desc {
+  margin: 0;
+  color: #68746f;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.admin-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-backup-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--accent, #2f8f74);
+  border-radius: 8px;
+  color: var(--accent, #2f8f74);
+  background: transparent;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.admin-backup-import.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

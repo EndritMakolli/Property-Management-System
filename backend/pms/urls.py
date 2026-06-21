@@ -21,6 +21,8 @@ urlpatterns = [
     path("properties/<uuid:property_id>/photos/reorder/", views.property_photo_reorder, name="property-photo-reorder"),
     path("properties/<uuid:property_id>/photos/<uuid:photo_id>/", views.property_photo_detail, name="property-photo-detail"),
     path("properties/<uuid:property_id>/amenities/", views.property_amenity_update, name="property-amenity-update"),
+    path("properties/<uuid:property_id>/reviews/", views.property_review_list, name="property-review-list"),
+    path("properties/<uuid:property_id>/reviews/<uuid:review_id>/", views.property_review_detail, name="property-review-detail"),
     path("calendars/<uuid:export_token>.ics", views.public_property_calendar_export, name="public-property-calendar-export"),
 
     # Reservations (PMS)
@@ -74,6 +76,7 @@ urlpatterns = [
     path("booking/settings/", views.booking_settings, name="booking-settings-public"),
     path("booking/properties/", views.booking_properties, name="booking-properties"),
     path("booking/properties/<uuid:property_id>/", views.booking_property_detail, name="booking-property-detail"),
+    path("booking/properties/<uuid:property_id>/calendar/", views.booking_property_calendar, name="booking-property-calendar"),
     path("booking/availability/", views.booking_availability, name="booking-availability"),
     path("booking/calculate/", views.booking_calculate, name="booking-calculate"),
     path("booking/promo-codes/validate/", views.booking_validate_promo, name="booking-validate-promo"),
@@ -98,4 +101,11 @@ urlpatterns = [
     path("house-rules/", views.house_rule_list, name="house-rule-list"),
     path("house-rules/<uuid:rule_id>/", views.house_rule_detail, name="house-rule-detail"),
     path("booking-settings/", views.booking_settings_pms, name="booking-settings-pms"),
+
+    # Dashboard forecasting
+    path("dashboard/forecast/", views.dashboard_forecast, name="dashboard-forecast"),
+
+    # Backup / restore (admin only)
+    path("backup/export/", views.backup_export, name="backup-export"),
+    path("backup/import/", views.backup_import, name="backup-import"),
 ]

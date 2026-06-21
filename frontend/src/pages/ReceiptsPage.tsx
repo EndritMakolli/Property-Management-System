@@ -47,17 +47,18 @@ export function ReceiptsPage() {
   }, [loadMonth])
 
   useEffect(() => {
+    const timers = autosaveTimers.current
     return () => {
-      autosaveTimers.current.forEach((t) => clearTimeout(t))
+      timers.forEach((t) => clearTimeout(t))
     }
   }, [])
 
   function updateDay(date: string, patch: Partial<DailyDayRecord>) {
     setDays((prev) => prev.map((d) => (d.date === date ? { ...d, ...patch } : d)))
-    scheduleSave(date, patch)
+    scheduleSave(date)
   }
 
-  function scheduleSave(date: string, _patch: Partial<DailyDayRecord>) {
+  function scheduleSave(date: string) {
     const existing = autosaveTimers.current.get(date)
     if (existing) clearTimeout(existing)
     const timer = setTimeout(async () => {

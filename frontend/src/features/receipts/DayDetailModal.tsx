@@ -42,6 +42,8 @@ export function DayDetailModal({ date, month, year, onClose, onDayUpdated }: Pro
 
   useEffect(() => {
     load()
+    // Reload only when the selected date changes; `load` is recreated per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date])
 
   async function load() {

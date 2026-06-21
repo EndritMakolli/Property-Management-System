@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import MonthlyTax
 from ._roles import ROLE_ADMIN, require_roles
@@ -8,7 +7,6 @@ from ._serializers import serialize_monthly_tax
 from ._utils import decimal_value, json_payload
 
 
-@csrf_exempt
 def tax_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -45,7 +43,6 @@ def tax_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def tax_detail(request, tax_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:

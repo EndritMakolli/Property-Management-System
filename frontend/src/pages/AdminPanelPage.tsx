@@ -1,5 +1,5 @@
-import { Plus, Save } from 'lucide-react'
-import type { FormEvent } from 'react'
+import { Download, Plus, Save, Upload } from 'lucide-react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import {
   createUserAccount,
@@ -7,6 +7,7 @@ import {
   updateUserAccount,
   type UserAccountPayload,
 } from '../api/pmsApi'
+import { exportBackup, importBackup } from '../api/backup'
 import { useAuth } from '../auth/AuthContext'
 import type { ManagedUser } from '../types/domain'
 
@@ -26,6 +27,10 @@ export function AdminPanelPage() {
   const [drafts, setDrafts] = useState<Record<number, UserAccountPayload>>({})
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const [backupBusy, setBackupBusy] = useState<'export' | 'import' | null>(null)
+  const [backupNote, setBackupNote] = useState('')
+  const [backupError, setBackupError] = useState('')
+  const [imported, setImported] = useState(false)
 
   async function loadUsers() {
     try {
@@ -81,6 +86,50 @@ export function AdminPanelPage() {
       await loadUsers()
     } catch (caughtError) {
       setMessage(caughtError instanceof Error ? caughtError.message : 'Could not update account.')
+    }
+  }
+
+  async function handleExport() {
+    setBackupError('')
+    setBackupNote('')
+    setBackupBusy('export')
+    try {
+      await exportBackup()
+      setBackupNote('Backup downloaded.')
+    } catch (caughtError) {
+      setBackupError(caughtError instanceof Error ? caughtError.message : 'Export failed.')
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = '' // allow re-selecting the same file later
+    if (!file) {
+      return
+    }
+    if (
+      !window.confirm(
+        'This will REPLACE all data on this device with the backup file. This cannot be undone. Continue?',
+      )
+    ) {
+      return
+    }
+
+    setBackupError('')
+    setBackupNote('')
+    setBackupBusy('import')
+    try {
+      const result = await importBackup(file)
+      setBackupNote(
+        `Imported ${result.objectCount.toLocaleString()} records.${result.note ? ` ${result.note}` : ''}`,
+      )
+      setImported(true)
+    } catch (caughtError) {
+      setBackupError(caughtError instanceof Error ? caughtError.message : 'Import failed.')
+    } finally {
+      setBackupBusy(null)
     }
   }
 
@@ -217,6 +266,49 @@ export function AdminPanelPage() {
             })}
           </div>
         )}
+      </article>
+
+      <article className="panel admin-backup-card">
+        <h3>Backup &amp; restore</h3>
+        <p className="admin-backup-desc">
+          Export a single JSON file of all data — properties, reservations, finance, codes,
+          maintenance, receipts, settings and accounts. Importing on another device{' '}
+          <strong>replaces everything there</strong> with the file. Uploaded photos and
+          attachment files are not included.
+        </p>
+
+        {backupError && <p className="form-error">{backupError}</p>}
+        {backupNote && <p className="admin-panel-message">{backupNote}</p>}
+
+        <div className="admin-backup-actions">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={backupBusy !== null}
+            onClick={handleExport}
+          >
+            <Download size={16} />
+            {backupBusy === 'export' ? 'Exporting…' : 'Export backup'}
+          </button>
+
+          <label className={`admin-backup-import${backupBusy !== null ? ' disabled' : ''}`}>
+            <Upload size={16} />
+            {backupBusy === 'import' ? 'Importing…' : 'Import backup'}
+            <input
+              accept="application/json,.json"
+              disabled={backupBusy !== null}
+              hidden
+              type="file"
+              onChange={handleImportFile}
+            />
+          </label>
+
+          {imported && (
+            <button className="primary-button" type="button" onClick={() => window.location.reload()}>
+              Reload now
+            </button>
+          )}
+        </div>
       </article>
     </section>
   )

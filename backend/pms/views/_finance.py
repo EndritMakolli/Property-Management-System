@@ -4,7 +4,6 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import ExpenseCategory, FinanceExpense, FinancialObligation, Loan, Reservation
 from ._payloads import apply_finance_expense_payload, apply_loan_payload, apply_obligation_payload
@@ -18,7 +17,6 @@ from ._serializers import (
 from ._utils import is_active_for_month, json_payload, selected_period
 
 
-@csrf_exempt
 def finance_summary(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -83,7 +81,6 @@ def finance_summary(request):
     })
 
 
-@csrf_exempt
 def expense_category_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -114,7 +111,6 @@ def expense_category_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def expense_category_detail(request, category_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -176,7 +172,6 @@ def reservation_revenue_inside_month(reservation, month_start, month_end):
     )
 
 
-@csrf_exempt
 def finance_expense_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -205,7 +200,6 @@ def finance_expense_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def finance_expense_detail(request, expense_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -239,7 +233,6 @@ def finance_expense_detail(request, expense_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def loan_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -266,7 +259,6 @@ def loan_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def loan_detail(request, loan_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -284,7 +276,6 @@ def loan_detail(request, loan_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def obligation_list(request):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:
@@ -309,7 +300,6 @@ def obligation_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def obligation_detail(request, obligation_id):
     denied = require_roles(request, [ROLE_ADMIN])
     if denied:

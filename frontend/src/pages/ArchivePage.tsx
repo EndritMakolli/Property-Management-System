@@ -1,41 +1,25 @@
 import { Archive, RotateCcw, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   fetchArchivedReservations,
   permanentDeleteReservation,
   restoreReservation,
 } from '../api/pmsApi'
-import type { ReservationRecord } from '../types/domain'
+import { useAsync } from '../hooks/useAsync'
 import { formatDisplayDate } from '../utils/date'
 
 export function ArchivePage() {
-  const [records, setRecords] = useState<ReservationRecord[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [error, setError] = useState('')
-
-  async function load() {
-    try {
-      setStatus('loading')
-      setError('')
-      const rows = await fetchArchivedReservations()
-      setRecords(rows)
-      setStatus('ready')
-    } catch {
-      setStatus('error')
-      setError('Could not load archive.')
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
+  const { data, status, error: loadError, setData: setRecords } = useAsync(fetchArchivedReservations)
+  const [actionError, setActionError] = useState('')
+  const records = data ?? []
+  const error = loadError || actionError
 
   async function handleRestore(id: string) {
     try {
       await restoreReservation(id)
-      setRecords((prev) => prev.filter((r) => r.id !== id))
+      setRecords((prev) => (prev ?? []).filter((r) => r.id !== id))
     } catch {
-      setError('Could not restore reservation.')
+      setActionError('Could not restore reservation.')
     }
   }
 
@@ -43,9 +27,9 @@ export function ArchivePage() {
     if (!window.confirm('Permanently delete this reservation? This cannot be undone.')) return
     try {
       await permanentDeleteReservation(id)
-      setRecords((prev) => prev.filter((r) => r.id !== id))
+      setRecords((prev) => (prev ?? []).filter((r) => r.id !== id))
     } catch {
-      setError('Could not permanently delete reservation.')
+      setActionError('Could not permanently delete reservation.')
     }
   }
 

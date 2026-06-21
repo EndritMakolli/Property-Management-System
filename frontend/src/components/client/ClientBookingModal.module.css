@@ -1,0 +1,176 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 14, 9, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  position: relative;
+  width: min(440px, 100%);
+  background: var(--c-paper);
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 30px 80px rgba(20, 14, 9, 0.4);
+  animation: popIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: none;
+  border: none;
+  color: var(--c-muted-3);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.close:hover { color: var(--c-ink); }
+
+.eyebrow {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--c-gold);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  margin-bottom: 6px;
+}
+
+.dates { font-size: 0.86rem; color: var(--c-muted-2); margin-bottom: 18px; }
+
+.segments { display: grid; gap: 8px; margin-bottom: 20px; }
+
+.segmentRow {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--c-cream-3);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.segmentIndex {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c-gold);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.segmentInfo strong { display: block; font-size: 0.88rem; color: var(--c-ink); }
+.segmentInfo small { display: block; font-size: 0.76rem; color: var(--c-muted-2); margin-top: 2px; }
+
+.segmentPrice { font-weight: 800; color: var(--c-ink); font-size: 0.95rem; }
+
+.form { display: grid; gap: 14px; }
+
+.label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--c-muted);
+  letter-spacing: 0.03em;
+}
+
+.input {
+  min-height: 44px;
+  border: 1px solid var(--c-border-heavy);
+  border-radius: 10px;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  padding: 0 14px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input::placeholder { color: #b8ab98; }
+.input:focus {
+  outline: none;
+  border-color: var(--c-gold);
+  box-shadow: 0 0 0 3px rgba(176, 137, 78, 0.15);
+}
+
+.totalRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--c-border);
+  margin-top: 2px;
+}
+.totalRow span { font-size: 0.88rem; color: var(--c-muted); }
+.totalRow span small { font-size: 0.72rem; color: var(--c-muted-3); }
+.totalRow strong { font-size: 1.5rem; font-weight: 800; color: var(--c-ink); }
+
+.primaryBtn {
+  min-height: 46px;
+  border: none;
+  border-radius: 10px;
+  background: var(--c-dark);
+  color: var(--c-cream);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.16s, transform 0.16s;
+}
+.primaryBtn:hover { background: var(--c-gold); transform: translateY(-2px); }
+.primaryBtn:active { transform: translateY(0); }
+
+.success {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 16px 6px;
+}
+
+.successIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--c-gold);
+  color: #fff;
+  font-size: 1.7rem;
+  font-weight: 800;
+  box-shadow: 0 0 30px rgba(176, 137, 78, 0.5);
+}
+
+.success h3 { font-size: 1.3rem; font-weight: 700; color: var(--c-ink); margin: 0; font-family: 'Playfair Display', Georgia, serif; }
+.success p { font-size: 0.9rem; color: var(--c-muted); line-height: 1.6; margin: 0; max-width: 320px; }
+.success .primaryBtn { margin-top: 8px; padding: 0 30px; }

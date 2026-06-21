@@ -26,8 +26,8 @@ function useStreakCanvas(canvasRef: RefObject<HTMLCanvasElement>) {
     let H = 0
 
     function resize() {
-      W = canvas.width = window.innerWidth
-      H = canvas.height = window.innerHeight
+      W = canvas!.width = window.innerWidth
+      H = canvas!.height = window.innerHeight
     }
     resize()
     window.addEventListener('resize', resize)
@@ -90,7 +90,7 @@ function useStreakCanvas(canvasRef: RefObject<HTMLCanvasElement>) {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', resize)
     }
-  }, [])
+  }, [canvasRef])
 }
 
 export function LoginPage() {

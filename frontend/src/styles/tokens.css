@@ -1,0 +1,27 @@
+/* Design tokens — single source of truth for the public (client-facing) site
+   palette. The PMS palette lives in styles/theme.css. */
+
+:root {
+  /* Ink & surfaces */
+  --c-ink: #241f1a;          /* primary text */
+  --c-dark: #2b2722;         /* dark buttons / newsletter strip */
+  --c-paper: #fffdf9;        /* card background */
+  --c-cream: #f4ede2;        /* page background */
+  --c-cream-2: #efe6d8;      /* alternate section background */
+  --c-cream-3: #f7f1e7;      /* inset rows */
+
+  /* Accent */
+  --c-gold: #b0894e;
+  --c-gold-light: #c79a55;
+
+  /* Lines */
+  --c-border: #ece4d6;
+  --c-border-strong: #e6dcca;
+  --c-border-heavy: #ddd2c2;
+  --c-divider: #f0e9dd;
+
+  /* Muted text (darkest → lightest) */
+  --c-muted: #6b6157;
+  --c-muted-2: #8a8073;
+  --c-muted-3: #a99a86;
+}

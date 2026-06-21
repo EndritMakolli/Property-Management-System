@@ -5,16 +5,14 @@ from urllib.error import URLError
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
 from django.http.multipartparser import MultiPartParser
-from django.views.decorators.csrf import csrf_exempt
 
-from ..models import Property, Reservation, SyncLog
+from ..models import Property, PropertyReview, Reservation, SyncLog
 from ._ical import escape_ical, fetch_ical_events, import_ical_reservations, reservation_label_for_export
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
 from ._serializers import serialize_property
 from ._utils import decimal_value, json_payload
 
 
-@csrf_exempt
 def property_list(request):
     if request.method == "GET":
         denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
@@ -41,9 +39,15 @@ def property_list(request):
             listing_active_raw = request.POST.get("listingActive", "true")
             listing_active = listing_active_raw not in ("false", "0", "False")
             max_guests_raw = request.POST.get("maxGuests")
+            beds_raw = request.POST.get("beds")
+            bathrooms_raw = request.POST.get("bathrooms")
+            rating_raw = (request.POST.get("rating") or "").strip()
+            review_count_raw = request.POST.get("reviewCount")
             prop = Property(
                 name=name,
                 bedrooms=bedrooms,
+                beds=int(beds_raw) if beds_raw else 1,
+                bathrooms=int(bathrooms_raw) if bathrooms_raw else 1,
                 address=request.POST.get("address") or "",
                 floor=request.POST.get("floor") or "",
                 wifi_name=request.POST.get("wifiName") or "",
@@ -54,6 +58,9 @@ def property_list(request):
                 description=request.POST.get("description") or "",
                 listing_active=listing_active,
                 max_guests=int(max_guests_raw) if max_guests_raw else None,
+                location_label=request.POST.get("locationLabel") or "",
+                rating=decimal_value(rating_raw, "rating") if rating_raw else None,
+                review_count=int(review_count_raw) if review_count_raw else 0,
             )
             if request.FILES.get("photo"):
                 prop.photo = request.FILES["photo"]
@@ -70,7 +77,6 @@ def property_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def property_detail(request, property_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -100,6 +106,18 @@ def property_detail(request, property_id):
                 prop.bedrooms = int(payload.get("bedrooms") or "0")
                 if prop.bedrooms < 0:
                     raise ValidationError({"bedrooms": "Bedrooms cannot be negative."})
+            if "beds" in payload:
+                prop.beds = int(payload.get("beds") or "1")
+            if "bathrooms" in payload:
+                prop.bathrooms = int(payload.get("bathrooms") or "1")
+            if "locationLabel" in payload:
+                prop.location_label = payload.get("locationLabel") or ""
+            if "rating" in payload:
+                rating_val = (str(payload.get("rating")) if payload.get("rating") is not None else "").strip()
+                prop.rating = decimal_value(rating_val, "rating") if rating_val else None
+            if "reviewCount" in payload:
+                rc = payload.get("reviewCount")
+                prop.review_count = int(rc) if rc not in (None, "") else 0
             if "basePriceEur" in payload:
                 prop.base_price_eur = decimal_value(payload.get("basePriceEur"), "basePriceEur")
             if "address" in payload:
@@ -151,7 +169,63 @@ def property_detail(request, property_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
+def _serialize_property_review(review):
+    return {
+        "id": str(review.id),
+        "guestName": review.guest_name,
+        "rating": review.rating,
+        "comment": review.comment,
+        "stayLabel": review.stay_label,
+    }
+
+
+def property_review_list(request, property_id):
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    try:
+        prop = Property.objects.get(pk=property_id)
+    except Property.DoesNotExist:
+        return JsonResponse({"error": "Property not found."}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({"reviews": [_serialize_property_review(r) for r in prop.reviews.all()]})
+
+    if request.method == "POST":
+        payload = json_payload(request)
+        guest_name = (payload.get("guestName") or "").strip()
+        if not guest_name:
+            return JsonResponse({"error": {"guestName": "Enter a guest name."}}, status=400)
+        try:
+            rating = int(payload.get("rating") or 5)
+        except (ValueError, TypeError):
+            rating = 5
+        rating = max(1, min(5, rating))
+        review = PropertyReview.objects.create(
+            property=prop,
+            guest_name=guest_name,
+            rating=rating,
+            comment=payload.get("comment") or "",
+            stay_label=payload.get("stayLabel") or "",
+        )
+        return JsonResponse({"review": _serialize_property_review(review)}, status=201)
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+def property_review_detail(request, property_id, review_id):
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    if request.method != "DELETE":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    PropertyReview.objects.filter(pk=review_id, property_id=property_id).delete()
+    return JsonResponse({}, status=204)
+
+
 def property_sync(request, property_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:

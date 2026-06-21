@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import DoorCode, LockboxCode, Property
 from ._payloads import apply_door_code_payload, apply_lockbox_code_payload
@@ -9,7 +8,6 @@ from ._serializers import serialize_door_code, serialize_lockbox_code
 from ._utils import json_payload
 
 
-@csrf_exempt
 def door_code_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
@@ -27,7 +25,6 @@ def door_code_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def door_code_detail(request, code_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
@@ -53,7 +50,6 @@ def door_code_detail(request, code_id):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def lockbox_code_list(request):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT, ROLE_CLEANING])
     if denied:
@@ -78,7 +74,6 @@ def lockbox_code_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
-@csrf_exempt
 def lockbox_code_detail(request, code_id):
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:

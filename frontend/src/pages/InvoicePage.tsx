@@ -82,6 +82,8 @@ export function InvoicePage() {
       }))
       setTotalOverride(Number(reservation.totalPaid).toFixed(2))
     }
+    // One-time seed from the navigation state; must not re-run while editing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const totalAmount = parseFloat(totalOverride) || 0

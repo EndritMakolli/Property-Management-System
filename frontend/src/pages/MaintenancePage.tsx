@@ -35,7 +35,6 @@ export function MaintenancePage() {
   const [finderStartDate, setFinderStartDate] = useState(() => parseDateValue(toDateInputValue(new Date())))
 
   const {
-    closeModal: closeFinderModal,
     handleCalendarDayClick,
     handleReservationClick,
     selectedDateKey,

@@ -97,3 +97,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'authorization',
+    'content-type',
+    'x-csrftoken',
+]
+
+# Required when the frontend is served from a different origin in production,
+# e.g. CSRF_TRUSTED_ORIGINS=https://app.example.com
+CSRF_TRUSTED_ORIGINS = list(config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv()))
+if DEBUG:
+    # The Vite dev server proxies /api with a rewritten Host header, so the
+    # browser Origin (localhost:5173) must be explicitly trusted in development.
+    CSRF_TRUSTED_ORIGINS += ['http://localhost:5173', 'http://127.0.0.1:5173']
