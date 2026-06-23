@@ -1,113 +1,98 @@
 import { ArrowRight, Check, Pencil, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { fetchProperties, fetchReservations, updateReservation } from '../api/pmsApi'
-import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
-import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
-import { NewReservationModal } from '../features/reservations/NewReservationModal'
-import type { PropertyListing, ReservationRecord } from '../types/domain'
-import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../utils/date'
+import { useNavigate } from 'react-router-dom'
+import { fetchProperties, fetchReservations, updateReservation } from '../../api/pmsApi'
+import { CalendarOverviewTimeline } from '../calendar/CalendarOverviewTimeline'
+import { useCalendarReservationEditor } from '../calendar/useCalendarReservationEditor'
+import { NewReservationModal } from './NewReservationModal'
+import { scoreReservation, overlaps } from './reservationSearch'
+import type { PropertyListing, ReservationRecord } from '../../types/domain'
+import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../../utils/date'
 
-// ─────────────────────────────────────────────────────────
-// Fuzzy search helpers (unchanged)
-// ─────────────────────────────────────────────────────────
-function levenshtein(a: string, b: string): number {
-  if (a.length === 0) return b.length
-  if (b.length === 0) return a.length
-  const matrix: number[][] = []
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i]
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      matrix[i][j] =
-        b[i - 1] === a[j - 1]
-          ? matrix[i - 1][j - 1]
-          : 1 + Math.min(matrix[i - 1][j - 1], matrix[i][j - 1], matrix[i - 1][j])
-    }
-  }
-  return matrix[b.length][a.length]
-}
-
-function tokenize(s: string): string[] {
-  return s.toLowerCase().replace(/[–—]/g, '-').split(/[\s,./]+/).filter((t) => t.length > 0)
-}
-
-const MONTH_MAP: Record<string, string> = {
-  jan: '01', january: '01', feb: '02', february: '02', mar: '03', march: '03',
-  apr: '04', april: '04', may: '05', jun: '06', june: '06', jul: '07', july: '07',
-  aug: '08', august: '08', sep: '09', sept: '09', september: '09',
-  oct: '10', october: '10', nov: '11', november: '11', dec: '12', december: '12',
-}
-
-function normaliseToken(t: string): string { return MONTH_MAP[t] ?? t }
-
-function buildHaystack(r: ReservationRecord): string {
-  return [r.guestName, r.guestPhone, r.apartment, r.reservationType, r.checkIn, r.checkOut, r.notes,
-    String(Math.round(Number(r.totalPaid)))]
-    .filter(Boolean).join(' ').toLowerCase()
-}
-
-function scoreReservation(query: string, r: ReservationRecord): number {
-  const tokens = tokenize(query).map(normaliseToken)
-  if (tokens.length === 0) return 0
-  const haystack = buildHaystack(r)
-  const words = haystack.split(/\s+/)
-  let score = 0
-  for (const token of tokens) {
-    if (haystack.includes(token)) { score += 3 } else {
-      let best = Infinity
-      for (const word of words) {
-        if (word.length < 2) continue
-        if (token.length >= 3) best = Math.min(best, levenshtein(token, word))
-      }
-      if (best <= 1) score += 2
-      else if (best <= 2) score += 1
-    }
-  }
-  return score
-}
-
-// ─────────────────────────────────────────────────────────
-// Change-apartment helpers
-// ─────────────────────────────────────────────────────────
 type FreeUpOption = {
   targetProperty: PropertyListing
   blockingReservation: ReservationRecord
   alternativeProperty: PropertyListing
 }
 
-function overlaps(r: ReservationRecord, ci: string, co: string) {
-  return r.checkIn < co && r.checkOut > ci
+// ── Two-level sort ──
+type SortKey = 'apartment' | 'checkIn' | 'checkOut' | 'guest' | 'total'
+type SortDir = 'asc' | 'desc'
+type ListSort = { primaryKey: SortKey; primaryDir: SortDir; secondaryKey: SortKey; secondaryDir: SortDir }
+
+const LIST_SORT_KEY = 'pms.reservations.listSort'
+const defaultListSort: ListSort = {
+  primaryKey: 'apartment',
+  primaryDir: 'asc',
+  secondaryKey: 'checkIn',
+  secondaryDir: 'asc',
 }
 
-// ─────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────
-export function SearchReservationsPage() {
-  const location = useLocation()
-  const navigate = useNavigate()
+const sortKeyOptions: { value: SortKey; label: string }[] = [
+  { value: 'apartment', label: 'Apartment' },
+  { value: 'checkIn', label: 'Check-in' },
+  { value: 'checkOut', label: 'Check-out' },
+  { value: 'guest', label: 'Guest' },
+  { value: 'total', label: 'Total paid' },
+]
 
-  // Incoming state from ReservationsTable "Change apt." button
-  const incomingReservation =
-    (location.state as { reservation?: ReservationRecord } | null)?.reservation ?? null
+function sortValue(r: ReservationRecord, key: SortKey): string | number {
+  switch (key) {
+    case 'apartment': return r.apartment
+    case 'checkIn': return r.checkIn
+    case 'checkOut': return r.checkOut
+    case 'guest': return r.guestName || r.guestPhone || ''
+    case 'total': return Number(r.totalPaid)
+  }
+}
+
+function compareBy(a: ReservationRecord, b: ReservationRecord, key: SortKey, dir: SortDir) {
+  const mul = dir === 'asc' ? 1 : -1
+  const av = sortValue(a, key)
+  const bv = sortValue(b, key)
+  if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * mul
+  return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' }) * mul
+}
+
+function toMonthValue(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function readStoredSort(): ListSort {
+  const stored = window.localStorage.getItem(LIST_SORT_KEY)
+  if (!stored) return defaultListSort
+  try {
+    return { ...defaultListSort, ...JSON.parse(stored) } as ListSort
+  } catch {
+    return defaultListSort
+  }
+}
+
+type ReservationListViewProps = {
+  initialChanging?: ReservationRecord | null
+}
+
+export function ReservationListView({ initialChanging }: ReservationListViewProps) {
+  const navigate = useNavigate()
 
   const [allReservations, setAllReservations] = useState<ReservationRecord[]>([])
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [query, setQuery] = useState('')
   const [apartmentFilter, setApartmentFilter] = useState('')
-  const [monthFilter, setMonthFilter] = useState('')
+  const [monthFilter, setMonthFilter] = useState(() => toMonthValue(new Date()))
+  const [sort, setSort] = useState<ListSort>(readStoredSort)
   const [editing, setEditing] = useState<ReservationRecord | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const inputRef = useRef<HTMLInputElement>(null)
   const changePanelRef = useRef<HTMLDivElement>(null)
 
   // ── Change-apartment inline panel ──
-  const [changing, setChanging] = useState<ReservationRecord | null>(incomingReservation)
+  const [changing, setChanging] = useState<ReservationRecord | null>(initialChanging ?? null)
   const [saving, setSaving] = useState<string | null>(null)
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const [timelineStart, setTimelineStart] = useState(() =>
-    parseDateValue(incomingReservation?.checkIn ?? toDateInputValue(new Date())),
+    parseDateValue(initialChanging?.checkIn ?? toDateInputValue(new Date())),
   )
 
   const {
@@ -141,26 +126,33 @@ export function SearchReservationsPage() {
     }
   }
 
+  useEffect(() => { window.localStorage.setItem(LIST_SORT_KEY, JSON.stringify(sort)) }, [sort])
   useEffect(() => { inputRef.current?.focus() }, [status])
 
-  // Scroll change panel into view when it opens
+  // Open the change panel when the parent hands us a reservation (Table view "Change apt.")
+  useEffect(() => {
+    if (initialChanging) {
+      setChanging(initialChanging)
+      setSaved(false)
+      setSaveError('')
+    }
+  }, [initialChanging])
+
   useEffect(() => {
     if (changing && changePanelRef.current) {
       setTimeout(() => changePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     }
   }, [changing])
 
-  // Sync timeline when reservation changes
   useEffect(() => {
     if (changing) setTimelineStart(parseDateValue(changing.checkIn))
   }, [changing])
 
-  // ── Search results (text query + apartment/month filters) ──
+  // ── Results ──
   const results = useMemo(() => {
     let pool = allReservations
     if (apartmentFilter) pool = pool.filter((r) => r.propertyId === apartmentFilter)
     if (monthFilter) {
-      // Keep reservations whose stay overlaps the selected month.
       pool = pool.filter(
         (r) => r.checkIn.slice(0, 7) <= monthFilter && r.checkOut.slice(0, 7) >= monthFilter,
       )
@@ -172,16 +164,18 @@ export function SearchReservationsPage() {
         .map((r) => ({ r, score: scoreReservation(q, r) }))
         .filter(({ score }) => score > 0)
         .sort((a, b) => b.score - a.score || a.r.checkIn.localeCompare(b.r.checkIn))
-        .slice(0, 100)
+        .slice(0, 200)
         .map(({ r }) => r)
     }
 
-    // No text query: only show results once a filter narrows things down.
-    if (!apartmentFilter && !monthFilter) return []
-    return [...pool].sort((a, b) => a.checkIn.localeCompare(b.checkIn)).slice(0, 100)
-  }, [query, apartmentFilter, monthFilter, allReservations])
-
-  const hasCriteria = query.trim().length >= 2 || !!apartmentFilter || !!monthFilter
+    return [...pool]
+      .sort(
+        (a, b) =>
+          compareBy(a, b, sort.primaryKey, sort.primaryDir) ||
+          compareBy(a, b, sort.secondaryKey, sort.secondaryDir),
+      )
+      .slice(0, 300)
+  }, [query, apartmentFilter, monthFilter, allReservations, sort])
 
   const propMap = useMemo(() => {
     const m = new Map<string, PropertyListing>()
@@ -189,7 +183,7 @@ export function SearchReservationsPage() {
     return m
   }, [properties])
 
-  const isEmpty = hasCriteria && results.length === 0 && status === 'ready'
+  const isEmpty = results.length === 0 && status === 'ready'
 
   // ── Change-apartment availability logic ──
   const changeCheckIn = changing?.checkIn ?? ''
@@ -238,7 +232,6 @@ export function SearchReservationsPage() {
     return properties
   }, [changing, availableProperties, freeUpOptions, properties])
 
-  // ── Change actions ──
   async function doChange(newPropertyId: string) {
     if (!changing) return
     setSaving(newPropertyId)
@@ -251,9 +244,7 @@ export function SearchReservationsPage() {
         checkIn: changing.checkIn, checkOut: changing.checkOut, nightlyPrice: changing.nightlyPrice,
       })
       setSaved(true)
-      // Refresh reservation list
-      const rows = await fetchReservations()
-      setAllReservations(rows)
+      setAllReservations(await fetchReservations())
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Could not update reservation.')
     } finally { setSaving(null) }
@@ -279,17 +270,10 @@ export function SearchReservationsPage() {
         checkIn: changing.checkIn, checkOut: changing.checkOut, nightlyPrice: changing.nightlyPrice,
       })
       setSaved(true)
-      const rows = await fetchReservations()
-      setAllReservations(rows)
+      setAllReservations(await fetchReservations())
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Could not complete swap.')
     } finally { setSaving(null) }
-  }
-
-  function openChange(r: ReservationRecord) {
-    setSaved(false)
-    setSaveError('')
-    setChanging(r)
   }
 
   function closeChange() {
@@ -307,15 +291,12 @@ export function SearchReservationsPage() {
     })
   }
 
+  function updateSort(patch: Partial<ListSort>) {
+    setSort((current) => ({ ...current, ...patch }))
+  }
+
   return (
     <div className="search-res-page">
-      <div className="search-res-header">
-        <div>
-          <p className="eyebrow">Smart search</p>
-          <h2>Find a reservation</h2>
-        </div>
-      </div>
-
       {/* ── Search input ── */}
       <div className="search-res-input-wrap">
         <Search size={18} className="search-res-icon" />
@@ -335,7 +316,7 @@ export function SearchReservationsPage() {
         )}
       </div>
 
-      {/* ── Filters ── */}
+      {/* ── Filters + sort ── */}
       <div className="search-res-filters">
         <select
           aria-label="Filter by apartment"
@@ -355,37 +336,69 @@ export function SearchReservationsPage() {
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
         />
-        {(apartmentFilter || monthFilter) && (
+        {monthFilter && (
           <button
             className="search-res-filter-clear"
             type="button"
-            onClick={() => { setApartmentFilter(''); setMonthFilter('') }}
+            onClick={() => setMonthFilter('')}
           >
-            <X size={14} /> Clear filters
+            <X size={14} /> All months
           </button>
         )}
+
+        <div className="search-res-sort">
+          <span className="search-res-sort-label">Sort</span>
+          <select
+            aria-label="Sort by"
+            className="search-res-filter"
+            value={sort.primaryKey}
+            onChange={(e) => updateSort({ primaryKey: e.target.value as SortKey })}
+          >
+            {sortKeyOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select
+            aria-label="Sort direction"
+            className="search-res-filter"
+            value={sort.primaryDir}
+            onChange={(e) => updateSort({ primaryDir: e.target.value as SortDir })}
+          >
+            <option value="asc">↑ Asc</option>
+            <option value="desc">↓ Desc</option>
+          </select>
+          <span className="search-res-sort-label">then</span>
+          <select
+            aria-label="Secondary sort by"
+            className="search-res-filter"
+            value={sort.secondaryKey}
+            onChange={(e) => updateSort({ secondaryKey: e.target.value as SortKey })}
+          >
+            {sortKeyOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select
+            aria-label="Secondary sort direction"
+            className="search-res-filter"
+            value={sort.secondaryDir}
+            onChange={(e) => updateSort({ secondaryDir: e.target.value as SortDir })}
+          >
+            <option value="asc">↑ Asc</option>
+            <option value="desc">↓ Desc</option>
+          </select>
+        </div>
       </div>
 
       {status === 'loading' && <p className="listings-message">Loading reservations…</p>}
       {status === 'error' && <p className="form-error">Could not load reservations.</p>}
-
-      {status === 'ready' && !hasCriteria && !changing && (
-        <p className="search-res-hint">
-          Type at least 2 characters, or filter by apartment or month, to find a reservation.
-          Typos are OK — we'll find the closest match.
-        </p>
-      )}
       {isEmpty && (
         <p className="search-res-hint">
           No reservations match{query.trim() ? <> <strong>"{query}"</strong></> : ' those filters'}.
-          Try a different name, phone, date, apartment, or month.
+          Try a different name, date, apartment, or month.
         </p>
       )}
 
       {/* ── Results ── */}
       {results.length > 0 && (
         <>
-          <p className="search-res-count">{results.length} result{results.length !== 1 ? 's' : ''}</p>
+          <p className="search-res-count">{results.length} reservation{results.length !== 1 ? 's' : ''}</p>
           <div className="search-res-card-list">
             {results.map((r) => {
               const prop = propMap.get(r.propertyId)
@@ -431,11 +444,7 @@ export function SearchReservationsPage() {
                   </div>
 
                   <div className="search-res-card-actions">
-                    <button
-                      className="search-res-action-btn"
-                      type="button"
-                      onClick={() => setEditing(r)}
-                    >
+                    <button className="search-res-action-btn" type="button" onClick={() => setEditing(r)}>
                       <Pencil size={13} /> Edit
                     </button>
                     <button
@@ -449,7 +458,7 @@ export function SearchReservationsPage() {
                       <button
                         className={`search-res-action-btn${isChanging ? ' active' : ''}`}
                         type="button"
-                        onClick={() => isChanging ? closeChange() : openChange(r)}
+                        onClick={() => isChanging ? closeChange() : setChanging(r)}
                       >
                         {isChanging ? 'Cancel' : 'Change apt.'}
                       </button>
@@ -465,7 +474,6 @@ export function SearchReservationsPage() {
       {/* ── Inline change panel ── */}
       {changing && (
         <div ref={changePanelRef} className="search-res-change-panel">
-          {/* Panel header */}
           <div className="search-res-change-header">
             <div className="search-res-change-who">
               <p className="eyebrow">Smart Change</p>
@@ -493,7 +501,6 @@ export function SearchReservationsPage() {
             </div>
           ) : (
             <>
-              {/* Summary */}
               <div className="availability-summary">
                 <strong>{availableProperties.length}</strong>
                 <span>
@@ -501,7 +508,6 @@ export function SearchReservationsPage() {
                 </span>
               </div>
 
-              {/* Direct options */}
               {availableProperties.length > 0 && (
                 <div className="availability-results">
                   {availableProperties.map((prop) => (
@@ -525,7 +531,6 @@ export function SearchReservationsPage() {
                 </div>
               )}
 
-              {/* Swap recommendations */}
               {availableProperties.length === 0 && freeUpOptions.length > 0 && (
                 <section className="availability-recommendations">
                   <div>
@@ -572,7 +577,6 @@ export function SearchReservationsPage() {
                 <p className="listings-message">No free apartments or swappable options for these dates.</p>
               )}
 
-              {/* Calendar */}
               <CalendarOverviewTimeline
                 emptyMessage="No apartments to display."
                 onDayClick={handleCalendarDayClick}

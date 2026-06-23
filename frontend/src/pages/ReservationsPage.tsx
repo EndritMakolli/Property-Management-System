@@ -17,8 +17,21 @@ import {
   type ReservationSort,
   type ReservationSortKey,
 } from '../features/reservations/ReservationsTable'
-import type { EditableReservation, PropertyListing } from '../types/domain'
+import { ReservationListView } from '../features/reservations/ReservationListView'
+import { scoreReservation } from '../features/reservations/reservationSearch'
+import { ArchivePage } from './ArchivePage'
+import { NeedsAttentionPage } from './NeedsAttentionPage'
+import type { EditableReservation, PropertyListing, ReservationRecord } from '../types/domain'
 import { calculateNights, toDateInputValue } from '../utils/date'
+
+type ReservationsView = 'table' | 'list' | 'archive' | 'needs-attention'
+const reservationViews: ReservationsView[] = ['table', 'list', 'archive', 'needs-attention']
+const reservationViewLabels: Record<ReservationsView, string> = {
+  table: 'Table',
+  list: 'List',
+  archive: 'Archive',
+  'needs-attention': 'Needs Attention',
+}
 
 const reservationSortStorageKey = 'pms.reservations.sort'
 const defaultSort: ReservationSort = { key: 'checkIn', direction: 'asc' }
@@ -26,6 +39,11 @@ const numericSortKeys: ReservationSortKey[] = ['totalNights', 'nightlyPrice', 't
 
 export function ReservationsPage() {
   const navigate = useNavigate()
+  const [view, setView] = useState<ReservationsView>(() => {
+    const stored = window.localStorage.getItem('pms.reservations.view') as ReservationsView | null
+    return stored && reservationViews.includes(stored) ? stored : 'table'
+  })
+  const [pendingChange, setPendingChange] = useState<ReservationRecord | null>(null)
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [reservations, setReservations] = useState<EditableReservation[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -154,13 +172,11 @@ export function ReservationsPage() {
     }
     const query = searchQuery.trim()
     if (!query) return result
-    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean)
-    return result.filter((r) => {
-      const haystack = [r.guestName, r.guestPhone, r.apartment, r.reservationType, r.checkIn, r.checkOut, r.notes]
-        .join(' ')
-        .toLowerCase()
-      return tokens.every((token) => haystack.includes(token))
-    })
+    return result
+      .map((r) => ({ r, score: scoreReservation(query, r) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ r }) => r)
   }, [sortedReservations, searchQuery, selectedPlatform])
 
   function exportToCSV() {
@@ -398,16 +414,51 @@ export function ReservationsPage() {
     navigate('/invoice', { state: { reservation } })
   }
 
+  function changeView(next: ReservationsView) {
+    setView(next)
+    window.localStorage.setItem('pms.reservations.view', next)
+  }
+
   function openChangeApartment(reservation: EditableReservation) {
-    navigate('/search-reservations', { state: { reservation } })
+    setPendingChange(reservation)
+    changeView('list')
   }
 
   const monthLabel = monthOptions.find((m) => m.value === selectedMonth)?.label || selectedMonth
 
   return (
-    <section className="panel reservations-table-panel page-panel">
-      <PanelHeader icon={CalendarDays} title="Reservations" action="Add row" onAction={addReservation} />
+    <div className="reservations-page">
+      <div className="reservations-view-toggle">
+        <div className="toggle-group">
+          {reservationViews.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={view === v ? 'active' : ''}
+              onClick={() => changeView(v)}
+            >
+              {reservationViewLabels[v]}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {view === 'archive' && <ArchivePage />}
+      {view === 'needs-attention' && <NeedsAttentionPage />}
+
+      {(view === 'table' || view === 'list') && (
+        <section className="panel reservations-table-panel page-panel">
+          <PanelHeader
+            icon={CalendarDays}
+            title="Reservations"
+            action={view === 'table' ? 'Add row' : undefined}
+            onAction={addReservation}
+          />
+
+          {view === 'list' && <ReservationListView initialChanging={pendingChange} />}
+
+          {view === 'table' && (
+            <>
       <div className="reservation-filters">
         <label>
           Year
@@ -540,7 +591,11 @@ export function ReservationsPage() {
       <div className="reservations-print-header" aria-hidden="true">
         <strong>Reservations — {monthLabel} {selectedYear}</strong>
       </div>
-    </section>
+            </>
+          )}
+        </section>
+      )}
+    </div>
   )
 }
 

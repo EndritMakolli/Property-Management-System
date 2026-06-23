@@ -103,10 +103,9 @@ export function FinancePage() {
     .filter((e) => excludedCategorySet.has(e.categoryId) && (!e.platform || e.platform === platform.id))
     .reduce((sum, e) => sum + dec(e.amountEur), 0)
   const expensesTotal = dec(platformSummary.expensesEur) - excludedAmount
-  const profit = turnover - expensesTotal
-  const profitAfterLoans = profit - loanPayments
   const taxesTotal = dec(currentTax?.tvsh ?? '0') + dec(currentTax?.tatimNeFitim ?? '0')
-  const netProfit = profitAfterLoans - taxesTotal
+  const netProfit = turnover - expensesTotal - taxesTotal
+  const netProfitAfterLoans = netProfit - loanPayments
 
   return (
     <section className="finance-page">
@@ -149,12 +148,11 @@ export function FinancePage() {
       <section className="metric-row finance-metrics">
         <Metric label="Turnover" value={`EUR ${money(turnover.toFixed(2))}`} />
         <Metric label="Expenses" value={`EUR ${money(expensesTotal.toFixed(2))}`} />
-        <Metric label="Profit" value={`EUR ${money(profit.toFixed(2))}`} />
-        <Metric label="Loans" value={`EUR ${money(summary.loanPaymentsEur)}`} />
-        <Metric label="Profit – Loans" value={`EUR ${money(profitAfterLoans.toFixed(2))}`} />
         <Metric label={`Taxes (${monthLabel})`} value={`EUR ${money(taxesTotal.toFixed(2))}`} />
         <Metric label="Net Profit" value={`EUR ${money(netProfit.toFixed(2))}`} />
+        <Metric label="Net Profit – Loans" value={`EUR ${money(netProfitAfterLoans.toFixed(2))}`} />
         <Metric label="Total Debt" value={`EUR ${money(summary.totalDebtEur)}`} />
+        <Metric label="Loans" value={`EUR ${money(summary.loanPaymentsEur)}`} />
       </section>
 
       {(categories.length > 0 || taxes.length > 0) && (

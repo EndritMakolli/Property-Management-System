@@ -134,6 +134,45 @@ export function buildPropertyYearStats(
   })
 }
 
+// Summarise a set of properties by bedroom type, e.g. "3 × 1-bedroom · 4 × 2-bedroom".
+export function bedroomComposition(properties: { bedrooms: number }[]): string {
+  if (properties.length === 0) return ''
+  const counts = new Map<number, number>()
+  for (const property of properties) {
+    counts.set(property.bedrooms, (counts.get(property.bedrooms) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([beds, count]) => `${count} × ${beds === 0 ? 'studio' : `${beds}-bedroom`}`)
+    .join(' · ')
+}
+
+// Combine a set of per-property stats into one aggregate stat for group compare.
+export function aggregateGroupStats(
+  stats: PropertyReportStat[],
+  name: string,
+): PropertyReportStat | null {
+  if (stats.length === 0) return null
+  const turnover = stats.reduce((sum, s) => sum + s.turnover, 0)
+  const bookedNights = stats.reduce((sum, s) => sum + s.bookedNights, 0)
+  const freeNights = stats.reduce((sum, s) => sum + s.freeNights, 0)
+  const reservations = stats.reduce((sum, s) => sum + s.reservations, 0)
+  const capacity = bookedNights + freeNights
+
+  return {
+    averageNightlyPrice: bookedNights > 0 ? turnover / bookedNights : 0,
+    basePriceEur: 0,
+    bedrooms: 0,
+    bookedNights,
+    freeNights,
+    id: 'group',
+    name,
+    occupancy: capacity > 0 ? Math.round((bookedNights / capacity) * 100) : 0,
+    reservations,
+    turnover,
+  }
+}
+
 export function sortPropertyStats(
   stats: PropertyReportStat[],
   sort: PropertyReportSort,

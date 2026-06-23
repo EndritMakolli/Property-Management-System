@@ -599,3 +599,222 @@
   color: var(--text-secondary);
   font-size: 0.78rem;
 }
+
+/* ── Month availability grid (Pulse-style) ── */
+.month-grid-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.month-grid-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.month-grid-toolbar h2 {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+}
+
+.month-grid-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.month-grid-controls select,
+.month-grid-controls input {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  padding: 0 10px;
+}
+
+.month-grid-controls input {
+  width: min(200px, 100%);
+}
+
+.month-grid-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.month-grid-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.month-grid-legend .legend-free {
+  background: rgba(28, 88, 110, 0.85);
+}
+
+.month-grid-legend .legend-booked {
+  background-color: rgba(233, 45, 40, 0.82);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(140, 18, 14, 0.6) 0,
+    rgba(140, 18, 14, 0.6) 1.5px,
+    transparent 1.5px,
+    transparent 4.5px
+  );
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.month-grid-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.month-grid-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.month-grid-card-name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-grid-card-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.month-grid-card-head span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mini-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.mini-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  column-gap: 0;
+  row-gap: 5px;
+}
+
+.mini-cal-day {
+  aspect-ratio: 1 / 1;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+/* Sharp but translucent free/booked runs (like the Pulse availability screen) */
+.mini-cal-day.free {
+  background: rgba(28, 88, 110, 0.85);
+  color: #ffffff;
+}
+
+.mini-cal-day.booked {
+  color: #ffffff;
+  background-color: rgba(233, 45, 40, 0.82);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(140, 18, 14, 0.6) 0,
+    rgba(140, 18, 14, 0.6) 3px,
+    transparent 3px,
+    transparent 9px
+  );
+}
+
+/* Round only the ends of a same-colour run so consecutive days read as one bar */
+.mini-cal-day.run-start {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.mini-cal-day.run-end {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+/* Small separation when a run follows a different-coloured run */
+.mini-cal-day.gap-before {
+  margin-left: 3px;
+}
+
+.mini-cal-day.muted {
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Past days are kept neutral (black & white) — only today onward shows
+   free/booked colours, matching the Pulse availability screen. */
+.mini-cal-day.past {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.mini-cal-day.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-radius: 999px;
+}
+
+.mini-cal-day.free:hover,
+.mini-cal-day.booked:hover {
+  filter: brightness(0.94);
+}
+
+.calendar-page {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-view-toggle {
+  display: flex;
+  justify-content: flex-end;
+}

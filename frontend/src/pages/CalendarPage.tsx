@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchProperties, fetchReservations } from '../api/pmsApi'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
+import { MonthAvailabilityGrid } from '../features/calendar/MonthAvailabilityGrid'
 import { PropertyMonthCalendar } from '../features/calendar/PropertyMonthCalendar'
 import { filterCalendarProperties, sortCalendarProperties, type CalendarSortBy } from '../features/calendar/calendarFilters'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
@@ -17,6 +18,9 @@ export function CalendarPage() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
   const [timelineStartDate, setTimelineStartDate] = useState(() => new Date(today))
   const [calendarView, setCalendarView] = useState<'overview' | 'property'>('overview')
+  const [pageView, setPageView] = useState<'calendar' | 'grid'>(() =>
+    window.localStorage.getItem('pms.calendar.pageView') === 'grid' ? 'grid' : 'calendar',
+  )
   const [calendarSearch, setCalendarSearch] = useState('')
   const [bedroomFilter, setBedroomFilter] = useState('any')
   const [calendarSort, setCalendarSort] = useState<CalendarSortBy>('number')
@@ -141,6 +145,17 @@ export function CalendarPage() {
     setCalendarView('property')
   }
 
+  function changePageView(next: 'calendar' | 'grid') {
+    setPageView(next)
+    window.localStorage.setItem('pms.calendar.pageView', next)
+  }
+
+  function openPropertyCalendar(propertyId: string) {
+    setSelectedPropertyId(propertyId)
+    setCalendarView('property')
+    changePageView('calendar')
+  }
+
   function moveTimeline(days: number) {
     if (days === 0) {
       setTimelineStartDate(new Date())
@@ -168,9 +183,46 @@ export function CalendarPage() {
     }
   }
 
-  if (calendarView === 'overview') {
-    return (
-      <>
+  return (
+    <div className="calendar-page">
+      <div className="calendar-view-toggle">
+        <div className="toggle-group">
+          <button
+            type="button"
+            className={pageView === 'calendar' ? 'active' : ''}
+            onClick={() => changePageView('calendar')}
+          >
+            Calendar
+          </button>
+          <button
+            type="button"
+            className={pageView === 'grid' ? 'active' : ''}
+            onClick={() => changePageView('grid')}
+          >
+            Grid
+          </button>
+        </div>
+      </div>
+
+      {pageView === 'grid' ? (
+        <MonthAvailabilityGrid
+          properties={filteredProperties}
+          reservations={overviewReservations}
+          month={selectedMonth}
+          year={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+          onSelectProperty={openPropertyCalendar}
+          searchValue={calendarSearch}
+          onSearchChange={setCalendarSearch}
+          bedroomFilter={bedroomFilter}
+          bedroomOptions={bedroomOptions}
+          onBedroomFilterChange={setBedroomFilter}
+          sortBy={calendarSort}
+          onSortChange={setCalendarSort}
+          status={propertyStatus === 'error' ? 'error' : overviewStatus}
+        />
+      ) : calendarView === 'overview' ? (
         <CalendarOverviewTimeline
           onDayClick={handleCalendarDayClick}
           onJumpToDate={setTimelineStartDate}
@@ -191,36 +243,25 @@ export function CalendarPage() {
           startDate={timelineStartDate}
           status={propertyStatus === 'error' ? 'error' : overviewStatus}
         />
-        {modalState && (
-          <NewReservationModal
-            initialValues={modalState.initialValues}
-            mode={modalState.mode}
-            onClose={closeModal}
-            onSaved={reloadCalendarData}
-            open
-            reservation={modalState.reservation}
+      ) : (
+        <section className="calendar-page-shell">
+          <PropertyMonthCalendar
+            month={selectedMonth}
+            onBackToOverview={() => setCalendarView('overview')}
+            onDayClick={handleCalendarDayClick}
+            onMonthChange={setSelectedMonth}
+            onReservationClick={handleReservationClick}
+            onYearChange={setSelectedYear}
+            property={selectedProperty}
+            reservations={reservations}
+            selectedDateKey={selectedDateKey}
+            selectedPropertyId={selectedRangePropertyId}
+            status={propertyStatus === 'error' ? 'error' : reservationStatus}
+            year={selectedYear}
           />
-        )}
-      </>
-    )
-  }
+        </section>
+      )}
 
-  return (
-    <section className="calendar-page-shell">
-      <PropertyMonthCalendar
-        month={selectedMonth}
-        onBackToOverview={() => setCalendarView('overview')}
-        onDayClick={handleCalendarDayClick}
-        onMonthChange={setSelectedMonth}
-        onReservationClick={handleReservationClick}
-        onYearChange={setSelectedYear}
-        property={selectedProperty}
-        reservations={reservations}
-        selectedDateKey={selectedDateKey}
-        selectedPropertyId={selectedRangePropertyId}
-        status={propertyStatus === 'error' ? 'error' : reservationStatus}
-        year={selectedYear}
-      />
       {modalState && (
         <NewReservationModal
           initialValues={modalState.initialValues}
@@ -231,6 +272,6 @@ export function CalendarPage() {
           reservation={modalState.reservation}
         />
       )}
-    </section>
+    </div>
   )
 }

@@ -13,9 +13,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default:
 const InvoicePage = lazy(() => import('./pages/InvoicePage').then((m) => ({ default: m.InvoicePage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const AvailabilityPage = lazy(() => import('./pages/AvailabilityPage').then((m) => ({ default: m.AvailabilityPage })))
-const SearchReservationsPage = lazy(() => import('./pages/SearchReservationsPage').then((m) => ({ default: m.SearchReservationsPage })))
 const ReservationsPage = lazy(() => import('./pages/ReservationsPage').then((m) => ({ default: m.ReservationsPage })))
-const ArchivePage = lazy(() => import('./pages/ArchivePage').then((m) => ({ default: m.ArchivePage })))
 const CalendarPage = lazy(() => import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage').then((m) => ({ default: m.PropertiesPage })))
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })))
@@ -25,11 +23,9 @@ const AdminPanelPage = lazy(() => import('./pages/AdminPanelPage').then((m) => (
 const FinancePage = lazy(() => import('./pages/FinancePage').then((m) => ({ default: m.FinancePage })))
 const ReceiptsPage = lazy(() => import('./pages/ReceiptsPage').then((m) => ({ default: m.ReceiptsPage })))
 const MaintenancePage = lazy(() => import('./pages/MaintenancePage').then((m) => ({ default: m.MaintenancePage })))
-const NeedsAttentionPage = lazy(() => import('./pages/NeedsAttentionPage').then((m) => ({ default: m.NeedsAttentionPage })))
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })))
 const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').then((m) => ({ default: m.BookingRequestsPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
-const BookingSettingsPage = lazy(() => import('./pages/BookingSettingsPage').then((m) => ({ default: m.BookingSettingsPage })))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })))
 
 function App() {
@@ -49,9 +45,7 @@ function App() {
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/availability" element={<AvailabilityPage />} />
-                <Route path="/search-reservations" element={<SearchReservationsPage />} />
                 <Route path="/reservations" element={<ReservationsPage />} />
-                <Route path="/archive" element={<ArchivePage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/properties" element={<PropertiesPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
@@ -61,11 +55,9 @@ function App() {
                 <Route path="/finance" element={<FinancePage />} />
                 <Route path="/receipts" element={<ReceiptsPage />} />
                 <Route path="/maintenance" element={<MaintenancePage />} />
-                <Route path="/needs-attention" element={<NeedsAttentionPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/booking-requests" element={<BookingRequestsPage />} />
                 <Route path="/pricing-rules" element={<PricingRulesPage />} />
-                <Route path="/booking-settings" element={<BookingSettingsPage />} />
                 <Route path="*" element={<PlaceholderPage />} />
               </Route>
             </Route>

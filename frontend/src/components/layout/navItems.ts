@@ -1,6 +1,4 @@
 import {
-  AlertTriangle,
-  Archive,
   BarChart3,
   FileText,
   Building2,
@@ -13,8 +11,6 @@ import {
   Receipt,
   RefreshCw,
   Search,
-  SearchCheck,
-  Settings,
   ShieldCheck,
   Tag,
   Wrench,
@@ -26,12 +22,9 @@ type NavRole = Exclude<UserRole, ''>
 
 export const navItems: { label: string; path: string; icon: typeof Search; roles: NavRole[]; platforms?: PlatformId[] }[] = [
   { label: 'Search', path: '/availability', icon: Search, roles: ['admin', 'management'] },
-  { label: 'Search Reservations', path: '/search-reservations', icon: SearchCheck, roles: ['admin', 'management'] },
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'management', 'cleaning'] },
   { label: 'Calendar', path: '/calendar', icon: CalendarRange, roles: ['admin', 'management'] },
   { label: 'Reservations', path: '/reservations', icon: CalendarDays, roles: ['admin', 'management'] },
-  { label: 'Archive', path: '/archive', icon: Archive, roles: ['admin', 'management'] },
-  { label: 'Needs Attention', path: '/needs-attention', icon: AlertTriangle, roles: ['admin', 'management'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'management'] },
   { label: 'Codes', path: '/codes', icon: KeyRound, roles: ['admin', 'management', 'cleaning'], platforms: ['airstay'] },
   { label: 'To Fix', path: '/maintenance', icon: Wrench, roles: ['admin', 'management', 'cleaning'] },
@@ -42,7 +35,6 @@ export const navItems: { label: string; path: string; icon: typeof Search; roles
   { label: 'Synchronizations', path: '/synchronizations', icon: RefreshCw, roles: ['admin', 'management'] },
   { label: 'Booking Requests', path: '/booking-requests', icon: Globe, roles: ['admin', 'management'] },
   { label: 'Pricing Rules', path: '/pricing-rules', icon: Tag, roles: ['admin', 'management'] },
-  { label: 'Booking Settings', path: '/booking-settings', icon: Settings, roles: ['admin', 'management'] },
   { label: 'Admin Panel', path: '/admin-panel', icon: ShieldCheck, roles: ['admin'] },
 ]
 

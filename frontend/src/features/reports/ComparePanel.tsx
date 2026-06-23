@@ -4,6 +4,8 @@ type ComparePanelProps = {
   primary: PropertyReportStat
   secondary: PropertyReportStat
   periodLabel: string
+  primarySub?: string
+  secondarySub?: string
 }
 
 type MetricRow = {
@@ -19,7 +21,7 @@ function winnerOf(a: number, b: number): 'primary' | 'secondary' | 'tie' {
   return 'tie'
 }
 
-export function ComparePanel({ primary, secondary, periodLabel }: ComparePanelProps) {
+export function ComparePanel({ primary, secondary, periodLabel, primarySub, secondarySub }: ComparePanelProps) {
   const metrics: MetricRow[] = [
     {
       label: 'Turnover',
@@ -57,9 +59,15 @@ export function ComparePanel({ primary, secondary, periodLabel }: ComparePanelPr
     <section className="panel compare-panel">
       <h3 className="stats-section-title">Comparison — {periodLabel}</h3>
       <div className="compare-names-row">
-        <span className="compare-name primary-name">{primary.name}</span>
+        <div className="compare-name-cell">
+          <span className="compare-name primary-name">{primary.name}</span>
+          {primarySub && <span className="compare-name-sub">{primarySub}</span>}
+        </div>
         <span className="compare-vs">vs</span>
-        <span className="compare-name secondary-name">{secondary.name}</span>
+        <div className="compare-name-cell">
+          <span className="compare-name secondary-name">{secondary.name}</span>
+          {secondarySub && <span className="compare-name-sub">{secondarySub}</span>}
+        </div>
       </div>
       <div className="compare-metrics-grid">
         {metrics.map((m) => (

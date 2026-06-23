@@ -318,6 +318,38 @@
   color: var(--bg-panel);
 }
 
+/* ── Compare group pickers ── */
+.compare-groups-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.compare-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.compare-group {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.compare-group h4 {
+  margin: 0;
+}
+
+.compare-group-composition {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* ── Compare panel ── */
 .compare-panel {
   padding: 18px;
@@ -331,6 +363,19 @@
   align-items: center;
   gap: 12px;
   text-align: center;
+}
+
+.compare-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.compare-name-sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .compare-name {

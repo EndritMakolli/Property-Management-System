@@ -1,5 +1,5 @@
 import { BarChart3, Printer } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchProperties, fetchReservations } from '../api/pmsApi'
 import { Metric } from '../components/shared/Metric'
 import { usePlatform } from '../context/PlatformContext'
@@ -12,6 +12,8 @@ import {
   MonthlyRevenueChart,
 } from '../features/reports/ReportCharts'
 import {
+  aggregateGroupStats,
+  bedroomComposition,
   buildPropertyReportStats,
   buildPropertyYearStats,
   monthNames,
@@ -57,7 +59,8 @@ export function ReportsPage() {
   )
   const [viewMode, setViewMode] = useState<ViewMode>('monthly')
   const [compareMode, setCompareMode] = useState(false)
-  const [comparePropertyId, setComparePropertyId] = useState('')
+  const [compareGroupA, setCompareGroupA] = useState<string[]>([])
+  const [compareGroupB, setCompareGroupB] = useState<string[]>([])
 
   useEffect(() => {
     let ignore = false
@@ -96,14 +99,6 @@ export function ReportsPage() {
       setSelectedPropertyId('all')
     }
   }, [excludedPropertyIds, selectedPropertyId])
-
-  // When switching to compare mode, if 'all' is selected pick the first property
-  useEffect(() => {
-    if (compareMode && selectedPropertyId === 'all' && includedProperties.length > 0) {
-      setSelectedPropertyId(includedProperties[0].id)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareMode])
 
   const excludedPropertySet = useMemo(
     () => new Set(excludedPropertyIds),
@@ -168,31 +163,46 @@ export function ReportsPage() {
     [includedProperties, selectedPropertyId],
   )
 
-  // Compare: secondary property stats
-  const compareProperty = useMemo(
-    () =>
-      compareMode && comparePropertyId
-        ? includedProperties.find((p) => p.id === comparePropertyId) ?? null
-        : null,
-    [compareMode, comparePropertyId, includedProperties],
+  // ── Group compare: aggregate any number of apartments on each side ──
+  const groupAProperties = useMemo(
+    () => includedProperties.filter((p) => compareGroupA.includes(p.id)),
+    [includedProperties, compareGroupA],
+  )
+  const groupBProperties = useMemo(
+    () => includedProperties.filter((p) => compareGroupB.includes(p.id)),
+    [includedProperties, compareGroupB],
   )
 
-  const primaryCompareStat = useMemo(() => {
-    if (!compareMode || !selectedProperty) return null
-    return stats[0] ?? null
-  }, [compareMode, selectedProperty, stats])
+  const buildGroupStats = useCallback(
+    (groupProperties: PropertyListing[]) => {
+      if (viewMode === 'yearly') {
+        return buildPropertyYearStats(groupProperties, includedAllReservations, selectedYear)
+      }
+      const reservations = viewMode === 'all_time' ? includedAllReservations : includedReservations
+      const month = viewMode === 'all_time' ? 0 : selectedMonth
+      return buildPropertyReportStats(groupProperties, reservations, selectedYear, month)
+    },
+    [viewMode, includedAllReservations, includedReservations, selectedYear, selectedMonth],
+  )
 
-  const secondaryCompareStat = useMemo(() => {
-    if (!compareProperty) return null
-    if (viewMode === 'yearly') {
-      const [stat] = buildPropertyYearStats([compareProperty], includedAllReservations, selectedYear)
-      return stat ?? null
-    }
-    const reservations = viewMode === 'all_time' ? includedAllReservations : includedReservations
-    const month = viewMode === 'all_time' ? 0 : selectedMonth
-    const [stat] = buildPropertyReportStats([compareProperty], reservations, selectedYear, month)
-    return stat ?? null
-  }, [compareProperty, viewMode, includedAllReservations, includedReservations, selectedYear, selectedMonth])
+  const groupLabel = useCallback(
+    (groupProperties: PropertyListing[], fallback: string) => {
+      if (groupProperties.length === 0) return fallback
+      if (groupProperties.length <= 2) return groupProperties.map((p) => p.name).join(' + ')
+      return `${groupProperties.length} ${platform.unitPlural}`
+    },
+    [platform.unitPlural],
+  )
+
+  const primaryCompareStat = useMemo(
+    () => (compareMode ? aggregateGroupStats(buildGroupStats(groupAProperties), groupLabel(groupAProperties, 'Group A')) : null),
+    [compareMode, buildGroupStats, groupAProperties, groupLabel],
+  )
+
+  const secondaryCompareStat = useMemo(
+    () => (compareMode ? aggregateGroupStats(buildGroupStats(groupBProperties), groupLabel(groupBProperties, 'Group B')) : null),
+    [compareMode, buildGroupStats, groupBProperties, groupLabel],
+  )
 
   // Monthly revenue for single-property or all — filtered by selectedPropertyId
   const monthlyRevenue = useMemo(() => {
@@ -207,26 +217,28 @@ export function ReportsPage() {
     })
   }, [includedAllReservations, selectedPropertyId, selectedYear])
 
-  // Compare revenue chart data
+  // Compare revenue chart data (summed per group)
   const compareChartData = useMemo(() => {
-    if (!compareMode || !selectedProperty || !compareProperty) return null
+    if (!compareMode || groupAProperties.length === 0 || groupBProperties.length === 0) return null
+    const aIds = new Set(compareGroupA)
+    const bIds = new Set(compareGroupB)
     return monthNames.map((label, idx) => {
       const month = idx + 1
       const primary = includedAllReservations
-        .filter((r) => r.propertyId === selectedPropertyId)
+        .filter((r) => aIds.has(r.propertyId))
         .reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
       const secondary = includedAllReservations
-        .filter((r) => r.propertyId === comparePropertyId)
+        .filter((r) => bIds.has(r.propertyId))
         .reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
       return { label, primary, secondary }
     })
   }, [
     compareMode,
-    selectedProperty,
-    compareProperty,
+    groupAProperties,
+    groupBProperties,
+    compareGroupA,
+    compareGroupB,
     includedAllReservations,
-    selectedPropertyId,
-    comparePropertyId,
     selectedYear,
   ])
 
@@ -330,19 +342,18 @@ export function ReportsPage() {
       ? String(selectedYear)
       : `${monthNames[selectedMonth - 1]} ${selectedYear}`
 
-  const showCompare =
-    compareMode &&
-    selectedPropertyId !== 'all' &&
-    !!comparePropertyId &&
-    comparePropertyId !== selectedPropertyId &&
-    !!primaryCompareStat &&
-    !!secondaryCompareStat
+  const showCompare = compareMode && !!primaryCompareStat && !!secondaryCompareStat
 
-  const showYearlyBreakdown =
-    viewMode === 'yearly' && !compareMode
+  const showYearlyBreakdown = viewMode === 'yearly' && !compareMode
 
-  // Properties available for the compare picker (exclude current primary)
-  const compareOptions = includedProperties.filter((p) => p.id !== selectedPropertyId)
+  function toggleCompareGroup(side: 'a' | 'b', propertyId: string) {
+    const setter = side === 'a' ? setCompareGroupA : setCompareGroupB
+    setter((current) =>
+      current.includes(propertyId)
+        ? current.filter((id) => id !== propertyId)
+        : [...current, propertyId],
+    )
+  }
 
   return (
     <section className="reports-page">
@@ -416,7 +427,7 @@ export function ReportsPage() {
             value={selectedPropertyId}
             onChange={(e) => setSelectedPropertyId(e.target.value)}
           >
-            {!compareMode && <option value="all">All {platform.unitPlural}</option>}
+            <option value="all">All {platform.unitPlural}</option>
             {includedProperties.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -443,20 +454,6 @@ export function ReportsPage() {
           </div>
         </label>
 
-        {compareMode && (
-          <label>
-            vs.
-            <select
-              value={comparePropertyId}
-              onChange={(e) => setComparePropertyId(e.target.value)}
-            >
-              <option value="">Select {platform.unitSingular}</option>
-              {compareOptions.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
 
       {status === 'loading' && <p className="listings-message">Loading reports...</p>}
@@ -510,20 +507,69 @@ export function ReportsPage() {
             onToggleShowAll={() => setShowAllApartments((v) => !v)}
           />
 
-          {showCompare && primaryCompareStat && secondaryCompareStat ? (
+          {compareMode ? (
             <>
-              <ComparePanel
-                primary={primaryCompareStat}
-                secondary={secondaryCompareStat}
-                periodLabel={periodLabel}
-              />
-              {compareChartData && (
-                <CompareRevenueChart
-                  data={compareChartData}
-                  year={selectedYear}
-                  primaryName={primaryCompareStat.name}
-                  secondaryName={secondaryCompareStat.name}
-                />
+              <section className="panel compare-groups-panel">
+                <h3 className="stats-section-title">Compare groups — {periodLabel}</h3>
+                <div className="compare-groups">
+                  {(['a', 'b'] as const).map((side) => {
+                    const ids = side === 'a' ? compareGroupA : compareGroupB
+                    const groupProps = side === 'a' ? groupAProperties : groupBProperties
+                    const clear = side === 'a' ? () => setCompareGroupA([]) : () => setCompareGroupB([])
+                    return (
+                      <div className="compare-group" key={side}>
+                        <div className="stats-section-header">
+                          <h4 className={`compare-name ${side === 'a' ? 'primary-name' : 'secondary-name'}`}>
+                            {side === 'a' ? 'Group A' : 'Group B'} ({ids.length})
+                          </h4>
+                          {ids.length > 0 && (
+                            <button className="action-link" type="button" onClick={clear}>Clear</button>
+                          )}
+                        </div>
+                        {groupProps.length > 0 && (
+                          <p className="compare-group-composition">{bedroomComposition(groupProps)}</p>
+                        )}
+                        <div className="excluded-apartment-grid">
+                          {includedProperties.map((p) => (
+                            <label className="excluded-apartment-option" key={p.id}>
+                              <input
+                                type="checkbox"
+                                checked={ids.includes(p.id)}
+                                onChange={() => toggleCompareGroup(side, p.id)}
+                              />
+                              <span>{p.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {!showCompare && (
+                  <p className="listings-message">
+                    Pick at least one {platform.unitSingular} for each group to compare.
+                  </p>
+                )}
+              </section>
+
+              {showCompare && primaryCompareStat && secondaryCompareStat && (
+                <>
+                  <ComparePanel
+                    primary={primaryCompareStat}
+                    secondary={secondaryCompareStat}
+                    periodLabel={periodLabel}
+                    primarySub={bedroomComposition(groupAProperties)}
+                    secondarySub={bedroomComposition(groupBProperties)}
+                  />
+                  {compareChartData && (
+                    <CompareRevenueChart
+                      data={compareChartData}
+                      year={selectedYear}
+                      primaryName={primaryCompareStat.name}
+                      secondaryName={secondaryCompareStat.name}
+                    />
+                  )}
+                </>
               )}
             </>
           ) : (
