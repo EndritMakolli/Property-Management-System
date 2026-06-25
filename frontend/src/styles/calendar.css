@@ -305,6 +305,11 @@
   background: #16a34a;
 }
 
+.calendar-reservation-pill.platform-direct,
+.timeline-reservation-bar.platform-direct {
+  background: #0d9488;
+}
+
 .calendar-overview {
   min-height: calc(100vh - 96px);
   overflow: hidden;
@@ -486,9 +491,8 @@
 
 .timeline-day-cell {
   position: relative;
-  min-height: 68px;
+  min-height: 72px;
   overflow: visible;
-  background: linear-gradient(150deg, transparent 49%, #c6cbc8 50%, transparent 51%);
 }
 
 .property-calendar-cell:hover,
@@ -522,17 +526,20 @@
 
 .timeline-reservation-bar {
   position: absolute;
+  top: 50%;
   right: -1px;
-  bottom: 18px;
   left: -1px;
   z-index: 1;
   display: flex;
+  height: 26px;
   align-items: center;
-  min-height: 24px;
   overflow: visible;
+  transform: translateY(-50%);
   border-radius: 0;
+  background: #475569; /* neutral fallback so any platform stays visible */
   color: #ffffff;
-  padding: 0 9px;
+  padding: 0 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 28%);
 }
 
 .timeline-reservation-bar.starts {
@@ -547,11 +554,19 @@
   right: 8px;
 }
 
+/* Checkout morning: a short rounded stub on the left of the turnover day. */
 .timeline-reservation-bar.checkout-tail {
   right: auto;
   left: -1px;
-  width: 20%;
-  min-width: 18px;
+  width: 22px;
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+  z-index: 2;
+}
+
+/* Check-in on a turnover day starts clear of the checkout stub — no overlap. */
+.timeline-reservation-bar.starts.turnover-start {
+  left: 32px;
 }
 
 .calendar-reservation-pill.checkout-tail {
@@ -564,9 +579,11 @@
 
 .timeline-reservation-bar strong {
   overflow: hidden;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 30%);
 }
 
 .reservation-popover {

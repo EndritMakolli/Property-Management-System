@@ -6,7 +6,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_GROUPS, require_roles
 from ._serializers import serialize_managed_user, serialize_user
-from ._utils import json_payload
+from ._utils import json_payload, throttle
 
 
 def set_user_role(user, role):
@@ -31,6 +31,7 @@ def auth_me(request):
     return JsonResponse({"user": serialize_user(request.user)})
 
 
+@throttle("10/m")  # blunt brute-force protection on the login endpoint
 def auth_login(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)

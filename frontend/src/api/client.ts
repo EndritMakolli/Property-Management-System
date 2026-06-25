@@ -2,12 +2,21 @@
 //
 // All requests go through apiFetch so two cross-cutting concerns are handled
 // in exactly one place:
-//   1. `credentials: 'include'` — session cookies survive a cross-origin
+//   1. `credentials: 'include'` - session cookies survive a cross-origin
 //      deployment (separate API domain), not just the dev proxy.
-//   2. Django CSRF — unsafe methods automatically send the `X-CSRFToken`
+//   2. Django CSRF - unsafe methods automatically send the `X-CSRFToken`
 //      header read from the `csrftoken` cookie (set by /api/auth/me/).
 
 const UNSAFE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
+
+function apiUrl(input: string): string {
+  if (!API_BASE_URL || /^https?:\/\//i.test(input)) {
+    return input
+  }
+
+  return `${API_BASE_URL}${input.startsWith('/') ? input : `/${input}`}`
+}
 
 function readCookie(name: string): string {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
@@ -25,7 +34,7 @@ export async function apiFetch(input: string, init: RequestInit = {}): Promise<R
     const token = readCookie('csrftoken')
     if (token) headers.set('X-CSRFToken', token)
   }
-  return fetch(input, { ...init, headers, credentials: 'include' })
+  return fetch(apiUrl(input), { ...init, headers, credentials: 'include' })
 }
 
 export function formatApiError(error: unknown) {

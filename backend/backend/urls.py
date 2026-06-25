@@ -17,12 +17,27 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import include, path
+from django.http import JsonResponse
+from django.urls import include, path, re_path
+from django.views.static import serve as serve_media
+
+
+def healthz(request):
+    return JsonResponse({"ok": True})
+
 
 urlpatterns = [
+    path('healthz/', healthz, name='healthz'),
     path('admin/', admin.site.urls),
     path('api/', include('pms.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Serve guest/property uploads in production from the persistent-disk MEDIA_ROOT.
+    # Fine for a single-instance, low-traffic PMS; move to object storage (S3/R2)
+    # if you scale out or serve heavy image traffic.
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve_media, {'document_root': settings.MEDIA_ROOT}),
+    ]

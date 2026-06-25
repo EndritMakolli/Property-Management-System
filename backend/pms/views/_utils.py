@@ -1,10 +1,35 @@
 import json
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
+from django_ratelimit.decorators import ratelimit
 
 from ..models import FinanceExpense
+
+
+def throttle(rate, key="ip", methods=("POST",)):
+    """Rate-limit a view by client IP, returning a JSON 429 (not an HTML 403).
+
+    Backed by django-ratelimit + Django's cache. On a single Render instance the
+    default in-memory cache is enough; switch to a shared cache (Redis) if you
+    ever run multiple workers/instances so the limit is enforced globally.
+    """
+    def decorator(view):
+        @wraps(view)
+        def guarded(request, *args, **kwargs):
+            if getattr(request, "limited", False):
+                return JsonResponse(
+                    {"error": "Too many requests. Please wait a moment and try again."},
+                    status=429,
+                )
+            return view(request, *args, **kwargs)
+
+        return ratelimit(key=key, rate=rate, method=list(methods), block=False)(guarded)
+
+    return decorator
 
 
 def json_payload(request):

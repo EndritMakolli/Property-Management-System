@@ -235,6 +235,14 @@ function TimelinePropertyRow({
             reservationTouchesDay(reservation, day.key) ||
             (reservation.checkOut === day.key && reservation.checkIn !== day.key),
         )
+        // A turnover day has both a checkout tail and a fresh check-in.
+        const hasCheckoutHere = dayReservations.some(
+          (reservation) => reservation.checkOut === day.key && reservation.checkIn !== day.key,
+        )
+        // Hide the nightly price once the night itself is occupied (declutter).
+        const isBookedNight = dayReservations.some((reservation) =>
+          reservationTouchesDay(reservation, day.key),
+        )
 
         return (
           <div
@@ -244,9 +252,9 @@ function TimelinePropertyRow({
             key={`${property.id}-${day.key}`}
             onClick={() => onDayClick?.(property, day.key)}
           >
-            <span className="timeline-price">
-              {property.basePriceEur ? `${Number(property.basePriceEur).toFixed(0)} EUR` : ''}
-            </span>
+            {!isBookedNight && property.basePriceEur ? (
+              <span className="timeline-price">{`${Number(property.basePriceEur).toFixed(0)} EUR`}</span>
+            ) : null}
             {dayReservations.map((reservation) => {
               const startsHere = reservationStartsOnOrBeforeVisibleDay(
                 reservation,
@@ -254,12 +262,13 @@ function TimelinePropertyRow({
                 visibleKeys,
               )
               const isCheckoutTail = reservation.checkOut === day.key && reservation.checkIn !== day.key
+              const isTurnoverStart = startsHere && !isCheckoutTail && hasCheckoutHere
 
               return (
                 <div
                   className={`timeline-reservation-bar${startsHere ? ' starts' : ''}${
-                    isCheckoutTail ? ' ends checkout-tail' : ''
-                  } ${reservationPlatformClass(reservation)}`}
+                    isTurnoverStart ? ' turnover-start' : ''
+                  }${isCheckoutTail ? ' ends checkout-tail' : ''} ${reservationPlatformClass(reservation)}`}
                   key={`${property.id}-${day.key}-${reservation.id}`}
                   onClick={(event) => {
                     event.stopPropagation()

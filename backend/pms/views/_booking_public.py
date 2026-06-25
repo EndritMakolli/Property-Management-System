@@ -22,7 +22,7 @@ from ..models import (
     Reservation,
 )
 from ._pricing import calculate_price, _match_scope
-from ._utils import json_payload
+from ._utils import json_payload, throttle
 
 
 # ---------------------------------------------------------------------------
@@ -457,6 +457,7 @@ def booking_calculate(request):
 
 
 @csrf_exempt
+@throttle("30/h")  # stop promo-code enumeration from a single IP
 def booking_validate_promo(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
@@ -498,6 +499,7 @@ def booking_validate_promo(request):
 
 
 @csrf_exempt
+@throttle("10/h")  # prevent booking-request spam from a single IP
 def booking_create_request(request):
     """POST — create a BookingRequest (Pay at Property path)."""
     if request.method != "POST":
@@ -580,6 +582,7 @@ def booking_create_request(request):
 
 
 @csrf_exempt
+@throttle("10/h")  # prevent direct-booking spam from a single IP
 def booking_create_direct(request):
     """
     POST — create a confirmed direct Reservation (online payment path).

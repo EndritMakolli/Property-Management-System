@@ -1,5 +1,10 @@
 # Property Management System
 
+## Deployment
+
+Render deployment settings, required environment variables, and first-deploy
+steps are documented in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Seed only the properties
 
 The repository does not include the local SQLite database or private data.
