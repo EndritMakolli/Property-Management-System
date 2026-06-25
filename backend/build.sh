@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Render build step for the Django backend (run from the backend/ rootDir).
+# Render BUILD step (runs from the backend/ rootDir).
+# DB-dependent steps (migrate, bootstrap_admin) are NOT here — the build
+# environment can't reach Render's internal database hostname. They run at
+# startup in start.sh instead.
 set -o errexit
 
 pip install -r requirements.txt
 python manage.py collectstatic --no-input
-python manage.py migrate
-# Creates the admin from ADMIN_USERNAME/ADMIN_PASSWORD on first deploy; no-op afterwards.
-python manage.py bootstrap_admin
