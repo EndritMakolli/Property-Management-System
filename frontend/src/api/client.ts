@@ -10,6 +10,15 @@
 const UNSAFE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
+// On a cross-domain deployment the browser won't expose the backend's csrftoken
+// cookie to this page's JS, so the backend returns the token in auth responses
+// and we cache it here to send as the X-CSRFToken header. Falls back to the
+// cookie for same-origin (local dev).
+let csrfToken = ''
+export function setCsrfToken(token: string) {
+  csrfToken = token || ''
+}
+
 function apiUrl(input: string): string {
   if (!API_BASE_URL || /^https?:\/\//i.test(input)) {
     return input
@@ -31,7 +40,7 @@ export async function apiFetch(input: string, init: RequestInit = {}): Promise<R
   const method = (init.method || 'GET').toUpperCase()
   const headers = new Headers(init.headers)
   if (UNSAFE_METHODS.has(method)) {
-    const token = readCookie('csrftoken')
+    const token = csrfToken || readCookie('csrftoken')
     if (token) headers.set('X-CSRFToken', token)
   }
   return fetch(apiUrl(input), { ...init, headers, credentials: 'include' })

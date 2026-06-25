@@ -1,5 +1,5 @@
 import type { AuthUser, ManagedUser, UserRole } from '../types/domain'
-import { apiGet, apiSend } from './client'
+import { apiGet, apiSend, setCsrfToken } from './client'
 
 export type UserAccountPayload = {
   username: string
@@ -18,7 +18,12 @@ function isAuthUser(value: unknown): value is AuthUser {
   )
 }
 
-function authUserFromResponse(data: { user?: unknown }) {
+function authUserFromResponse(data: { user?: unknown; csrfToken?: string }) {
+  // Cache the CSRF token from the body so unsafe requests can send it as a
+  // header (the cross-domain cookie isn't readable by this page's JS).
+  if (typeof data.csrfToken === 'string') {
+    setCsrfToken(data.csrfToken)
+  }
   if (!isAuthUser(data.user)) {
     throw new Error('The login response was invalid. Check VITE_API_BASE_URL and the backend auth endpoint.')
   }
@@ -26,17 +31,17 @@ function authUserFromResponse(data: { user?: unknown }) {
 }
 
 export async function fetchCurrentUser() {
-  const data = await apiGet<{ user?: unknown }>('/api/auth/me/')
+  const data = await apiGet<{ user?: unknown; csrfToken?: string }>('/api/auth/me/')
   return authUserFromResponse(data)
 }
 
 export async function loginUser(payload: { username: string; password: string }) {
-  const data = await apiSend<{ user?: unknown }>('/api/auth/login/', 'POST', payload)
+  const data = await apiSend<{ user?: unknown; csrfToken?: string }>('/api/auth/login/', 'POST', payload)
   return authUserFromResponse(data)
 }
 
 export async function logoutUser() {
-  const data = await apiSend<{ user?: unknown }>('/api/auth/logout/', 'POST')
+  const data = await apiSend<{ user?: unknown; csrfToken?: string }>('/api/auth/logout/', 'POST')
   return authUserFromResponse(data)
 }
 

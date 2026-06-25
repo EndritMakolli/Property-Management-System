@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_GROUPS, require_roles
@@ -26,9 +27,14 @@ def set_user_role(user, role):
 def auth_me(request):
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed."}, status=405)
+    # Return the CSRF token in the body so a cross-domain SPA can send it as the
+    # X-CSRFToken header (JS can't read the cookie across different domains).
+    token = get_token(request)
     if not request.user.is_authenticated:
-        return JsonResponse({"user": {"isAuthenticated": False, "role": "", "username": ""}})
-    return JsonResponse({"user": serialize_user(request.user)})
+        return JsonResponse(
+            {"user": {"isAuthenticated": False, "role": "", "username": ""}, "csrfToken": token}
+        )
+    return JsonResponse({"user": serialize_user(request.user), "csrfToken": token})
 
 
 @throttle("10/m")  # blunt brute-force protection on the login endpoint
@@ -49,14 +55,17 @@ def auth_login(request):
         return JsonResponse({"error": "This user is inactive."}, status=403)
 
     login(request, user)
-    return JsonResponse({"user": serialize_user(user)})
+    # login() rotates the CSRF token — hand the new one back to the SPA.
+    return JsonResponse({"user": serialize_user(user), "csrfToken": get_token(request)})
 
 
 def auth_logout(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
     logout(request)
-    return JsonResponse({"user": {"isAuthenticated": False, "role": "", "username": ""}})
+    return JsonResponse(
+        {"user": {"isAuthenticated": False, "role": "", "username": ""}, "csrfToken": get_token(request)}
+    )
 
 
 def user_list(request):
