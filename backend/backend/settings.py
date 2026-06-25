@@ -1,9 +1,25 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def normalize_origin_list(values):
+    """Return scheme://host origins with no path or trailing slash."""
+    origins = []
+    for value in values:
+        raw = value.strip().rstrip('/')
+        if not raw:
+            continue
+        parsed = urlsplit(raw)
+        if parsed.scheme and parsed.netloc:
+            origins.append(f'{parsed.scheme}://{parsed.netloc}')
+        else:
+            origins.append(raw)
+    return origins
 
 _debug_from_environment = os.environ.get('DEBUG')
 if _debug_from_environment and _debug_from_environment.lower() not in {
@@ -132,7 +148,7 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
+CORS_ALLOWED_ORIGINS = normalize_origin_list(config('CORS_ALLOWED_ORIGINS', default='', cast=Csv()))
 if DEBUG and not CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
 CORS_ALLOW_CREDENTIALS = True
@@ -143,7 +159,7 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
 ]
 
-CSRF_TRUSTED_ORIGINS = list(config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv()))
+CSRF_TRUSTED_ORIGINS = normalize_origin_list(config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv()))
 if DEBUG:
     CSRF_TRUSTED_ORIGINS += ['http://localhost:5173', 'http://127.0.0.1:5173']
 

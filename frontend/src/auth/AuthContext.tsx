@@ -40,7 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       checking,
       user,
       async login(username: string, password: string) {
-        setUser(await loginUser({ username, password }))
+        const nextUser = await loginUser({ username, password })
+        if (!nextUser?.isAuthenticated) {
+          setUser(guestUser)
+          throw new Error('Login did not complete. Please check the backend URL and try again.')
+        }
+        setUser(nextUser)
       },
       async logout() {
         await logoutUser()

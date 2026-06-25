@@ -23,6 +23,9 @@ After Render creates the services, note these URLs:
 - `FRONTEND_URL`: your frontend URL, for example `https://pms-frontend.onrender.com`
 
 Use comma-separated lists when you have multiple URLs. Do not add spaces.
+For `CSRF_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS`, use origins only:
+`https://example.onrender.com`, not `https://example.onrender.com/` and not
+`https://example.onrender.com/some/path`.
 
 ### Backend Environment Variables
 
@@ -40,7 +43,7 @@ These are created by `render.yaml`; fill or verify the ones marked "you set".
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `10485760` |
 | `FILE_UPLOAD_MAX_MEMORY_SIZE` | `10485760` |
 | `ALLOWED_HOSTS` | You set this to backend hostnames only: `pms-backend.onrender.com` or `api.example.com,pms-backend.onrender.com`. |
-| `CSRF_TRUSTED_ORIGINS` | You set this to frontend origins with scheme: `https://pms-frontend.onrender.com` or `https://app.example.com`. |
+| `CSRF_TRUSTED_ORIGINS` | You set this to frontend origins with scheme and no trailing slash: `https://pms-frontend.onrender.com` or `https://app.example.com`. |
 | `CORS_ALLOWED_ORIGINS` | You set this to the same frontend origins as CSRF: `https://pms-frontend.onrender.com` or `https://app.example.com`. |
 | `PUBLIC_BASE_URL` | You set this to the backend public URL, for example `https://pms-backend.onrender.com`. This is used for public iCal links. |
 | `GOOGLE_SHEETS_ID` | Optional. Spreadsheet ID only. Leave blank to disable Sheets sync. |
@@ -132,3 +135,24 @@ python manage.py loaddata properties_seed
 - Use a paid backend instance if uploaded media must persist on Render's disk.
 - Upgrade the database plan before storing real production data.
 - If you use Google Sheets sync, share the spreadsheet with the service-account email as Editor before enabling the env vars.
+
+## Troubleshooting
+
+### `/login` Returns 404
+
+This is a frontend static-site rewrite issue, not a Django login issue. React
+Router routes such as `/login`, `/properties`, and `/calendar` must all serve
+`/index.html`.
+
+If you created the frontend from `render.yaml`, the rewrite is already included.
+If you created the frontend manually in the Render dashboard, add this rule to
+the frontend Static Site under Redirects/Rewrites:
+
+```text
+Source: /*
+Destination: /index.html
+Action: Rewrite
+```
+
+Also make sure you are opening the frontend URL, not the backend URL. The
+backend has `/admin/`, `/api/`, and `/healthz/`; it does not have `/login`.
