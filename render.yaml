@@ -82,9 +82,18 @@ services:
         name: Permissions-Policy
         value: camera=(), microphone=(), geolocation=()
     routes:
+      # Proxy /api to the backend so the browser sees ONE origin. This makes the
+      # session/CSRF cookies first-party, which iOS/Safari requires (it blocks
+      # cross-site cookies). The /api rule MUST come before the SPA catch-all.
+      - type: rewrite
+        source: /api/*
+        destination: https://property-management-system-beeo.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      # IMPORTANT: leave VITE_API_BASE_URL EMPTY when using the /api proxy above.
+      # The SPA then calls /api on its own origin and the proxy relays it to the
+      # backend. Setting it to the backend URL re-introduces the cross-site issue.
       - key: VITE_API_BASE_URL
         sync: false

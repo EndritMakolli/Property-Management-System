@@ -156,3 +156,37 @@ Action: Rewrite
 
 Also make sure you are opening the frontend URL, not the backend URL. The
 backend has `/admin/`, `/api/`, and `/healthz/`; it does not have `/login`.
+
+### Login Fails on iPhone / Safari (cross-site cookies)
+
+If login works on desktop and Android Chrome but fails on iPhone (any browser —
+Safari, Chrome, Edge all use WebKit) with a CSRF error or a JSON parse error
+("Unrecognized token '<'"), the cause is cross-site cookies. The frontend and
+backend are on two different `onrender.com` subdomains, which the browser treats
+as cross-site; iOS/WebKit blocks cross-site cookies, so the session/CSRF cookie
+is never stored. `onrender.com` is a public suffix, so the two subdomains cannot
+share a cookie — there is no settings-only fix.
+
+**Recommended fix (free): proxy the API through the frontend so it's one origin.**
+On the frontend Static Site:
+
+1. Set `VITE_API_BASE_URL` to **empty** so the app calls `/api` on its own origin.
+2. Under Redirects/Rewrites add **two rules, in this order** (the `/api` rule must
+   come first):
+
+   ```text
+   Source: /api/*   Destination: https://YOUR_BACKEND.onrender.com/api/*   Action: Rewrite
+   Source: /*       Destination: /index.html                              Action: Rewrite
+   ```
+
+3. Manual Deploy → Clear build cache & deploy (so the empty `VITE_API_BASE_URL`
+   is rebuilt in).
+
+Now the browser only ever talks to the frontend origin; the cookie becomes
+first-party and iOS accepts it. (`render.yaml` already encodes these routes for
+Blueprint deploys; manually-created services must add them in the dashboard.)
+
+**Alternative (bulletproof): custom domain.** Put the frontend on
+`app.example.com` and the backend on `api.example.com`, set
+`COOKIE_SAMESITE=Lax`, and they're same-site — see the Custom Domain Example
+above.
