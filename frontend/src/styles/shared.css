@@ -762,6 +762,19 @@
   text-overflow: ellipsis;
 }
 
+.latest-added-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-mid);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.latest-added-intro {
+  margin-top: 0;
+}
+
 .search-res-card-dates {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
@@ -123,8 +123,7 @@ def user_detail(request, user_id):
     if request.method != "PATCH":
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
-    if managed_user.pk == request.user.pk:
-        return JsonResponse({"error": "You cannot edit your own account from this panel."}, status=400)
+    is_self = managed_user.pk == request.user.pk
 
     try:
         payload = json_payload(request)
@@ -141,8 +140,14 @@ def user_detail(request, user_id):
 
     try:
         managed_user.username = username
-        managed_user.is_active = bool(payload.get("isActive", True))
-        set_user_role(managed_user, role)
+        if is_self:
+            # Admins may rename themselves and change their own password, but
+            # cannot drop their own role or deactivate their own account here —
+            # either would lock them out of the panel.
+            managed_user.is_active = True
+        else:
+            managed_user.is_active = bool(payload.get("isActive", True))
+            set_user_role(managed_user, role)
         if password:
             managed_user.set_password(password)
         managed_user.save()
@@ -151,5 +156,10 @@ def user_detail(request, user_id):
             {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
             status=400,
         )
+
+    # Changing your own password rotates the session auth hash, which would log
+    # you out on the next request — keep the current session signed in.
+    if is_self and password:
+        update_session_auth_hash(request, managed_user)
 
     return JsonResponse({"user": serialize_managed_user(managed_user)})

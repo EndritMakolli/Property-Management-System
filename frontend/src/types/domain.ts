@@ -47,6 +47,7 @@ export type ReservationRecord = {
   totalPaid: string
   isArchived: boolean
   archivedAt: string
+  createdAt?: string
 }
 
 export type EditableReservation = ReservationRecord & {

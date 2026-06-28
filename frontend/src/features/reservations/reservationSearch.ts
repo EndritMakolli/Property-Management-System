@@ -43,12 +43,79 @@ export function buildHaystack(r: ReservationRecord): string {
     .filter(Boolean).join(' ').toLowerCase()
 }
 
+// Month names ordered longest-first so "september" wins over "sep" when matching.
+const MONTH_NAMES = Object.keys(MONTH_MAP).sort((a, b) => b.length - a.length).join('|')
+
+function isoDate(year: string | number, month: string, day: string): string | null {
+  const y = Number(year)
+  const m = Number(month)
+  const d = Number(day)
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+// Pull a specific calendar day out of a free-text query and return both the ISO
+// date and the leftover text (so the rest can still match guest/apartment/etc.).
+// Supports: 2024-05-15 · 15/05/2024 · 15.5.24 · 15-05-2024 · "15 May 2024" ·
+// "May 15" · "15 May". Day-first is assumed (the format used across the app).
+export function parseSpecificDate(query: string): { iso: string; rest: string } | null {
+  const text = query.toLowerCase().replace(/[–—]/g, '-')
+  const currentYear = new Date().getFullYear()
+
+  const patterns: { re: RegExp; build: (m: RegExpMatchArray) => string | null }[] = [
+    { re: /(\d{4})-(\d{1,2})-(\d{1,2})/, build: (m) => isoDate(m[1], m[2], m[3]) },
+    {
+      re: /\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/,
+      build: (m) => isoDate(m[3].length === 2 ? `20${m[3]}` : m[3], m[2], m[1]),
+    },
+    {
+      re: new RegExp(`\\b(\\d{1,2})\\s+(${MONTH_NAMES})(?:\\s+(\\d{4}))?\\b`),
+      build: (m) => isoDate(m[3] ?? currentYear, MONTH_MAP[m[2]], m[1]),
+    },
+    {
+      re: new RegExp(`\\b(${MONTH_NAMES})\\s+(\\d{1,2})(?:\\s*,?\\s*(\\d{4}))?\\b`),
+      build: (m) => isoDate(m[3] ?? currentYear, MONTH_MAP[m[1]], m[2]),
+    },
+  ]
+
+  for (const { re, build } of patterns) {
+    const m = text.match(re)
+    if (m && m.index !== undefined) {
+      const iso = build(m)
+      if (iso) {
+        const rest = (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).trim()
+        return { iso, rest }
+      }
+    }
+  }
+  return null
+}
+
+// True when the reservation's stay covers the given ISO date (check-in and
+// check-out days included).
+export function stayCoversDate(r: ReservationRecord, iso: string): boolean {
+  return r.checkIn <= iso && iso <= r.checkOut
+}
+
 export function scoreReservation(query: string, r: ReservationRecord): number {
-  const tokens = tokenize(query).map(normaliseToken)
-  if (tokens.length === 0) return 0
+  // Specific-date search: rank reservations whose stay covers the date highest,
+  // and drop the rest entirely when the date is the whole query.
+  const dateMatch = parseSpecificDate(query)
+  let textQuery = query
+  let score = 0
+  if (dateMatch) {
+    textQuery = dateMatch.rest
+    if (stayCoversDate(r, dateMatch.iso)) {
+      score += 6
+    } else if (!textQuery) {
+      return 0
+    }
+  }
+
+  const tokens = tokenize(textQuery).map(normaliseToken)
+  if (tokens.length === 0) return score
   const haystack = buildHaystack(r)
   const words = haystack.split(/\s+/)
-  let score = 0
   for (const token of tokens) {
     if (haystack.includes(token)) { score += 3 } else {
       let best = Infinity

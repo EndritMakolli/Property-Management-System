@@ -5,7 +5,7 @@ import { fetchProperties, fetchReservations, updateReservation } from '../../api
 import { CalendarOverviewTimeline } from '../calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../calendar/useCalendarReservationEditor'
 import { NewReservationModal } from './NewReservationModal'
-import { scoreReservation, overlaps } from './reservationSearch'
+import { scoreReservation, overlaps, stayCoversDate } from './reservationSearch'
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
 import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../../utils/date'
 
@@ -80,6 +80,7 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
   const [query, setQuery] = useState('')
   const [apartmentFilter, setApartmentFilter] = useState('')
   const [monthFilter, setMonthFilter] = useState(() => toMonthValue(new Date()))
+  const [dateFilter, setDateFilter] = useState('')
   const [sort, setSort] = useState<ListSort>(readStoredSort)
   const [editing, setEditing] = useState<ReservationRecord | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -152,7 +153,10 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
   const results = useMemo(() => {
     let pool = allReservations
     if (apartmentFilter) pool = pool.filter((r) => r.propertyId === apartmentFilter)
-    if (monthFilter) {
+    if (dateFilter) {
+      // A picked day takes precedence over the month filter.
+      pool = pool.filter((r) => stayCoversDate(r, dateFilter))
+    } else if (monthFilter) {
       pool = pool.filter(
         (r) => r.checkIn.slice(0, 7) <= monthFilter && r.checkOut.slice(0, 7) >= monthFilter,
       )
@@ -175,7 +179,7 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
           compareBy(a, b, sort.secondaryKey, sort.secondaryDir),
       )
       .slice(0, 300)
-  }, [query, apartmentFilter, monthFilter, allReservations, sort])
+  }, [query, apartmentFilter, monthFilter, dateFilter, allReservations, sort])
 
   const propMap = useMemo(() => {
     const m = new Map<string, PropertyListing>()
@@ -304,7 +308,7 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
           ref={inputRef}
           autoComplete="off"
           className="search-res-input"
-          placeholder="Name, phone, apartment, date (e.g. May 2024), platform, amount…"
+          placeholder="Name, phone, apartment, platform, amount…"
           spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -332,17 +336,36 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
         <input
           aria-label="Filter by month"
           className="search-res-filter"
+          disabled={!!dateFilter}
           type="month"
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
         />
-        {monthFilter && (
+        {monthFilter && !dateFilter && (
           <button
             className="search-res-filter-clear"
             type="button"
             onClick={() => setMonthFilter('')}
           >
             <X size={14} /> All months
+          </button>
+        )}
+
+        <input
+          aria-label="Show reservations on a specific day"
+          className="search-res-filter"
+          title="Show reservations on a specific day"
+          type="date"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+        />
+        {dateFilter && (
+          <button
+            className="search-res-filter-clear"
+            type="button"
+            onClick={() => setDateFilter('')}
+          >
+            <X size={14} /> Any day
           </button>
         )}
 

@@ -491,6 +491,80 @@
   gap: 12px;
 }
 
+/* ── Reservations by nights ── */
+.nights-report-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nights-report-hint {
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.nights-bucket {
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nights-bucket:hover {
+  border-color: #c5e5d8;
+}
+
+.nights-bucket.active {
+  border-color: var(--accent-mid);
+  box-shadow: 0 0 0 1px var(--accent-mid) inset;
+}
+
+.nights-report-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.nights-report-detail-head {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nights-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.nights-report-table th,
+.nights-report-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.nights-report-table th {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--bg-table-head);
+}
+
+.nights-report-table td {
+  color: var(--text-secondary);
+}
+
+.nights-report-detail-more {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 @media print {
   .sidebar,
   .reports-filters,

@@ -105,6 +105,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: 8px;
 }
 
 .admin-row-actions button {
@@ -113,6 +114,17 @@
   gap: 7px;
   min-height: 36px;
   padding: 0 12px;
+}
+
+.admin-self-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-bg-mid, #e8f7ef);
+  color: var(--accent-mid, #1a6845);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 /* ── Backup & restore ── */

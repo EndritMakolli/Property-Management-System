@@ -18,17 +18,19 @@ import {
   type ReservationSortKey,
 } from '../features/reservations/ReservationsTable'
 import { ReservationListView } from '../features/reservations/ReservationListView'
+import { LatestAddedView } from '../features/reservations/LatestAddedView'
 import { scoreReservation } from '../features/reservations/reservationSearch'
 import { ArchivePage } from './ArchivePage'
 import { NeedsAttentionPage } from './NeedsAttentionPage'
 import type { EditableReservation, PropertyListing, ReservationRecord } from '../types/domain'
 import { calculateNights, toDateInputValue } from '../utils/date'
 
-type ReservationsView = 'table' | 'list' | 'archive' | 'needs-attention'
-const reservationViews: ReservationsView[] = ['table', 'list', 'archive', 'needs-attention']
+type ReservationsView = 'list' | 'table' | 'latest' | 'archive' | 'needs-attention'
+const reservationViews: ReservationsView[] = ['list', 'table', 'latest', 'archive', 'needs-attention']
 const reservationViewLabels: Record<ReservationsView, string> = {
-  table: 'Table',
   list: 'List',
+  table: 'Table',
+  latest: 'Latest added',
   archive: 'Archive',
   'needs-attention': 'Needs Attention',
 }
@@ -41,7 +43,7 @@ export function ReservationsPage() {
   const navigate = useNavigate()
   const [view, setView] = useState<ReservationsView>(() => {
     const stored = window.localStorage.getItem('pms.reservations.view') as ReservationsView | null
-    return stored && reservationViews.includes(stored) ? stored : 'table'
+    return stored && reservationViews.includes(stored) ? stored : 'list'
   })
   const [pendingChange, setPendingChange] = useState<ReservationRecord | null>(null)
   const [properties, setProperties] = useState<PropertyListing[]>([])
@@ -446,16 +448,17 @@ export function ReservationsPage() {
       {view === 'archive' && <ArchivePage />}
       {view === 'needs-attention' && <NeedsAttentionPage />}
 
-      {(view === 'table' || view === 'list') && (
+      {(view === 'table' || view === 'list' || view === 'latest') && (
         <section className="panel reservations-table-panel page-panel">
           <PanelHeader
             icon={CalendarDays}
-            title="Reservations"
+            title={view === 'latest' ? 'Latest added' : 'Reservations'}
             action={view === 'table' ? 'Add row' : undefined}
             onAction={addReservation}
           />
 
           {view === 'list' && <ReservationListView initialChanging={pendingChange} />}
+          {view === 'latest' && <LatestAddedView />}
 
           {view === 'table' && (
             <>

@@ -92,6 +92,7 @@ def serialize_reservation(reservation):
         "totalPaid": str(reservation.total_price_eur),
         "isArchived": reservation.is_archived,
         "archivedAt": reservation.archived_at.isoformat() if reservation.archived_at else "",
+        "createdAt": reservation.created_at.isoformat() if reservation.created_at else "",
     }
 
 

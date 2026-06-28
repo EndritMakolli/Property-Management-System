@@ -6,6 +6,7 @@ import { usePlatform } from '../context/PlatformContext'
 import { ApartmentStatsTable } from '../features/reports/ApartmentStatsTable'
 import { ApartmentYearlyBreakdown } from '../features/reports/ApartmentYearlyBreakdown'
 import { ComparePanel } from '../features/reports/ComparePanel'
+import { NightsByMonthReport } from '../features/reports/NightsByMonthReport'
 import {
   CompareRevenueChart,
   DailyOccupancyChart,
@@ -19,7 +20,6 @@ import {
   monthNames,
   revenueInsideMonth,
   sortPropertyStats,
-  stayBuckets,
   toIsoDate,
   type PropertyReportSort,
   type PropertyReportSortKey,
@@ -45,9 +45,6 @@ export function ReportsPage() {
   const [occupancyYear, setOccupancyYear] = useState(today.getFullYear())
   const [selectedPropertyId, setSelectedPropertyId] = useState('all')
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [stayDurationMode, setStayDurationMode] = useState<'all_time' | 'monthly'>('all_time')
-  const [stayDurationMonth, setStayDurationMonth] = useState(today.getMonth() + 1)
-  const [stayDurationYear, setStayDurationYear] = useState(today.getFullYear())
   const [propertySort, setPropertySort] = useState<PropertyReportSort>({
     key: 'turnover',
     direction: 'desc',
@@ -241,42 +238,6 @@ export function ReportsPage() {
     includedAllReservations,
     selectedYear,
   ])
-
-  const stayDurationReservations = useMemo(() => {
-    if (stayDurationMode === 'all_time') return includedAllReservations
-
-    const monthStart = `${stayDurationYear}-${String(stayDurationMonth).padStart(2, '0')}-01`
-    const monthEnd = `${stayDurationYear}-${String(stayDurationMonth).padStart(2, '0')}-${String(
-      new Date(stayDurationYear, stayDurationMonth, 0).getDate(),
-    ).padStart(2, '0')}`
-
-    return includedAllReservations.filter(
-      (r) => r.checkIn <= monthEnd && r.checkOut > monthStart,
-    )
-  }, [includedAllReservations, stayDurationMode, stayDurationMonth, stayDurationYear])
-
-  const stayDurationStats = useMemo(() => {
-    const total = stayDurationReservations.length || 1
-    return stayBuckets.map((bucket) => {
-      const matches = stayDurationReservations.filter(
-        (r) => r.totalNights >= bucket.min && r.totalNights <= bucket.max,
-      )
-      const revenue = matches.reduce(
-        (sum, r) =>
-          sum +
-          (stayDurationMode === 'monthly'
-            ? revenueInsideMonth(r, stayDurationYear, stayDurationMonth)
-            : Number(r.totalPaid)),
-        0,
-      )
-      return {
-        label: bucket.label,
-        count: matches.length,
-        pct: Math.round((matches.length / total) * 100),
-        revenue,
-      }
-    })
-  }, [stayDurationReservations, stayDurationMode, stayDurationYear, stayDurationMonth])
 
   const occupancyTrends = useMemo(() => {
     if (!includedProperties.length) return []
@@ -593,64 +554,7 @@ export function ReportsPage() {
             onYearChange={setOccupancyYear}
           />
 
-          <section className="panel stats-section">
-            <div className="stats-section-header stay-duration-header">
-              <h3 className="stats-section-title">Stay Duration</h3>
-              <div className="stay-duration-filters">
-                <label>
-                  Period
-                  <select
-                    value={stayDurationMode}
-                    onChange={(e) =>
-                      setStayDurationMode(e.target.value as 'all_time' | 'monthly')
-                    }
-                  >
-                    <option value="all_time">All-time</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </label>
-                {stayDurationMode === 'monthly' && (
-                  <>
-                    <label>
-                      Month
-                      <select
-                        value={stayDurationMonth}
-                        onChange={(e) => setStayDurationMonth(Number(e.target.value))}
-                      >
-                        {monthOptions.map((month) => (
-                          <option key={month.value} value={month.value}>{month.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Year
-                      <select
-                        value={stayDurationYear}
-                        onChange={(e) => setStayDurationYear(Number(e.target.value))}
-                      >
-                        {yearOptions().map((year) => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="stats-grid">
-              {stayDurationStats.map((row) => (
-                <div className="stats-card" key={row.label}>
-                  <p className="stats-card-label">{row.label}</p>
-                  <strong className="stats-card-value">{row.count}</strong>
-                  <span className="stats-card-sub">{row.pct}% of stays</span>
-                  <span className="stats-card-sub">EUR {row.revenue.toLocaleString()}</span>
-                  <div className="stats-bar-bg">
-                    <div className="stats-bar-fill" style={{ width: `${row.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <NightsByMonthReport reservations={includedAllReservations} />
 
           {lowestPerformers.length > 0 && (
             <section className="panel stats-section">

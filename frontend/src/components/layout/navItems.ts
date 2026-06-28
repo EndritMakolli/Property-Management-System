@@ -22,9 +22,9 @@ type NavRole = Exclude<UserRole, ''>
 
 export const navItems: { label: string; path: string; icon: typeof Search; roles: NavRole[]; platforms?: PlatformId[] }[] = [
   { label: 'Search', path: '/availability', icon: Search, roles: ['admin', 'management'] },
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'management', 'cleaning'] },
-  { label: 'Calendar', path: '/calendar', icon: CalendarRange, roles: ['admin', 'management'] },
   { label: 'Reservations', path: '/reservations', icon: CalendarDays, roles: ['admin', 'management'] },
+  { label: 'Calendar', path: '/calendar', icon: CalendarRange, roles: ['admin', 'management'] },
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'management', 'cleaning'] },
   { label: 'Properties', path: '/properties', icon: Building2, roles: ['admin', 'management'] },
   { label: 'Codes', path: '/codes', icon: KeyRound, roles: ['admin', 'management', 'cleaning'], platforms: ['airstay'] },
   { label: 'To Fix', path: '/maintenance', icon: Wrench, roles: ['admin', 'management', 'cleaning'] },

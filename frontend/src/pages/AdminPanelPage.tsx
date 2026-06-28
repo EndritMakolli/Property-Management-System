@@ -200,6 +200,10 @@ export function AdminPanelPage() {
 
       <article className="panel admin-users-card">
         <h3>Manage users</h3>
+        <p className="admin-backup-desc">
+          You can rename any user and set a new password. Your own role and active status
+          stay locked so you can&apos;t accidentally lock yourself out.
+        </p>
         {status === 'loading' && <p className="listings-message">Loading users...</p>}
         {status === 'error' && <p className="form-error">{message}</p>}
         {status === 'ready' && (
@@ -218,7 +222,6 @@ export function AdminPanelPage() {
               return (
                 <div className="admin-users-row" key={row.id}>
                   <input
-                    disabled={isSelf}
                     value={draft.username}
                     onChange={(event) => updateDraft(row.id, { username: event.target.value })}
                   />
@@ -245,21 +248,17 @@ export function AdminPanelPage() {
                     {draft.isActive ? 'Active' : 'Inactive'}
                   </label>
                   <input
-                    disabled={isSelf}
                     placeholder="Leave blank to keep"
                     type="password"
                     value={draft.password || ''}
                     onChange={(event) => updateDraft(row.id, { password: event.target.value })}
                   />
                   <div className="admin-row-actions">
-                    {isSelf ? (
-                      <span>Current account</span>
-                    ) : (
-                      <button type="button" onClick={() => saveAccount(row)}>
-                        <Save size={15} />
-                        Save
-                      </button>
-                    )}
+                    <button type="button" onClick={() => saveAccount(row)}>
+                      <Save size={15} />
+                      Save
+                    </button>
+                    {isSelf && <span className="admin-self-tag">You</span>}
                   </div>
                 </div>
               )
