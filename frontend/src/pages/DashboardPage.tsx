@@ -16,6 +16,7 @@ import { Metric } from '../components/shared/Metric'
 import { PanelHeader } from '../components/shared/PanelHeader'
 import { DateInput } from '../components/shared/DateInput'
 import { ReservationList } from '../features/dashboard/ReservationList'
+import { CleaningPanel } from '../features/dashboard/CleaningPanel'
 import { buildPropertyReportStats } from '../features/reports/reportCalculations'
 import type {
   CleanStatusRecord,
@@ -219,6 +220,9 @@ export function DashboardPage() {
         checkOuts={checkOuts}
         currentlyStaying={currentlyStaying}
         freeToday={freeToday}
+        properties={properties}
+        reservations={allReservations}
+        cleanStatuses={cleanStatuses}
         onMarkCleaned={handleMarkCleaned}
         reportDate={reportDate}
         onDateChange={(value) => setReportDate(value)}
@@ -275,6 +279,14 @@ export function DashboardPage() {
               <ReservationList title="Currently staying" items={currentlyStaying} initialVisibleCount={6} />
             </div>
           </section>
+
+          <CleaningPanel
+            properties={properties}
+            reservations={allReservations}
+            cleanStatuses={cleanStatuses}
+            reportDate={reportDate}
+            onToggleCleaned={handleMarkCleaned}
+          />
 
           {workloadData.length > 0 && (
             <section className="panel forecast-workload-panel">
@@ -432,6 +444,9 @@ type CleanerDashboardProps = {
     cleanStatus: CleanStatusRecord | null
     openIssues: MaintenanceIssueRecord[]
   }[]
+  properties: PropertyListing[]
+  reservations: ReservationRecord[]
+  cleanStatuses: CleanStatusRecord[]
   onMarkCleaned: (propertyId: string, isCleaned: boolean) => Promise<void>
   onDateChange: (value: string) => void
   reportDate: string
@@ -443,6 +458,9 @@ function CleanerDashboard({
   checkOuts,
   currentlyStaying,
   freeToday,
+  properties,
+  reservations,
+  cleanStatuses,
   onMarkCleaned,
   onDateChange,
   reportDate,
@@ -489,6 +507,14 @@ function CleanerDashboard({
               <ReservationList title="Currently hosting" items={currentlyStaying.map(withoutAmount)} initialVisibleCount={6} />
             </div>
           </section>
+
+          <CleaningPanel
+            properties={properties}
+            reservations={reservations}
+            cleanStatuses={cleanStatuses}
+            reportDate={reportDate}
+            onToggleCleaned={onMarkCleaned}
+          />
 
           <section className="panel free-apartments-panel">
             <PanelHeader icon={Home} title={`Free apartments (${freeToday.length})`} />

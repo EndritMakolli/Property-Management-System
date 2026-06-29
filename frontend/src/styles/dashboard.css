@@ -533,3 +533,92 @@
   color: var(--text-secondary);
   font-size: 0.82rem;
 }
+
+/* ── Cleaning priority panel ── */
+.cleaning-panel {
+  grid-column: 1 / -1;
+}
+
+.cleaning-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.cleaning-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+}
+
+.cleaning-row.done {
+  opacity: 0.6;
+}
+
+.cleaning-check {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-mid);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cleaning-check input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.cleaning-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cleaning-info strong {
+  font-size: 0.92rem;
+}
+
+.cleaning-info span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.cleaning-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cleaning-badge-urgent {
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+.cleaning-badge-soon {
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+.cleaning-badge-wait {
+  background: var(--bg-table-head);
+  color: var(--text-muted);
+}
+
+.cleaning-badge-done {
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
