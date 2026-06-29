@@ -205,6 +205,28 @@ export type SyncLogRecord = {
   syncedAt: string
 }
 
+export type SyncConflictRecord = {
+  id: string
+  propertyId: string
+  propertyName: string
+  channel: string
+  externalUid: string
+  checkIn: string
+  checkOut: string
+  summary: string
+  createdAt: string
+  existingReservation: {
+    id: string
+    guestName: string
+    guestPhone: string
+    apartment: string
+    checkIn: string
+    checkOut: string
+    reservationType: string
+    totalPaid: string
+  } | null
+}
+
 // ── Receipts & Deposits ───────────────────────────────────────────────────────
 
 export type DailyDayRecord = {

@@ -116,6 +116,8 @@ export async function syncPropertyCalendar(id: string, channel: 'airbnb' | 'book
       imported: number
       updated: number
       skipped: number
+      conflicts: number
+      cancelled: number
       errors: string[]
     }
   }>(`/api/properties/${id}/sync/`, 'POST', { channel })

@@ -79,6 +79,7 @@ from ._receipts import (
     receipt_item_list,
     receipt_monthly_view,
 )
+from ._sync_conflicts import sync_conflict_dismiss, sync_conflict_link, sync_conflict_list
 from ._sync_log import sync_log_list
 from ._taxes import tax_detail, tax_list
 
@@ -156,6 +157,9 @@ __all__ = [
     "reservation_history",
     "reservation_list",
     "reservation_restore",
+    "sync_conflict_dismiss",
+    "sync_conflict_link",
+    "sync_conflict_list",
     "sync_log_list",
     "tax_detail",
     "tax_list",

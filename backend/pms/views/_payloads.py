@@ -11,7 +11,17 @@ def apply_reservation_payload(reservation, payload):
     if "guestPhone" in payload:
         reservation.guest_phone = (payload.get("guestPhone") or "").strip()
     if "propertyId" in payload:
-        reservation.property = Property.objects.get(pk=payload.get("propertyId"))
+        new_property = Property.objects.get(pk=payload.get("propertyId"))
+        # Moving a channel-imported booking to another apartment pins it: a later
+        # sync must keep it here and must not re-block the original apartment.
+        if (
+            reservation.pk
+            and reservation.external_uid
+            and reservation.property_id
+            and str(reservation.property_id) != str(new_property.id)
+        ):
+            reservation.pinned_property = True
+        reservation.property = new_property
     if "checkIn" in payload:
         reservation.check_in = date_value(payload.get("checkIn"), "checkIn")
     if "checkOut" in payload:

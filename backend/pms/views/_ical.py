@@ -1,10 +1,19 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from urllib.request import Request, urlopen
 
 from django.core.exceptions import ValidationError
 
-from ..models import Reservation
+from ..models import Reservation, SyncConflict
+
+CHANNEL_LABELS = {
+    Reservation.Platform.AIRBNB: "Airbnb",
+    Reservation.Platform.BOOKING: "Booking.com",
+}
+
+
+def channel_label(platform):
+    return CHANNEL_LABELS.get(platform, "Channel")
 
 
 def fetch_ical_events(url):
@@ -49,11 +58,52 @@ def ical_date(value):
     return date.fromisoformat(f"{value[0:4]}-{value[4:6]}-{value[6:8]}")
 
 
+def _find_overlap(prop, check_in, check_out, exclude_pk=None):
+    """A live guest reservation in `prop` that overlaps [check_in, check_out)."""
+    qs = Reservation.objects.filter(
+        property=prop,
+        is_archived=False,
+        check_in__lt=check_out,
+        check_out__gt=check_in,
+    ).exclude(platform=Reservation.Platform.MAINTENANCE)
+    if exclude_pk is not None:
+        qs = qs.exclude(pk=exclude_pk)
+    return qs.first()
+
+
+def _record_conflict(prop, platform, uid, check_in, check_out, existing, summary):
+    SyncConflict.objects.update_or_create(
+        property=prop,
+        channel=platform,
+        external_uid=uid,
+        defaults={
+            "check_in": check_in,
+            "check_out": check_out,
+            "existing_reservation": existing,
+            "summary": (summary or "")[:255],
+            "resolved": False,
+        },
+    )
+
+
+def _resolve_conflict(prop, platform, uid):
+    SyncConflict.objects.filter(
+        property=prop, channel=platform, external_uid=uid, resolved=False
+    ).update(resolved=True)
+
+
 def import_ical_reservations(prop, platform, events):
     imported = 0
     updated = 0
     skipped = 0
+    conflicts = 0
+    cancelled = 0
     errors = []
+    seen_uids = set()
+    had_valid_event = False
+
+    label = channel_label(platform)
+    note = f"Imported from {label} iCal."
 
     for event in events:
         uid = event.get("UID")
@@ -75,33 +125,57 @@ def import_ical_reservations(prop, platform, events):
             skipped += 1
             continue
 
-        reservation = Reservation.objects.filter(platform=platform, external_uid=uid).first()
+        seen_uids.add(uid)
+        had_valid_event = True
+        summary = clean_ical_text(event.get("SUMMARY", ""))
+
+        # Match an existing booking: first by the channel's stable UID (not
+        # property-scoped, so a manually relocated booking is still recognised),
+        # then by an exact same-channel, not-yet-linked date range.
+        reservation = Reservation.objects.filter(
+            platform=platform, external_uid=uid, is_archived=False
+        ).first()
         if reservation is None:
             reservation = Reservation.objects.filter(
-                property=prop, platform=platform, check_in=check_in, check_out=check_out,
-            ).first()
-        if reservation is None:
-            reservation = Reservation.objects.filter(
-                property=prop, platform=platform,
-                notes="Imported from Airbnb iCal.",
-                check_in__lt=check_out, check_out__gt=check_in,
+                property=prop, platform=platform, external_uid__isnull=True,
+                check_in=check_in, check_out=check_out, is_archived=False,
             ).first()
 
         created = reservation is None
+
+        # A booking the user moved by hand stays in its new apartment; otherwise
+        # it follows the feed it came from.
+        target_property = (
+            reservation.property if (reservation and reservation.pinned_property) else prop
+        )
+
+        overlap = _find_overlap(
+            target_property, check_in, check_out,
+            exclude_pk=None if created else reservation.pk,
+        )
+        if overlap is not None:
+            # The slot is taken (often by a reservation the user added manually).
+            # Record it so it can be linked or dismissed under Needs Attention.
+            _record_conflict(prop, platform, uid, check_in, check_out, overlap, summary)
+            conflicts += 1
+            continue
+
         if created:
             reservation = Reservation(platform=platform, external_uid=uid)
-
-        reservation.property = prop
-        reservation.external_uid = uid
-        reservation.check_in = check_in
-        reservation.check_out = check_out
-        if created:
-            reservation.guest_name = "Airbnb"
+            reservation.property = prop
+            reservation.guest_name = label
             reservation.guest_phone = ""
             reservation.nightly_price_eur = Decimal("0.00")
-            reservation.notes = "Imported from Airbnb iCal."
-        elif not reservation.notes:
-            reservation.notes = "Imported from Airbnb iCal."
+            reservation.notes = note
+        else:
+            reservation.external_uid = uid
+            if not reservation.pinned_property:
+                reservation.property = prop
+            if not reservation.notes:
+                reservation.notes = note
+
+        reservation.check_in = check_in
+        reservation.check_out = check_out
 
         try:
             reservation.save()
@@ -112,12 +186,46 @@ def import_ical_reservations(prop, platform, events):
             )
             continue
 
+        _resolve_conflict(prop, platform, uid)
         if created:
             imported += 1
         else:
             updated += 1
 
-    return {"imported": imported, "updated": updated, "skipped": skipped, "errors": errors[:8]}
+    # Reconcile cancellations: a booking that disappeared from the feed was
+    # cancelled on the channel — archive it so it stops blocking the calendar.
+    # Pinned (manually relocated) bookings are left alone, and the had_valid_event
+    # guard prevents a transient empty/failed feed from mass-archiving.
+    if had_valid_event:
+        today = date.today()
+        now = datetime.now(timezone.utc)
+        vanished = (
+            Reservation.objects.filter(
+                property=prop, platform=platform, is_archived=False,
+                pinned_property=False, check_out__gte=today,
+            )
+            .exclude(external_uid__isnull=True)
+            .exclude(external_uid__in=seen_uids)
+        )
+        for reservation in vanished:
+            reservation.is_archived = True
+            reservation.archived_at = now
+            reservation.save(update_fields=["is_archived", "archived_at"])
+            cancelled += 1
+
+        # Clear conflicts whose channel event is no longer in the feed.
+        SyncConflict.objects.filter(
+            property=prop, channel=platform, resolved=False
+        ).exclude(external_uid__in=seen_uids).update(resolved=True)
+
+    return {
+        "imported": imported,
+        "updated": updated,
+        "skipped": skipped,
+        "conflicts": conflicts,
+        "cancelled": cancelled,
+        "errors": errors[:8],
+    }
 
 
 def clean_ical_text(value):
@@ -136,4 +244,6 @@ def escape_ical(value):
 def reservation_label_for_export(reservation):
     if reservation.platform == Reservation.Platform.AIRBNB:
         return "Airbnb"
+    if reservation.platform == Reservation.Platform.BOOKING:
+        return "Booking.com"
     return reservation.guest_name or reservation.guest_phone or "Reserved"

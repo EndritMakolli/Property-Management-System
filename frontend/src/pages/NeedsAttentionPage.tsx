@@ -1,7 +1,13 @@
-import { AlertTriangle, Check, Edit2, X } from 'lucide-react'
+import { AlertTriangle, Check, Edit2, Link2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchReservations, updateReservation } from '../api/pmsApi'
-import type { ReservationRecord } from '../types/domain'
+import {
+  dismissSyncConflict,
+  fetchReservations,
+  fetchSyncConflicts,
+  linkSyncConflict,
+  updateReservation,
+} from '../api/pmsApi'
+import type { ReservationRecord, SyncConflictRecord } from '../types/domain'
 import { formatDisplayDate } from '../utils/date'
 
 type IncompleteRow = ReservationRecord & {
@@ -96,22 +102,52 @@ export function NeedsAttentionPage() {
   const [allReservations, setAllReservations] = useState<ReservationRecord[]>([])
   const [incompleteRows, setIncompleteRows] = useState<IncompleteRow[]>([])
   const [missingPriceRows, setMissingPriceRows] = useState<MissingPriceRow[]>([])
+  const [syncConflicts, setSyncConflicts] = useState<SyncConflictRecord[]>([])
+  const [conflictBusy, setConflictBusy] = useState<string | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
     let ignore = false
-    fetchReservations()
-      .then((rows) => {
+    Promise.all([
+      fetchReservations(),
+      fetchSyncConflicts().catch(() => [] as SyncConflictRecord[]),
+    ])
+      .then(([rows, conflicts]) => {
         if (!ignore) {
           setAllReservations(rows)
           setIncompleteRows(detectIncomplete(rows))
           setMissingPriceRows(detectMissingPrice(rows))
+          setSyncConflicts(conflicts)
           setStatus('ready')
         }
       })
       .catch(() => { if (!ignore) setStatus('error') })
     return () => { ignore = true }
   }, [])
+
+  async function linkConflict(conflict: SyncConflictRecord) {
+    setConflictBusy(conflict.id)
+    try {
+      await linkSyncConflict(conflict.id)
+      setSyncConflicts((prev) => prev.filter((c) => c.id !== conflict.id))
+    } catch {
+      /* leave it in the list so the user can retry */
+    } finally {
+      setConflictBusy(null)
+    }
+  }
+
+  async function dismissConflict(conflict: SyncConflictRecord) {
+    setConflictBusy(conflict.id)
+    try {
+      await dismissSyncConflict(conflict.id)
+      setSyncConflicts((prev) => prev.filter((c) => c.id !== conflict.id))
+    } catch {
+      /* leave it in the list */
+    } finally {
+      setConflictBusy(null)
+    }
+  }
 
   const conflicts = useMemo(() => detectConflicts(allReservations), [allReservations])
 
@@ -215,6 +251,14 @@ export function NeedsAttentionPage() {
   const pendingCount = incompleteRows.filter((r) => !r.saved).length
   const missingPriceCount = missingPriceRows.filter((r) => !r.saved).length
   const conflictCount = conflicts.reduce((sum, g) => sum + g.reservations.length, 0)
+  const syncConflictCount = syncConflicts.length
+
+  const summaryParts = [
+    pendingCount > 0 && `${pendingCount} incomplete import${pendingCount !== 1 ? 's' : ''}`,
+    missingPriceCount > 0 && `${missingPriceCount} missing price${missingPriceCount !== 1 ? 's' : ''}`,
+    syncConflictCount > 0 && `${syncConflictCount} channel conflict${syncConflictCount !== 1 ? 's' : ''}`,
+    conflictCount > 0 && `${conflictCount} overlap${conflictCount !== 1 ? 's' : ''}`,
+  ].filter(Boolean) as string[]
 
   return (
     <div className="needs-attention-page">
@@ -222,14 +266,7 @@ export function NeedsAttentionPage() {
         <AlertTriangle size={22} />
         <div>
           <h2>Needs Attention</h2>
-          <p>
-            {pendingCount > 0 && `${pendingCount} incomplete import${pendingCount !== 1 ? 's' : ''}`}
-            {pendingCount > 0 && (missingPriceCount > 0 || conflictCount > 0) && ' · '}
-            {missingPriceCount > 0 && `${missingPriceCount} missing price${missingPriceCount !== 1 ? 's' : ''}`}
-            {missingPriceCount > 0 && conflictCount > 0 && ' · '}
-            {conflictCount > 0 && `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''}`}
-            {pendingCount === 0 && missingPriceCount === 0 && conflictCount === 0 && 'All clear'}
-          </p>
+          <p>{summaryParts.length > 0 ? summaryParts.join(' · ') : 'All clear'}</p>
         </div>
       </div>
 
@@ -428,6 +465,86 @@ export function NeedsAttentionPage() {
                               Set price
                             </button>
                           )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="attention-section">
+            <h3 className="attention-section-title">
+              Channel sync conflicts
+              <span className="attention-count warning">{syncConflictCount}</span>
+            </h3>
+            <p className="attention-description">
+              A booking arrived from a channel but those dates were already taken in the system —
+              usually a reservation you added manually. Link it to that reservation so the channel
+              booking is recognised on the next sync (no double-block), or dismiss it.
+            </p>
+            {syncConflicts.length === 0 ? (
+              <div className="attention-empty">
+                <Check size={16} />
+                No channel sync conflicts
+              </div>
+            ) : (
+              <div className="table-scroll">
+                <table className="attention-table">
+                  <thead>
+                    <tr>
+                      <th>Apartment</th>
+                      <th>Channel</th>
+                      <th>Channel dates</th>
+                      <th>Existing reservation</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {syncConflicts.map((c) => (
+                      <tr key={c.id}>
+                        <td><strong>{c.propertyName}</strong></td>
+                        <td>
+                          <span className={`attention-platform platform-${c.channel}`}>{c.channel}</span>
+                        </td>
+                        <td>
+                          {formatDisplayDate(c.checkIn)} → {formatDisplayDate(c.checkOut)}
+                        </td>
+                        <td>
+                          {c.existingReservation ? (
+                            <div className="conflict-existing">
+                              <strong>
+                                {c.existingReservation.guestName ||
+                                  c.existingReservation.guestPhone ||
+                                  'Guest'}
+                              </strong>
+                              <small>
+                                {formatDisplayDate(c.existingReservation.checkIn)} →{' '}
+                                {formatDisplayDate(c.existingReservation.checkOut)} ·{' '}
+                                {c.existingReservation.reservationType}
+                              </small>
+                            </div>
+                          ) : (
+                            <span className="attention-missing">No match found</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="table-actions">
+                            {c.existingReservation && (
+                              <button
+                                className="primary-button"
+                                disabled={conflictBusy === c.id}
+                                onClick={() => linkConflict(c)}
+                              >
+                                <Link2 size={13} />
+                                {conflictBusy === c.id ? '...' : 'Link'}
+                              </button>
+                            )}
+                            <button disabled={conflictBusy === c.id} onClick={() => dismissConflict(c)}>
+                              <X size={13} /> Dismiss
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

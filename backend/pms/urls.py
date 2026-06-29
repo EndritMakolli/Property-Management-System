@@ -64,6 +64,11 @@ urlpatterns = [
     # Sync Logs
     path("sync-logs/", views.sync_log_list, name="sync-log-list"),
 
+    # Sync Conflicts (channel events that couldn't import)
+    path("sync-conflicts/", views.sync_conflict_list, name="sync-conflict-list"),
+    path("sync-conflicts/<uuid:conflict_id>/link/", views.sync_conflict_link, name="sync-conflict-link"),
+    path("sync-conflicts/<uuid:conflict_id>/dismiss/", views.sync_conflict_dismiss, name="sync-conflict-dismiss"),
+
     # Receipts
     path("receipts/", views.receipt_monthly_view, name="receipt-monthly-view"),
     path("receipts/day/", views.receipt_day_upsert, name="receipt-day-upsert"),

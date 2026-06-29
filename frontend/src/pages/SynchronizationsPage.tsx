@@ -84,7 +84,8 @@ export function SynchronizationsPage() {
         current.map((item) => (item.id === property.id ? { ...item, syncing: channel } : item)),
       )
       const result = await syncPropertyCalendar(property.id, channel)
-      const message = `${channel}: ${result.sync.imported} imported, ${result.sync.updated} updated, ${result.sync.skipped} skipped`
+      const s = result.sync
+      const message = `${channel}: ${s.imported} imported, ${s.updated} updated, ${s.skipped} skipped, ${s.conflicts} conflict${s.conflicts !== 1 ? 's' : ''}, ${s.cancelled} cancelled`
       setProperties((current) =>
         current.map((item) =>
           item.id === property.id ? { ...item, syncing: null, lastSyncMessage: message } : item,

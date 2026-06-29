@@ -1,4 +1,9 @@
-import type { CleanStatusRecord, MaintenanceIssueRecord, SyncLogRecord } from '../types/domain'
+import type {
+  CleanStatusRecord,
+  MaintenanceIssueRecord,
+  SyncConflictRecord,
+  SyncLogRecord,
+} from '../types/domain'
 import { apiDelete, apiForm, apiGet, apiSend } from './client'
 
 export type MaintenanceIssuePayload = {
@@ -63,4 +68,19 @@ export async function fetchSyncLogs(propertyId?: string) {
   if (propertyId) params.set('property', propertyId)
   const data = await apiGet<{ syncLogs: SyncLogRecord[] }>(`/api/sync-logs/?${params.toString()}`)
   return data.syncLogs
+}
+
+// ── Sync conflicts ──────────────────────────────────────────────────────────────
+
+export async function fetchSyncConflicts() {
+  const data = await apiGet<{ conflicts: SyncConflictRecord[] }>('/api/sync-conflicts/')
+  return data.conflicts
+}
+
+export async function linkSyncConflict(id: string, reservationId?: string) {
+  await apiSend(`/api/sync-conflicts/${id}/link/`, 'POST', reservationId ? { reservationId } : {})
+}
+
+export async function dismissSyncConflict(id: string) {
+  await apiSend(`/api/sync-conflicts/${id}/dismiss/`, 'POST', {})
 }

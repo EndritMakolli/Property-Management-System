@@ -32,6 +32,7 @@ from .model_defs import (
     Reservation,
     ReservationAttachment,
     ReservationAuditLog,
+    SyncConflict,
     SyncLog,
 )
 
@@ -69,5 +70,6 @@ __all__ = [
     "Reservation",
     "ReservationAttachment",
     "ReservationAuditLog",
+    "SyncConflict",
     "SyncLog",
 ]

@@ -211,6 +211,16 @@
   background: #fff8f6 !important;
 }
 
+.conflict-existing {
+  display: grid;
+  gap: 2px;
+}
+
+.conflict-existing small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
 /* ── Maintenance / To Fix page ── */
 .maintenance-page {
   display: grid;

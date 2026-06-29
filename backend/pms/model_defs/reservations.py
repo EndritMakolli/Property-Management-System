@@ -37,6 +37,10 @@ class Reservation(TimeStampedModel):
     platform = models.CharField(max_length=20, choices=Platform.choices)
     platform_reservation_id = models.CharField(max_length=255, blank=True, null=True)
     external_uid = models.CharField(max_length=255, blank=True, null=True)
+    # When an imported (channel) reservation is moved to a different apartment by
+    # hand, pin it so a re-sync keeps it here instead of dragging it back to (and
+    # re-blocking) the original apartment.
+    pinned_property = models.BooleanField(default=False)
     total_price_eur = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     nightly_price_eur = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")

@@ -262,7 +262,7 @@ def property_sync(request, property_id):
             imported_count=result["imported"],
             updated_count=result["updated"],
             skipped_count=result["skipped"],
-            conflict_count=0,
+            conflict_count=result.get("conflicts", 0),
             error_message="; ".join(result["errors"]) if result["errors"] else "",
         )
     except (URLError, TimeoutError):
@@ -284,7 +284,8 @@ def property_sync(request, property_id):
 
 def build_property_calendar_response(prop):
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    reservations = Reservation.objects.filter(property=prop).order_by("check_in")
+    # Only live reservations block the calendar — archived/cancelled ones must not.
+    reservations = Reservation.objects.filter(property=prop, is_archived=False).order_by("check_in")
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

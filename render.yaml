@@ -65,6 +65,28 @@ services:
       - key: GOOGLE_SHEETS_YEAR
         sync: false
 
+  # Hourly iCal auto-sync. The command only syncs properties whose per-property
+  # interval is due, so running hourly is safe regardless of those settings.
+  - type: cron
+    name: pms-calendar-sync
+    runtime: python
+    rootDir: backend
+    plan: starter
+    schedule: "0 * * * *"
+    buildCommand: "bash build.sh"
+    startCommand: "python manage.py sync_calendars"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pms-db
+          property: connectionString
+
   - type: web
     name: pms-frontend
     runtime: static

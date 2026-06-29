@@ -246,6 +246,33 @@ def serialize_sync_log(log):
     }
 
 
+def serialize_sync_conflict(conflict):
+    existing = conflict.existing_reservation
+    return {
+        "id": str(conflict.id),
+        "propertyId": str(conflict.property_id),
+        "propertyName": conflict.property.name,
+        "channel": conflict.channel,
+        "externalUid": conflict.external_uid,
+        "checkIn": conflict.check_in.isoformat(),
+        "checkOut": conflict.check_out.isoformat(),
+        "summary": conflict.summary,
+        "createdAt": conflict.created_at.isoformat(),
+        "existingReservation": {
+            "id": str(existing.id),
+            "guestName": existing.guest_name,
+            "guestPhone": existing.guest_phone,
+            "apartment": existing.property.name,
+            "checkIn": existing.check_in.isoformat(),
+            "checkOut": existing.check_out.isoformat(),
+            "reservationType": existing.platform,
+            "totalPaid": str(existing.total_price_eur),
+        }
+        if existing
+        else None,
+    }
+
+
 def serialize_reservation_audit(log):
     return {
         "id": str(log.id),

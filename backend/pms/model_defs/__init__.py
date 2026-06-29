@@ -28,7 +28,7 @@ from .properties import Property
 from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
 from .reviews import PropertyReview
 from .reservations import GuestStay, Reservation
-from .sync_log import SyncLog
+from .sync_log import SyncConflict, SyncLog
 from .taxes import MonthlyTax
 
 __all__ = [
@@ -65,5 +65,6 @@ __all__ = [
     "Reservation",
     "ReservationAttachment",
     "ReservationAuditLog",
+    "SyncConflict",
     "SyncLog",
 ]
