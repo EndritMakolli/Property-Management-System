@@ -148,8 +148,8 @@ export function AvailabilityPage() {
   )
   const insights = useMemo(() => {
     if (!checkIn || nights < 1 || availableProperties.length > 0) return []
-    return buildApartmentInsights({ bedrooms, checkIn, properties, reservations })
-  }, [availableProperties.length, bedrooms, checkIn, nights, properties, reservations])
+    return buildApartmentInsights({ bedrooms, checkIn, checkOut, properties, reservations })
+  }, [availableProperties.length, bedrooms, checkIn, checkOut, nights, properties, reservations])
   const calendarProperties = availableProperties.length > 0 ? availableProperties : recommendedProperties
   const recommendationReservations = useMemo(
     () => buildRecommendationReservations(recommendation),
@@ -528,15 +528,19 @@ function buildRecommendationReservations(segments: StaySegment[]): ReservationRe
 // For every apartment matching the bedroom filter, walk its bookings from the
 // requested check-in and report either the max stay starting that day or the
 // next free window. All reservation types (incl. maintenance) block dates,
-// matching the main availability filter.
+// matching the main availability filter. To keep the panel focused, only two
+// kinds of rows are shown: apartments free on the requested check-in, and
+// apartments that free up inside the searched range with nothing booked after.
 function buildApartmentInsights({
   bedrooms,
   checkIn,
+  checkOut,
   properties,
   reservations,
 }: {
   bedrooms: string
   checkIn: string
+  checkOut: string
   properties: PropertyListing[]
   reservations: ReservationRecord[]
 }): ApartmentInsight[] {
@@ -566,9 +570,14 @@ function buildApartmentInsights({
     }
     if (cursor > horizon) continue // fully blocked for the next 6 months
 
+    const freeOnCheckIn = cursor === checkIn
+    // "Free later" rows are only useful when the apartment opens up during the
+    // searched range and stays open — skip fragmented or far-future windows.
+    if (!freeOnCheckIn && (windowEnd !== null || cursor >= checkOut)) continue
+
     insights.push({
       property,
-      freeOnCheckIn: cursor === checkIn,
+      freeOnCheckIn,
       windowStart: cursor,
       windowEnd,
       nights: windowEnd ? calculateNights(cursor, windowEnd) : null,
