@@ -16,6 +16,7 @@ lead-time / pickup-curve models are intentionally avoided.)
 import calendar
 from datetime import date, timedelta
 
+from django.utils.timezone import localdate
 from django.http import JsonResponse
 
 from ..models import Property, Reservation
@@ -44,7 +45,7 @@ def dashboard_forecast(request):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
     platform = request.GET.get("platform") or Property.Platform.AIRSTAY
-    today = date.today()
+    today = localdate()
 
     props = list(Property.objects.filter(active=True, platform=platform))
     prop_count = len(props) or 1

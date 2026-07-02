@@ -1,4 +1,5 @@
 from datetime import date
+from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 
 from ..models import ExpenseCategory, FinanceExpense, Property
@@ -123,7 +124,7 @@ def apply_door_code_payload(code, payload, changed_by=""):
         if new_code != code.new_code:
             code.old_code = code.new_code
             code.new_code = new_code
-            code.date_changed = date.today()
+            code.date_changed = localdate()
             code.changed_by = changed_by
     if "notes" in payload:
         code.notes = payload.get("notes") or ""
@@ -140,7 +141,7 @@ def apply_lockbox_code_payload(code, payload, changed_by=""):
         if new_code != code.new_code:
             code.old_code = code.new_code
             code.new_code = new_code
-            code.date_changed = date.today()
+            code.date_changed = localdate()
             code.changed_by = changed_by
     if "notes" in payload:
         code.notes = payload.get("notes") or ""

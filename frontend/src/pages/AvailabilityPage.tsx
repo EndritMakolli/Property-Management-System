@@ -23,6 +23,18 @@ type StaySegment = {
   property: PropertyListing
 }
 
+// What each apartment CAN do when nothing matches the full stay: either the
+// maximum stay starting on the requested check-in, or its next free window.
+type ApartmentInsight = {
+  property: PropertyListing
+  freeOnCheckIn: boolean
+  windowStart: string
+  windowEnd: string | null // null — no upcoming booking limits the stay
+  nights: number | null // null when the window is open-ended
+}
+
+const INSIGHT_HORIZON_DAYS = 180
+
 export function AvailabilityPage() {
   const today = new Date()
   const tomorrow = new Date()
@@ -134,6 +146,10 @@ export function AvailabilityPage() {
     () => uniqueProperties(recommendation.map((segment) => segment.property)),
     [recommendation],
   )
+  const insights = useMemo(() => {
+    if (!checkIn || nights < 1 || availableProperties.length > 0) return []
+    return buildApartmentInsights({ bedrooms, checkIn, properties, reservations })
+  }, [availableProperties.length, bedrooms, checkIn, nights, properties, reservations])
   const calendarProperties = availableProperties.length > 0 ? availableProperties : recommendedProperties
   const recommendationReservations = useMemo(
     () => buildRecommendationReservations(recommendation),
@@ -255,6 +271,74 @@ export function AvailabilityPage() {
               </article>
             ))}
           </div>
+          {availableProperties.length === 0 && insights.length > 0 && (
+            <section className="availability-insights">
+              <div>
+                <p className="eyebrow">No full-stay match</p>
+                <h3>What each apartment can do instead</h3>
+              </div>
+              <div className="insight-list">
+                {insights.map((insight) => {
+                  const bookCheckOut =
+                    insight.windowEnd ??
+                    toDateInputValue(addDaysToDate(insight.windowStart, nights))
+                  return (
+                    <article className="insight-row" key={insight.property.id}>
+                      <div className="insight-main">
+                        <strong>{insight.property.name}</strong>
+                        <small>{insight.property.apartmentType}</small>
+                      </div>
+                      <div className="insight-detail">
+                        {insight.freeOnCheckIn ? (
+                          <>
+                            <span className="insight-badge free-now">Free on your date</span>
+                            {insight.nights !== null ? (
+                              <span>
+                                Max <strong>{insight.nights} night{insight.nights !== 1 ? 's' : ''}</strong> from{' '}
+                                {formatDisplayDate(insight.windowStart)} (until {formatDisplayDate(insight.windowEnd!)})
+                              </span>
+                            ) : (
+                              <span>
+                                Free from {formatDisplayDate(insight.windowStart)} — no upcoming booking
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="insight-badge free-later">Free later</span>
+                            {insight.nights !== null ? (
+                              <span>
+                                Next window {formatDisplayDate(insight.windowStart)} →{' '}
+                                {formatDisplayDate(insight.windowEnd!)} ({insight.nights} night{insight.nights !== 1 ? 's' : ''})
+                              </span>
+                            ) : (
+                              <span>
+                                Free from {formatDisplayDate(insight.windowStart)} — no upcoming booking
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <button
+                        className="primary-button availability-book-btn"
+                        type="button"
+                        onClick={() =>
+                          setBookModal({
+                            propertyId: insight.property.id,
+                            checkIn: insight.windowStart,
+                            checkOut: bookCheckOut,
+                            nightlyPrice: '0.00',
+                          })
+                        }
+                      >
+                        Book this
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          )}
           {availableProperties.length === 0 && recommendation.length > 0 && (
             <section className="availability-recommendations">
               <div>
@@ -290,7 +374,7 @@ export function AvailabilityPage() {
               </div>
             </section>
           )}
-          {availableProperties.length === 0 && recommendation.length === 0 && (
+          {availableProperties.length === 0 && recommendation.length === 0 && insights.length === 0 && (
             <p className="listings-message">
               No full-stay apartment or split-stay recommendation is available for these dates.
             </p>
@@ -439,6 +523,74 @@ function buildRecommendationReservations(segments: StaySegment[]): ReservationRe
     isArchived: false,
     archivedAt: '',
   }))
+}
+
+// For every apartment matching the bedroom filter, walk its bookings from the
+// requested check-in and report either the max stay starting that day or the
+// next free window. All reservation types (incl. maintenance) block dates,
+// matching the main availability filter.
+function buildApartmentInsights({
+  bedrooms,
+  checkIn,
+  properties,
+  reservations,
+}: {
+  bedrooms: string
+  checkIn: string
+  properties: PropertyListing[]
+  reservations: ReservationRecord[]
+}): ApartmentInsight[] {
+  const horizon = toDateInputValue(addDaysToDate(checkIn, INSIGHT_HORIZON_DAYS))
+  const insights: ApartmentInsight[] = []
+
+  for (const property of properties) {
+    if (bedrooms !== 'any' && property.bedrooms !== Number(bedrooms)) continue
+
+    const rows = reservations
+      .filter((r) => r.propertyId === property.id && r.checkOut > checkIn)
+      .sort((a, b) => a.checkIn.localeCompare(b.checkIn))
+
+    // Slide the cursor forward past every booking that covers it; the first
+    // uncovered date starts the free window, the next booking ends it.
+    let cursor = checkIn
+    let windowEnd: string | null = null
+    for (const r of rows) {
+      if (r.checkOut <= cursor) continue
+      if (r.checkIn <= cursor) {
+        cursor = r.checkOut
+        if (cursor > horizon) break
+      } else {
+        windowEnd = r.checkIn
+        break
+      }
+    }
+    if (cursor > horizon) continue // fully blocked for the next 6 months
+
+    insights.push({
+      property,
+      freeOnCheckIn: cursor === checkIn,
+      windowStart: cursor,
+      windowEnd,
+      nights: windowEnd ? calculateNights(cursor, windowEnd) : null,
+    })
+  }
+
+  return insights.sort((a, b) => {
+    if (a.freeOnCheckIn !== b.freeOnCheckIn) return a.freeOnCheckIn ? -1 : 1
+    const aNights = a.nights ?? Infinity
+    const bNights = b.nights ?? Infinity
+    if (aNights !== bNights) return bNights - aNights
+    return (
+      a.windowStart.localeCompare(b.windowStart) ||
+      a.property.name.localeCompare(b.property.name, undefined, { numeric: true })
+    )
+  })
+}
+
+function addDaysToDate(value: string, days: number) {
+  const date = parseDate(value)
+  date.setDate(date.getDate() + days)
+  return date
 }
 
 function uniqueProperties(properties: PropertyListing[]) {

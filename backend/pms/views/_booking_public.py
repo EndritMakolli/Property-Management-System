@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from itertools import combinations
 
+from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import JsonResponse
@@ -141,7 +142,7 @@ def _parse_date(value, field_name):
 
 
 def _validate_booking_window(check_in, check_out, settings):
-    today = date.today()
+    today = localdate()
     errors = []
 
     if check_in < today:
@@ -282,7 +283,7 @@ def booking_property_calendar(request, property_id):
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
-    today = date.today()
+    today = localdate()
     horizon = today + timedelta(days=365)
 
     reservations = Reservation.objects.filter(
@@ -760,7 +761,7 @@ def booking_cancel(request, token):
 
     # Check cancellation policy
     policy = _find_cancellation_policy(reservation.property)
-    today = date.today()
+    today = localdate()
     days_until_checkin = (reservation.check_in - today).days
 
     can_auto_cancel = False

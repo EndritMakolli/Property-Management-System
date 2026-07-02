@@ -433,3 +433,79 @@
   justify-content: center;
   margin-top: 8px;
 }
+
+/* ── No-availability insights ── */
+.availability-insights {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.availability-insights h3 {
+  margin: 0;
+}
+
+.insight-list {
+  display: grid;
+  gap: 8px;
+}
+
+.insight-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e1e7e3;
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 10px 12px;
+}
+
+.insight-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.insight-main small {
+  color: #6b7671;
+  font-size: 0.78rem;
+}
+
+.insight-detail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #4d5a55;
+  font-size: 0.86rem;
+}
+
+.insight-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.insight-badge.free-now {
+  background: #d4f0e6;
+  color: #14532d;
+}
+
+.insight-badge.free-later {
+  background: #fff1d8;
+  color: #8a5418;
+}
+
+@media (max-width: 720px) {
+  .insight-row {
+    grid-template-columns: 1fr;
+  }
+}

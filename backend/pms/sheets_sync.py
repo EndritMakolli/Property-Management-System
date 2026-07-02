@@ -30,13 +30,21 @@ Share the spreadsheet with the service account's email (Editor) first.
 
 import json
 import logging
+import threading
 import time
 from collections import defaultdict
-from datetime import date
 
 from django.conf import settings
+from django.utils.timezone import localdate
 
 logger = logging.getLogger(__name__)
+
+# The signal layer fires each mirror call on its own background thread, so two
+# quick saves of the same reservation could both miss find() and both append —
+# a duplicate row. Serialize writes within this process; upsert additionally
+# self-heals by deleting extra rows for the same id, which also repairs any
+# duplicate created across processes.
+_write_lock = threading.Lock()
 
 # Visible columns, in the exact order of the reservations page.
 HEADER = [
@@ -78,7 +86,7 @@ def is_enabled() -> bool:
 
 def target_year() -> int:
     """The single year mirrored into the sheet (0/unset → current year)."""
-    return getattr(settings, "GOOGLE_SHEETS_YEAR", 0) or date.today().year
+    return getattr(settings, "GOOGLE_SHEETS_YEAR", 0) or localdate().year
 
 
 def reservation_to_row(reservation) -> list:
@@ -235,22 +243,27 @@ def upsert_reservation_row(reservation_id: str, row: list, year: int, month: int
     if not is_enabled() or year != target_year():
         return
     try:
-        spreadsheet = _spreadsheet()
-        worksheet = _month_worksheet(spreadsheet, month, create=True)
-        full = list(row) + [reservation_id]
-        cell = worksheet.find(reservation_id, in_column=ID_COLUMN)
-        if cell:
-            last_col = _column_letter(len(full))
-            _retry(
-                worksheet.update,
-                range_name=f"A{cell.row}:{last_col}{cell.row}",
-                values=[full], value_input_option="USER_ENTERED",
-            )
-        else:
-            _retry(worksheet.append_row, full, value_input_option="USER_ENTERED")
-            # Extend the filter + "Pagesa" checkbox to cover the new row.
-            data_rows = len(_retry(worksheet.col_values, ID_COLUMN)) - 1
-            _apply_layout(spreadsheet, worksheet, data_rows)
+        with _write_lock:
+            spreadsheet = _spreadsheet()
+            worksheet = _month_worksheet(spreadsheet, month, create=True)
+            full = list(row) + [reservation_id]
+            cells = _retry(worksheet.findall, reservation_id, in_column=ID_COLUMN)
+            if cells:
+                last_col = _column_letter(len(full))
+                _retry(
+                    worksheet.update,
+                    range_name=f"A{cells[0].row}:{last_col}{cells[0].row}",
+                    values=[full], value_input_option="USER_ENTERED",
+                )
+                # Self-heal: drop accidental duplicate rows (bottom-up so the
+                # remaining row numbers stay valid while deleting).
+                for cell in sorted(cells[1:], key=lambda c: c.row, reverse=True):
+                    _retry(worksheet.delete_rows, cell.row)
+            else:
+                _retry(worksheet.append_row, full, value_input_option="USER_ENTERED")
+                # Extend the filter + "Pagesa" checkbox to cover the new row.
+                data_rows = len(_retry(worksheet.col_values, ID_COLUMN)) - 1
+                _apply_layout(spreadsheet, worksheet, data_rows)
     except Exception:  # noqa: BLE001 — never let Sheets break a save
         logger.exception("Google Sheets upsert failed for reservation %s", reservation_id)
 
@@ -260,12 +273,13 @@ def remove_reservation_row(reservation_id: str, year: int, month: int) -> None:
     if not is_enabled() or year != target_year():
         return
     try:
-        worksheet = _month_worksheet(_spreadsheet(), month, create=False)
-        if worksheet is None:
-            return
-        cell = worksheet.find(reservation_id, in_column=ID_COLUMN)
-        if cell:
-            _retry(worksheet.delete_rows, cell.row)
+        with _write_lock:
+            worksheet = _month_worksheet(_spreadsheet(), month, create=False)
+            if worksheet is None:
+                return
+            cells = _retry(worksheet.findall, reservation_id, in_column=ID_COLUMN)
+            for cell in sorted(cells, key=lambda c: c.row, reverse=True):
+                _retry(worksheet.delete_rows, cell.row)
     except Exception:  # noqa: BLE001
         logger.exception("Google Sheets remove failed for reservation %s", reservation_id)
 

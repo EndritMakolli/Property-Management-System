@@ -1,5 +1,4 @@
-from datetime import date
-
+from django.utils.timezone import localdate
 from django.conf import settings
 
 from ..models import Reservation
@@ -69,7 +68,8 @@ def serialize_property(prop, request):
         "locationLabel": prop.location_label or "",
         "rating": str(prop.rating) if prop.rating is not None else "",
         "reviewCount": prop.review_count,
-        "amenityIds": [str(aid) for aid in prop.property_amenities.values_list("amenity_id", flat=True).order_by()],
+        # Iterate .all() (not .values_list) so a prefetch_related cache is used.
+        "amenityIds": [str(pa.amenity_id) for pa in prop.property_amenities.all()],
     }
 
 
@@ -100,7 +100,7 @@ def serialize_door_code(door_code):
     last_checkout = (
         Reservation.objects.filter(
             property=door_code.property,
-            check_out__lte=date.today(),
+            check_out__lte=localdate(),
             is_archived=False,
         )
         .order_by("-check_out")

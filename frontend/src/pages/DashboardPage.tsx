@@ -112,9 +112,12 @@ export function DashboardPage() {
     })
   }
 
+  // Daily movement must come from the unfiltered set: the month-scoped fetch
+  // excludes reservations whose check-out IS the 1st (its filter needs
+  // check_out > month start), which silently hid all check-outs on the 1st.
   const guestReservations = useMemo(
-    () => reservations.filter((r) => r.reservationType !== 'maintenance'),
-    [reservations],
+    () => allReservations.filter((r) => r.reservationType !== 'maintenance'),
+    [allReservations],
   )
 
   const checkIns = useMemo(

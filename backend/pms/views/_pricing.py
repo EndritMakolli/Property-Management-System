@@ -2,6 +2,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from ..models import BookingSiteSettings, PricingRule
+from django.utils.timezone import localdate
 
 
 CENTS = Decimal("0.01")
@@ -110,7 +111,7 @@ def _long_stay_discount_pct(property_obj, nights):
 
 def _last_minute_discount_pct(property_obj, check_in):
     """Return the best last-minute discount percentage for the given check-in."""
-    days_ahead = (check_in - date.today()).days
+    days_ahead = (check_in - localdate()).days
     if days_ahead < 0:
         days_ahead = 0
 

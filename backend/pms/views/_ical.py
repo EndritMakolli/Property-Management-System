@@ -3,6 +3,7 @@ from decimal import Decimal
 from urllib.request import Request, urlopen
 
 from django.core.exceptions import ValidationError
+from django.utils.timezone import localdate
 
 from ..models import Reservation, SyncConflict
 
@@ -197,7 +198,7 @@ def import_ical_reservations(prop, platform, events):
     # Pinned (manually relocated) bookings are left alone, and the had_valid_event
     # guard prevents a transient empty/failed feed from mass-archiving.
     if had_valid_event:
-        today = date.today()
+        today = localdate()
         now = datetime.now(timezone.utc)
         vanished = (
             Reservation.objects.filter(
@@ -241,9 +242,13 @@ def escape_ical(value):
     )
 
 
-def reservation_label_for_export(reservation):
+def reservation_label_for_export(reservation, public=False):
     if reservation.platform == Reservation.Platform.AIRBNB:
         return "Airbnb"
     if reservation.platform == Reservation.Platform.BOOKING:
         return "Booking.com"
+    if public:
+        # The token URL is pasted into external channels and can be forwarded;
+        # never expose guest names or phone numbers on the public feed.
+        return "Reserved"
     return reservation.guest_name or reservation.guest_phone or "Reserved"

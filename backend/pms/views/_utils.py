@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
+from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django_ratelimit.decorators import ratelimit
@@ -59,8 +60,8 @@ def date_value(value, field_name, required=True):
 
 def selected_period(request):
     try:
-        year = int(request.GET.get("year") or date.today().year)
-        month = int(request.GET.get("month") or date.today().month)
+        year = int(request.GET.get("year") or localdate().year)
+        month = int(request.GET.get("month") or localdate().month)
         if month < 1 or month > 12:
             raise ValueError
     except ValueError:

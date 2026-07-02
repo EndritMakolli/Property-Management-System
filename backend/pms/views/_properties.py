@@ -19,7 +19,11 @@ def property_list(request):
         if denied:
             return denied
         platform = request.GET.get("platform") or Property.Platform.AIRSTAY
-        properties = Property.objects.filter(active=True, platform=platform).order_by("name")
+        properties = (
+            Property.objects.filter(active=True, platform=platform)
+            .prefetch_related("property_amenities")
+            .order_by("name")
+        )
         return JsonResponse({"properties": [serialize_property(prop, request) for prop in properties]})
 
     if request.method == "POST":
@@ -282,7 +286,7 @@ def property_sync(request, property_id):
     return JsonResponse({"sync": result})
 
 
-def build_property_calendar_response(prop):
+def build_property_calendar_response(prop, public=False):
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     # Only live reservations block the calendar — archived/cancelled ones must not.
     reservations = Reservation.objects.filter(property=prop, is_archived=False).order_by("check_in")
@@ -301,7 +305,7 @@ def build_property_calendar_response(prop):
             f"DTSTAMP:{timestamp}",
             f"DTSTART;VALUE=DATE:{reservation.check_in.strftime('%Y%m%d')}",
             f"DTEND;VALUE=DATE:{reservation.check_out.strftime('%Y%m%d')}",
-            f"SUMMARY:{escape_ical(reservation_label_for_export(reservation))}",
+            f"SUMMARY:{escape_ical(reservation_label_for_export(reservation, public))}",
             "TRANSP:OPAQUE",
             "END:VEVENT",
         ])
@@ -319,7 +323,7 @@ def public_property_calendar_export(request, export_token):
     except Property.DoesNotExist:
         return HttpResponse("Calendar not found.", status=404, content_type="text/plain")
 
-    return build_property_calendar_response(prop)
+    return build_property_calendar_response(prop, public=True)
 
 
 def property_calendar_export(request, property_id):

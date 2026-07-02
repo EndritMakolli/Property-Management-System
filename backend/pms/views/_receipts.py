@@ -2,6 +2,7 @@ import calendar
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
+from django.utils.timezone import localdate
 from django.http import JsonResponse
 
 from ..models import DailyEntry, ReceiptItem, ReceiptItemReservation, Reservation
@@ -312,7 +313,7 @@ def receipt_available_reservations(request):
     except (TypeError, ValueError):
         return JsonResponse({"error": "Provide a valid year and month."}, status=400)
 
-    today = date.today()
+    today = localdate()
 
     # Reservations that touch the selected month, not upcoming, not maintenance
     reservations = (
