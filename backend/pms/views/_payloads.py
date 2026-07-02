@@ -33,6 +33,20 @@ def apply_reservation_payload(reservation, payload):
         reservation.payment_due = date_value(payload.get("paymentDue"), "paymentDue", required=False)
     if "paid" in payload:
         reservation.paid = bool(payload.get("paid"))
+    if "paidMonths" in payload:
+        months = payload.get("paidMonths") or []
+        if not isinstance(months, list):
+            raise ValidationError({"paidMonths": "Send a list of YYYY-MM strings."})
+        cleaned = []
+        for value in months:
+            text = str(value).strip()
+            try:
+                date.fromisoformat(f"{text}-01")
+            except ValueError:
+                raise ValidationError({"paidMonths": f"'{text}' is not a valid YYYY-MM month."})
+            if text not in cleaned:
+                cleaned.append(text)
+        reservation.paid_months = cleaned
     if "notes" in payload:
         reservation.notes = payload.get("notes") or ""
     if "nightlyPrice" in payload:

@@ -622,3 +622,72 @@
   background: var(--badge-success-bg);
   color: var(--badge-success-text);
 }
+
+/* ── Payments due panel ── */
+.payments-due-panel {
+  grid-column: 1 / -1;
+}
+
+.payments-due-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.payments-due-totals strong {
+  color: var(--text-primary);
+}
+
+.payments-due-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.payments-due-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+}
+
+.payments-due-row.done {
+  opacity: 0.55;
+}
+
+.payments-due-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.payments-due-info strong {
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payments-due-info span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.payments-due-month {
+  font-style: normal;
+  font-weight: 700;
+  color: #8a6d0b;
+}
+
+.payments-due-amount {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+}

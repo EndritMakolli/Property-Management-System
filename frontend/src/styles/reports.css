@@ -504,6 +504,32 @@
   font-size: 0.82rem;
 }
 
+/* ── Year-over-year revenue ── */
+.yoy-change {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.yoy-change.up {
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+
+.yoy-change.down {
+  background: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+.yoy-totals {
+  margin: 6px 0 0;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
 .nights-bucket {
   text-align: left;
   width: 100%;

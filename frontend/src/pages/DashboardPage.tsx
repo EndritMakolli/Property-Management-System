@@ -17,6 +17,7 @@ import { PanelHeader } from '../components/shared/PanelHeader'
 import { DateInput } from '../components/shared/DateInput'
 import { ReservationList } from '../features/dashboard/ReservationList'
 import { CleaningPanel } from '../features/dashboard/CleaningPanel'
+import { PaymentsDuePanel } from '../features/dashboard/PaymentsDuePanel'
 import { buildPropertyReportStats } from '../features/reports/reportCalculations'
 import type {
   CleanStatusRecord,
@@ -31,6 +32,7 @@ const platformLabels: Record<string, string> = {
   airbnb: 'Airbnb',
   booking: 'Booking',
   private: 'Private',
+  monthly: 'Monthly',
   maintenance: 'Maintenance',
 }
 
@@ -289,6 +291,13 @@ export function DashboardPage() {
             cleanStatuses={cleanStatuses}
             reportDate={reportDate}
             onToggleCleaned={handleMarkCleaned}
+          />
+
+          <PaymentsDuePanel
+            reservations={allReservations}
+            onReservationUpdated={(saved) =>
+              setAllReservations((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
+            }
           />
 
           {workloadData.length > 0 && (

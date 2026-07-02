@@ -1,4 +1,4 @@
-export type ReservationPlatform = 'private' | 'airbnb' | 'booking' | 'maintenance' | 'direct'
+export type ReservationPlatform = 'private' | 'airbnb' | 'booking' | 'monthly' | 'maintenance' | 'direct'
 
 export type PropertyListing = {
   id: string
@@ -35,6 +35,7 @@ export type ReservationRecord = {
   guestPhone: string
   paymentDue: string
   paid: boolean
+  paidMonths?: string[]
   notes: string
   reservationType: ReservationPlatform
   propertyId: string

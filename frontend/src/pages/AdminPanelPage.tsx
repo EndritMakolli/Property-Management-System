@@ -270,8 +270,9 @@ export function AdminPanelPage() {
       <article className="panel admin-backup-card">
         <h3>Backup &amp; restore</h3>
         <p className="admin-backup-desc">
-          Export a single JSON file of all data — properties, reservations, finance, codes,
-          maintenance, receipts, settings and accounts. Importing on another device{' '}
+          Export a single JSON file of all data — properties, reservations (including
+          monthly payment plans), finance, codes, maintenance, receipts, synchronization
+          links &amp; history, settings and accounts. Importing on another device{' '}
           <strong>replaces everything there</strong> with the file. Uploaded photos and
           attachment files are not included.
         </p>

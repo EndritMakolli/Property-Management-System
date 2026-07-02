@@ -295,6 +295,12 @@
   color: #0f2735;
 }
 
+.calendar-reservation-pill.platform-monthly,
+.timeline-reservation-bar.platform-monthly {
+  background: #f5c518;
+  color: #3d3104;
+}
+
 .calendar-reservation-pill.platform-recommendation,
 .timeline-reservation-bar.platform-recommendation {
   background: #1f6f5b;

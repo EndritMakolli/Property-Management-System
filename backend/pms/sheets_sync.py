@@ -68,6 +68,7 @@ PLATFORM_LABELS = {
     "private": "Private",
     "airbnb": "Airbnb",
     "booking": "Booking",
+    "monthly": "Monthly",
     "maintenance": "Maintenance",
     "direct": "Direct",
 }

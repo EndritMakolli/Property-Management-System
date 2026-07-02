@@ -80,6 +80,7 @@ def serialize_reservation(reservation):
         "guestPhone": reservation.guest_phone,
         "paymentDue": reservation.payment_due.isoformat() if reservation.payment_due else "",
         "paid": reservation.paid,
+        "paidMonths": list(reservation.paid_months or []),
         "notes": reservation.notes or "",
         "reservationType": reservation.platform,
         "propertyId": str(reservation.property_id),

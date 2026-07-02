@@ -130,6 +130,7 @@ export function ExpensesYearlyChart({ allExpenses, categories, taxes, year, plat
 type MonthlyRevenueRow = {
   label: string
   revenue: number
+  previous: number
 }
 
 type OccupancyTrendRow = {
@@ -166,9 +167,25 @@ type CompareRevenueChartProps = {
 }
 
 export function MonthlyRevenueChart({ data, selectedYear, today }: MonthlyRevenueChartProps) {
+  const totalCurrent = data.reduce((sum, row) => sum + row.revenue, 0)
+  const totalPrevious = data.reduce((sum, row) => sum + row.previous, 0)
+  const hasPrevious = totalPrevious > 0
+  const changePct = hasPrevious
+    ? Math.round(((totalCurrent - totalPrevious) / totalPrevious) * 100)
+    : 0
+
   return (
     <section className="panel stats-chart-panel">
-      <h3 className="stats-section-title">Monthly Revenue - {selectedYear}</h3>
+      <div className="stats-section-header">
+        <h3 className="stats-section-title">
+          Monthly Revenue — {selectedYear} vs {selectedYear - 1}
+        </h3>
+        {hasPrevious && (
+          <span className={`yoy-change ${changePct >= 0 ? 'up' : 'down'}`}>
+            {changePct >= 0 ? '+' : ''}{changePct}% vs {selectedYear - 1}
+          </span>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -178,8 +195,22 @@ export function MonthlyRevenueChart({ data, selectedYear, today }: MonthlyRevenu
             tickFormatter={(v) => v >= 1000 ? `€${(v / 1000).toFixed(0)}k` : `€${v}`}
             width={48}
           />
-          <Tooltip formatter={(value) => [`EUR ${Number(value ?? 0).toLocaleString()}`, 'Revenue']} />
-          <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+          <Tooltip
+            formatter={(value, name) => [
+              `EUR ${Number(value ?? 0).toLocaleString()}`,
+              name === 'previous' ? String(selectedYear - 1) : String(selectedYear),
+            ]}
+          />
+          {hasPrevious && (
+            <Legend
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(value) => (value === 'previous' ? String(selectedYear - 1) : String(selectedYear))}
+            />
+          )}
+          {hasPrevious && (
+            <Bar dataKey="previous" name="previous" fill="#c6cede" radius={[4, 4, 0, 0]} />
+          )}
+          <Bar dataKey="revenue" name="revenue" radius={[4, 4, 0, 0]}>
             {data.map((entry, index) => (
               <Cell
                 key={index}
@@ -189,6 +220,12 @@ export function MonthlyRevenueChart({ data, selectedYear, today }: MonthlyRevenu
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <p className="yoy-totals">
+        {selectedYear}: EUR {totalCurrent.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        {hasPrevious && (
+          <> · {selectedYear - 1}: EUR {totalPrevious.toLocaleString(undefined, { maximumFractionDigits: 0 })}</>
+        )}
+      </p>
     </section>
   )
 }

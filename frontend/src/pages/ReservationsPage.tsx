@@ -257,7 +257,7 @@ export function ReservationsPage() {
     }
 
     const defaultProperty = properties[0]
-    const validTypes = new Set(['private', 'airbnb', 'booking', 'maintenance'])
+    const validTypes = new Set(['private', 'airbnb', 'booking', 'monthly', 'maintenance'])
 
     const newRows: EditableReservation[] = pastedRows.map((row, index) => {
       const guestName = (row.guestName || '').trim()
@@ -287,7 +287,7 @@ export function ReservationsPage() {
         paymentDue,
         paid,
         notes: (row.notes || '').trim(),
-        reservationType: reservationType as 'private' | 'airbnb' | 'booking' | 'maintenance',
+        reservationType: reservationType as 'private' | 'airbnb' | 'booking' | 'monthly' | 'maintenance',
         propertyId: matchedProperty.id,
         apartment: matchedProperty.name,
         apartmentType: matchedProperty.apartmentType,
@@ -521,6 +521,7 @@ export function ReservationsPage() {
             <option value="private">Private</option>
             <option value="airbnb">Airbnb</option>
             <option value="booking">Booking.com</option>
+            <option value="monthly">Monthly</option>
             <option value="maintenance">Maintenance</option>
           </select>
         </label>

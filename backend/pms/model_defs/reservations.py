@@ -16,6 +16,7 @@ class Reservation(TimeStampedModel):
         PRIVATE = "private", "Private"
         AIRBNB = "airbnb", "Airbnb"
         BOOKING = "booking", "Booking.com"
+        MONTHLY = "monthly", "Monthly"
         MAINTENANCE = "maintenance", "Maintenance"
         DIRECT = "direct", "Direct Booking"
 
@@ -47,6 +48,9 @@ class Reservation(TimeStampedModel):
     )
     payment_due = models.DateField(blank=True, null=True)
     paid = models.BooleanField(default=False)
+    # For "monthly" stays the rent is collected month by month; this holds the
+    # settled months as "YYYY-MM" strings. `paid` stays the overall flag.
+    paid_months = models.JSONField(default=list, blank=True)
     platform_commission_eur = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
@@ -149,6 +153,7 @@ class Reservation(TimeStampedModel):
             self.Platform.PRIVATE: "#111111",
             self.Platform.AIRBNB: "#FF5A5F",
             self.Platform.BOOKING: "#003580",
+            self.Platform.MONTHLY: "#eab308",
             self.Platform.MAINTENANCE: "#16a34a",
         }
         return colors.get(self.platform, "#6B7280")

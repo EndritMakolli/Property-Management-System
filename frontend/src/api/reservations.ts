@@ -55,6 +55,15 @@ export async function updateReservation(id: string, payload: ReservationPayload)
   return data.reservation
 }
 
+// Partial PATCH for payment state only — the backend applies just the keys sent.
+export async function updateReservationPayment(
+  id: string,
+  payload: { paid?: boolean; paidMonths?: string[] },
+) {
+  const data = await apiSend<{ reservation: ReservationRecord }>(`/api/reservations/${id}/`, 'PATCH', payload)
+  return data.reservation
+}
+
 export async function deleteReservation(id: string) {
   await apiDelete(`/api/reservations/${id}/`, 'Could not archive reservation.')
 }

@@ -201,7 +201,8 @@ export function ReportsPage() {
     [compareMode, buildGroupStats, groupBProperties, groupLabel],
   )
 
-  // Monthly revenue for single-property or all — filtered by selectedPropertyId
+  // Monthly revenue for single-property or all — filtered by selectedPropertyId.
+  // Includes the same month one year earlier for the year-over-year comparison.
   const monthlyRevenue = useMemo(() => {
     const source =
       selectedPropertyId === 'all'
@@ -210,7 +211,11 @@ export function ReportsPage() {
     return monthNames.map((label, idx) => {
       const month = idx + 1
       const revenue = source.reduce((sum, r) => sum + revenueInsideMonth(r, selectedYear, month), 0)
-      return { label, revenue }
+      const previous = source.reduce(
+        (sum, r) => sum + revenueInsideMonth(r, selectedYear - 1, month),
+        0,
+      )
+      return { label, revenue, previous }
     })
   }, [includedAllReservations, selectedPropertyId, selectedYear])
 
