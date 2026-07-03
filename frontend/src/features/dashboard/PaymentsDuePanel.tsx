@@ -4,7 +4,7 @@ import { updateReservationPayment } from '../../api/pmsApi'
 import { PanelHeader } from '../../components/shared/PanelHeader'
 import { monthNames, revenueInsideMonth } from '../reports/reportCalculations'
 import type { ReservationRecord } from '../../types/domain'
-import { formatDisplayDate, parseDateValue } from '../../utils/date'
+import { formatDisplayDate, parseDateValue, toDateInputValue } from '../../utils/date'
 
 // One row per outstanding payment: a whole reservation, or — for "monthly"
 // stays — one instalment per month of the stay.
@@ -42,16 +42,20 @@ function monthKeyLabel(key: string): string {
   return `${monthNames[month - 1]} ${year}`
 }
 
-function buildDueRows(reservations: ReservationRecord[]): DueRow[] {
+function buildDueRows(reservations: ReservationRecord[], today: string): DueRow[] {
   const rows: DueRow[] = []
 
   for (const r of reservations) {
     if (r.reservationType === 'maintenance' || r.isArchived) continue
+    // Only stays that have already checked in owe anything yet.
+    if (r.checkIn > today) continue
     const guest = r.guestName || r.guestPhone || 'Guest'
 
     if (r.reservationType === 'monthly') {
       const paidMonths = new Set(r.paidMonths ?? [])
       for (const key of stayMonthKeys(r)) {
+        // Future months are not due yet — they appear once the month starts.
+        if (`${key}-01` > today) continue
         const [year, month] = key.split('-').map(Number)
         const amount = revenueInsideMonth(r, year, month)
         if (amount <= 0) continue
@@ -98,7 +102,8 @@ export function PaymentsDuePanel({ reservations, onReservationUpdated }: Payment
   // Rows checked in this session stay visible (greyed) so a mis-click can be undone.
   const [touchedKeys, setTouchedKeys] = useState<Set<string>>(new Set())
 
-  const allRows = useMemo(() => buildDueRows(reservations), [reservations])
+  const today = toDateInputValue(new Date())
+  const allRows = useMemo(() => buildDueRows(reservations, today), [reservations, today])
   const rows = useMemo(
     () => allRows.filter((row) => !row.paid || touchedKeys.has(row.key)),
     [allRows, touchedKeys],
