@@ -21,6 +21,7 @@ export type PropertyListing = {
   exportIcalUrl: string
   syncStatus: 'connected' | 'partial' | 'not_configured'
   active: boolean
+  hiddenFromManagement?: boolean
   autoSyncEnabled: boolean
   syncIntervalHours: number
   description: string

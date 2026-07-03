@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
 from ..models import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto, Property
-from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
+from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_clean_status, serialize_maintenance_issue
 from ._utils import json_payload
 
@@ -17,6 +17,8 @@ def maintenance_issue_list(request):
     if request.method == "GET":
         property_id = request.GET.get("property")
         issues = MaintenanceIssue.objects.select_related("property").prefetch_related("photos")
+        if is_management(request):
+            issues = issues.filter(property__hidden_from_management=False)
         if property_id:
             issues = issues.filter(property_id=property_id)
         return JsonResponse({"issues": [serialize_maintenance_issue(issue, request) for issue in issues]})
@@ -111,6 +113,8 @@ def clean_status_list(request):
 
     if request.method == "GET":
         properties = Property.objects.filter(active=True).order_by("name")
+        if is_management(request):
+            properties = properties.filter(hidden_from_management=False)
         status_map = {cs.property_id: cs for cs in ApartmentCleanStatus.objects.select_related("property").all()}
         result = []
         for prop in properties:

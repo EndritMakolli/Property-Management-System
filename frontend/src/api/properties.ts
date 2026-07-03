@@ -110,6 +110,14 @@ export async function updatePropertySync(id: string, payload: PropertySyncPayloa
   return data.property
 }
 
+// Admin only: hide or unhide a property from management-role users.
+export async function updatePropertyVisibility(id: string, hiddenFromManagement: boolean) {
+  const data = await apiSend<{ property: PropertyListing }>(`/api/properties/${id}/`, 'PATCH', {
+    hiddenFromManagement,
+  })
+  return data.property
+}
+
 export async function syncPropertyCalendar(id: string, channel: 'airbnb' | 'booking') {
   return apiSend<{
     sync: {

@@ -127,6 +127,29 @@
   font-weight: 700;
 }
 
+/* ── Manager visibility ── */
+.admin-visibility-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.admin-visibility-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.admin-hidden-tag {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9b3f20;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 /* ── Backup & restore ── */
 .admin-backup-card {
   display: grid;

@@ -60,6 +60,7 @@ def serialize_property(prop, request):
         "exportIcalUrl": f"{public_base_url}{export_path}" if public_base_url else request.build_absolute_uri(export_path),
         "syncStatus": property_sync_status(prop),
         "active": prop.active,
+        "hiddenFromManagement": prop.hidden_from_management,
         "autoSyncEnabled": prop.auto_sync_enabled,
         "syncIntervalHours": prop.sync_interval_hours,
         "description": prop.description or "",

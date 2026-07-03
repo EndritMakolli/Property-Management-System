@@ -6,7 +6,7 @@ from django.http import JsonResponse
 
 from ..models import Property, Reservation, ReservationAuditLog, ReservationAttachment
 from ._payloads import apply_reservation_payload
-from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
+from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_reservation, serialize_reservation_audit
 from ._utils import json_payload
 
@@ -58,6 +58,9 @@ def reservation_list(request):
             property__platform=platform,
             is_archived=archived,
         ).order_by("check_in", "property__name")
+
+        if is_management(request):
+            reservations = reservations.filter(property__hidden_from_management=False)
 
         if year and month:
             try:

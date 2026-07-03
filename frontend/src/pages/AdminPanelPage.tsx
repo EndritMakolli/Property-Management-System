@@ -1,15 +1,17 @@
-import { Download, Plus, Save, Upload } from 'lucide-react'
+import { Download, EyeOff, Plus, Save, Upload } from 'lucide-react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import {
   createUserAccount,
+  fetchProperties,
   fetchUsers,
+  updatePropertyVisibility,
   updateUserAccount,
   type UserAccountPayload,
 } from '../api/pmsApi'
 import { exportBackup, importBackup } from '../api/backup'
 import { useAuth } from '../auth/AuthContext'
-import type { ManagedUser } from '../types/domain'
+import type { ManagedUser, PropertyListing } from '../types/domain'
 
 const roleOptions: UserAccountPayload['role'][] = ['admin', 'management', 'cleaning']
 
@@ -31,6 +33,9 @@ export function AdminPanelPage() {
   const [backupNote, setBackupNote] = useState('')
   const [backupError, setBackupError] = useState('')
   const [imported, setImported] = useState(false)
+  const [properties, setProperties] = useState<PropertyListing[]>([])
+  const [visibilityBusyId, setVisibilityBusyId] = useState<string | null>(null)
+  const [visibilityError, setVisibilityError] = useState('')
 
   async function loadUsers() {
     try {
@@ -60,7 +65,23 @@ export function AdminPanelPage() {
 
   useEffect(() => {
     loadUsers()
+    fetchProperties()
+      .then(setProperties)
+      .catch(() => setVisibilityError('Could not load apartments.'))
   }, [])
+
+  async function toggleVisibility(property: PropertyListing) {
+    setVisibilityBusyId(property.id)
+    setVisibilityError('')
+    try {
+      const saved = await updatePropertyVisibility(property.id, !property.hiddenFromManagement)
+      setProperties((prev) => prev.map((p) => (p.id === saved.id ? saved : p)))
+    } catch (caught) {
+      setVisibilityError(caught instanceof Error ? caught.message : 'Could not update visibility.')
+    } finally {
+      setVisibilityBusyId(null)
+    }
+  }
 
   async function createAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -265,6 +286,34 @@ export function AdminPanelPage() {
             })}
           </div>
         )}
+      </article>
+
+      <article className="panel admin-visibility-card">
+        <h3>
+          <EyeOff size={16} /> Hide apartments from managers
+        </h3>
+        <p className="admin-backup-desc">
+          Hidden apartments disappear <strong>completely</strong> for management accounts —
+          properties, reservations, calendar, codes, cleaning and sync. Admins always see
+          everything; cleaning staff are not affected.
+        </p>
+        {visibilityError && <p className="form-error">{visibilityError}</p>}
+        <div className="excluded-apartment-grid">
+          {properties.map((property) => (
+            <label className="excluded-apartment-option" key={property.id}>
+              <input
+                type="checkbox"
+                checked={!!property.hiddenFromManagement}
+                disabled={visibilityBusyId === property.id}
+                onChange={() => toggleVisibility(property)}
+              />
+              <span>
+                {property.name}
+                {property.hiddenFromManagement && <em className="admin-hidden-tag"> hidden</em>}
+              </span>
+            </label>
+          ))}
+        </div>
       </article>
 
       <article className="panel admin-backup-card">

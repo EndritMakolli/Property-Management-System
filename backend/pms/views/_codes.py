@@ -3,7 +3,7 @@ from django.http import JsonResponse
 
 from ..models import DoorCode, LockboxCode, Property
 from ._payloads import apply_door_code_payload, apply_lockbox_code_payload
-from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
+from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_door_code, serialize_lockbox_code
 from ._utils import json_payload
 
@@ -20,6 +20,8 @@ def door_code_list(request):
             if prop.id not in coded_ids:
                 DoorCode.objects.create(property=prop)
         door_codes = DoorCode.objects.select_related("property").filter(property__active=True)
+        if is_management(request):
+            door_codes = door_codes.filter(property__hidden_from_management=False)
         return JsonResponse({"doorCodes": [serialize_door_code(item) for item in door_codes]})
 
     return JsonResponse({"error": "Method not allowed."}, status=405)

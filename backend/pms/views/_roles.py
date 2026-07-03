@@ -28,6 +28,11 @@ def role_allowed(request, allowed_roles):
     return request.user.is_authenticated and user_role(request.user) in allowed_roles
 
 
+def is_management(request):
+    """True for management-role users — the only role property hiding applies to."""
+    return request.user.is_authenticated and user_role(request.user) == ROLE_MANAGEMENT
+
+
 def forbidden_response():
     return JsonResponse({"error": "You do not have permission for this action."}, status=403)
 

@@ -37,6 +37,9 @@ class Property(TimeStampedModel):
     photo = models.FileField(upload_to="properties/", blank=True, null=True)
     notes = models.TextField(blank=True)
     active = models.BooleanField(default=True)
+    # Admin-only switch: a hidden property (and everything tied to it) is
+    # excluded from every list a management-role user can fetch.
+    hidden_from_management = models.BooleanField(default=False)
     floor = models.CharField(max_length=50, blank=True)
     wifi_name = models.CharField(max_length=255, blank=True)
     wifi_password = models.CharField(max_length=255, blank=True)

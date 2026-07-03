@@ -8,7 +8,7 @@ from django.http.multipartparser import MultiPartParser
 
 from ..models import Property, PropertyReview, Reservation, SyncLog
 from ._ical import escape_ical, fetch_ical_events, import_ical_reservations, reservation_label_for_export
-from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, require_roles
+from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles, user_role
 from ._serializers import serialize_property
 from ._utils import decimal_value, json_payload
 
@@ -24,6 +24,8 @@ def property_list(request):
             .prefetch_related("property_amenities")
             .order_by("name")
         )
+        if is_management(request):
+            properties = properties.filter(hidden_from_management=False)
         return JsonResponse({"properties": [serialize_property(prop, request) for prop in properties]})
 
     if request.method == "POST":
@@ -141,6 +143,10 @@ def property_detail(request, property_id):
             if "listingActive" in payload:
                 raw = payload.get("listingActive")
                 prop.listing_active = raw not in ("false", "0", "False", False)
+            # Only an admin may hide/unhide a property from managers.
+            if "hiddenFromManagement" in payload and user_role(request.user) == ROLE_ADMIN:
+                raw_hidden = payload.get("hiddenFromManagement")
+                prop.hidden_from_management = raw_hidden not in ("false", "0", "False", False)
             if "maxGuests" in payload:
                 raw_mg = payload.get("maxGuests")
                 prop.max_guests = int(raw_mg) if raw_mg else None
