@@ -126,6 +126,21 @@ def backup_import(request):
             {"error": "This does not look like a PMS backup file."}, status=400
         )
 
+    # Guard against lockout: the wipe below deletes every user, so a backup
+    # without accounts (from an old app version) would leave nobody able to
+    # log in.
+    if not any(r.get("model") == "auth.user" for r in records):
+        return JsonResponse(
+            {
+                "error": (
+                    "This backup contains no user accounts — importing it would "
+                    "delete every login. Export a fresh backup from the current "
+                    "app version (new backups include accounts) and import that."
+                )
+            },
+            status=400,
+        )
+
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -134,10 +149,13 @@ def backup_import(request):
             json.dump(records, tmp)
             tmp_path = tmp.name
 
-        # Wipe (dependents first), then reload from the file.
+        # Wipe (dependents first), then reload from the file. ignorenonexistent
+        # tolerates version skew: fields/models the running code doesn't know
+        # (backup from a newer or older app version) are skipped instead of
+        # failing the whole import.
         for model in _delete_order(_backup_models()):
             model.objects.all().delete()
-        call_command("loaddata", tmp_path, verbosity=0)
+        call_command("loaddata", tmp_path, verbosity=0, ignorenonexistent=True)
     except Exception as exc:  # noqa: BLE001 — surface any load failure to the client
         return JsonResponse({"error": f"Import failed: {exc}"}, status=400)
     finally:
