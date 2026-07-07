@@ -1,30 +1,66 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Responsive rules. Two breakpoints:
+   ≤980px — tablets: sidebar becomes a slide-in drawer, grids collapse
+   ≤640px — phones: single-column layouts, stacked cards, bigger inputs
+   ═══════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 980px) {
+  /* ── Sidebar → slide-in drawer ── */
   .app-shell {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid #dfe5dd;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: min(300px, 85vw);
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    border-right: 1px solid var(--border);
+    box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
   }
 
-  .nav-list {
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  .sidebar-close {
+    display: grid;
+  }
+
+  .icon-button.menu-button {
+    display: grid;
+  }
+
+  /* ── Dashboard & shared grids ──
+     minmax(0, 1fr), not bare 1fr: wide content (charts, tables) must not
+     stretch the track past the viewport */
+  .dashboard-grid,
+  .schedule-columns,
+  .schedule-columns.three-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metric-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-grid,
-  .schedule-columns,
-  .schedule-columns.three-columns,
-  .metric-row {
-    grid-template-columns: 1fr;
-  }
-
   .property-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .property-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .property-create-form {
@@ -40,9 +76,13 @@
   .reports-filters,
   .finance-metrics,
   .admin-user-form,
-  .sync-status-row,
+  .sync-status-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .sync-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: none;
   }
 
   .finance-form,
@@ -50,8 +90,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .tax-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ── Calendar ── */
   .calendar-page-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .calendar-overview-header {
@@ -60,12 +105,13 @@
   }
 
   .calendar-overview-filters {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 
   .calendar-listings-rail {
     border-right: 0;
-    border-bottom: 1px solid #dfe5dd;
+    border-bottom: 1px solid var(--border);
   }
 
   .calendar-listing-list {
@@ -75,18 +121,42 @@
     overflow-x: auto;
     overflow-y: hidden;
   }
+
+  /* Keep scrollable areas inside the dynamic phone viewport */
+  .table-scroll {
+    max-height: calc(100vh - 220px);
+    max-height: calc(100dvh - 220px);
+  }
+
+  .timeline-scroll {
+    max-height: calc(100vh - 176px);
+    max-height: calc(100dvh - 176px);
+  }
 }
 
 @media (max-width: 640px) {
-  .main-panel,
+  /* ── Page frame ── */
+  .main-panel {
+    padding: 14px;
+  }
+
   .sidebar {
-    padding: 16px;
+    padding: 18px 14px;
   }
 
   .topbar,
   .report-toolbar {
     align-items: stretch;
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .topbar {
+    margin-bottom: 16px;
+  }
+
+  .topbar h1 {
+    font-size: 1.25rem;
   }
 
   .topbar-actions {
@@ -98,6 +168,50 @@
     flex: 1;
   }
 
+  /* iOS Safari zooms into inputs below 16px — keep form text at 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* ── Modals ── */
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .day-detail-backdrop {
+    padding-top: 12px;
+  }
+
+  .reservation-modal {
+    padding: 14px;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modal {
+    padding: 16px;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .day-detail-modal {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .reservation-modal-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── Forms & headers stack to one column ── */
   .listings-header {
     align-items: flex-start;
     flex-direction: column;
@@ -105,6 +219,11 @@
 
   .listings-actions {
     flex-wrap: wrap;
+  }
+
+  .page-panel,
+  .listings-page {
+    min-width: 0;
   }
 
   .codes-header,
@@ -118,8 +237,14 @@
     flex-direction: column;
   }
 
+  .codes-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
   .listings-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 12px;
   }
 
   .property-create-form {
@@ -136,33 +261,79 @@
   .availability-results,
   .availability-card,
   .reports-filters,
-  .finance-metrics,
   .admin-user-form,
   .finance-form,
   .finance-list-row,
   .finance-list-row > div,
   .sync-status-row,
-  .sync-card {
-    grid-template-columns: 1fr;
+  .sync-card,
+  .tax-form,
+  .maintenance-finder-form,
+  .invoice-editor-grid,
+  .compare-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .finance-metrics,
+  .metric-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sync-card-actions {
     align-items: stretch;
   }
 
+  .reports-filters label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* ── Reports: label each stat instead of an off-screen header row ── */
   .reports-table-header {
     display: none;
   }
 
   .reports-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
   }
 
+  .reports-row > strong:first-child {
+    grid-column: 1 / -1;
+    font-size: 0.95rem;
+  }
+
+  .reports-row > [data-label] {
+    display: grid;
+    gap: 2px;
+  }
+
+  .reports-row > [data-label]::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* ── Availability cards ── */
   .availability-card img,
   .availability-card > span {
     width: 100%;
     height: auto;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 16 / 9;
+  }
+
+  .availability-book-btn {
+    align-self: stretch;
+    justify-content: center;
+    display: flex;
+  }
+
+  /* ── Calendar ── */
+  .property-calendar-view {
+    padding: 14px;
   }
 
   .property-calendar-header {
@@ -170,7 +341,116 @@
     flex-direction: column;
   }
 
+  .property-calendar-header h2 {
+    font-size: 1.3rem;
+  }
+
   .property-calendar-actions {
     flex-wrap: wrap;
+  }
+
+  .timeline-grid {
+    grid-template-columns: 150px repeat(var(--timeline-days), 78px);
+  }
+
+  .timeline-property-cell {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .timeline-property-cell img,
+  .timeline-property-cell > span {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ── Reservation search result cards stack vertically ── */
+  .search-res-card {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: start;
+  }
+
+  .search-res-card-dates,
+  .search-res-card-badges,
+  .search-res-card-total,
+  .search-res-card-actions {
+    grid-column: 2;
+  }
+
+  .search-res-card-total {
+    text-align: left;
+  }
+
+  .search-res-card-badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .search-res-card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .search-res-sort {
+    margin-left: 0;
+  }
+
+  /* ── Change-apartment picker rows ── */
+  .change-apt-reservation-row {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+  }
+
+  .change-apt-res-type {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* ── Invoices ── */
+  .invoice-document {
+    padding: 18px 14px;
+  }
+
+  .invoice-doc-header {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-title-block {
+    text-align: left;
+  }
+
+  .invoice-totals-grid {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* ── Misc panels ── */
+  .maintenance-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .attention-description {
+    margin-top: 12px;
+  }
+
+  .compare-metric-row {
+    gap: 8px;
+  }
+
+  .free-apartments-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .month-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Very small phones: single-column metric tiles */
+@media (max-width: 400px) {
+  .metric-row,
+  .finance-metrics,
+  .listings-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

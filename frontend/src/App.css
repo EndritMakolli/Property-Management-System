@@ -12,7 +12,8 @@
 @import './styles/synchronizations.css';
 @import './styles/admin-panel.css';
 @import './styles/finance.css';
-@import './styles/responsive.css';
 @import './styles/invoice.css';
 @import './styles/archive.css';
 @import './styles/receipts.css';
+/* Keep responsive overrides last so they win the cascade at equal specificity */
+@import './styles/responsive.css';

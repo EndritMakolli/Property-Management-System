@@ -74,6 +74,7 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
         </div>
 
         {/* Items */}
+        <div className="table-scroll-x">
         <table className="invoice-table">
           <thead>
             <tr>
@@ -101,6 +102,7 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Totals */}
         <div className="invoice-totals">

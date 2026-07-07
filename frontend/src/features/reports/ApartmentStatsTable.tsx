@@ -44,12 +44,12 @@ export function ApartmentStatsTable({
         {visibleStats.map((property) => (
           <article className="reports-row" key={property.id}>
             <strong>{property.name}</strong>
-            <span>{property.reservations}</span>
-            <span>{property.bookedNights}</span>
-            <span>{property.freeNights}</span>
-            <span>{property.occupancy}%</span>
-            <span>EUR {property.averageNightlyPrice.toFixed(2)}</span>
-            <strong>EUR {property.turnover.toLocaleString()}</strong>
+            <span data-label="Reservations">{property.reservations}</span>
+            <span data-label="Nights booked">{property.bookedNights}</span>
+            <span data-label="Free nights">{property.freeNights}</span>
+            <span data-label="Occupancy">{property.occupancy}%</span>
+            <span data-label="Avg nightly">EUR {property.averageNightlyPrice.toFixed(2)}</span>
+            <strong data-label="Turnover">EUR {property.turnover.toLocaleString()}</strong>
           </article>
         ))}
       </div>

@@ -180,6 +180,7 @@ export function BookingRequestsPage() {
           <div className="br-empty">No confirmed direct bookings yet.</div>
         ) : (
           <>
+            <div className="table-scroll-x">
             <table className="br-confirmed-table">
               <thead>
                 <tr>
@@ -217,6 +218,7 @@ export function BookingRequestsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {confirmed.length < totalConfirmed && (
               <div className="br-load-more">
                 <button className="btn btn-sm btn-outline" onClick={loadMore} disabled={loading}>

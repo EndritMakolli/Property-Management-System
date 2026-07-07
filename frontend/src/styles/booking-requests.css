@@ -117,3 +117,14 @@
 .br-status-expired { background: var(--bg-table-head); color: var(--text-secondary); }
 
 .br-load-more { padding: 12px 18px; border-top: 1px solid var(--border); }
+
+@media (max-width: 640px) {
+  .br-card {
+    grid-template-columns: 1fr;
+  }
+
+  .br-card-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

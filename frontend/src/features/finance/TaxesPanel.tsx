@@ -117,6 +117,7 @@ export function TaxesPanel({ taxes, setTaxes, selectedMonth, selectedYear, month
       {taxes.length > 0 && (
         <div className="tax-history">
           <h4>Tax history</h4>
+          <div className="table-scroll-x">
           <table className="tax-table">
             <thead>
               <tr>
@@ -140,6 +141,7 @@ export function TaxesPanel({ taxes, setTaxes, selectedMonth, selectedYear, month
                 ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </article>

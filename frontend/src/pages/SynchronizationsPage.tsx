@@ -250,6 +250,7 @@ export function SynchronizationsPage() {
                       Sync history ({logsForProperty.length})
                     </button>
                     {isLogsExpanded && (
+                      <div className="table-scroll-x">
                       <table className="sync-log-table">
                         <thead>
                           <tr>
@@ -278,6 +279,7 @@ export function SynchronizationsPage() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 )}

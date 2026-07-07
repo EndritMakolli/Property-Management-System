@@ -15,10 +15,26 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Stop mobile browsers from inflating text after orientation changes */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+label {
+  /* Remove the 300ms double-tap zoom delay on touch devices */
+  touch-action: manipulation;
 }
 
 #root {

@@ -1,9 +1,15 @@
+import { X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { PLATFORMS, usePlatform, type PlatformId } from '../../context/PlatformContext'
 import { navItemsForRole } from './navItems'
 
-export function Sidebar() {
+type SidebarProps = {
+  open?: boolean
+  onClose?: () => void
+}
+
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { user } = useAuth()
   const { platform, switchPlatform } = usePlatform()
 
@@ -12,7 +18,7 @@ export function Sidebar() {
   )
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="brand">
         <div className="brand-mark" style={{ background: platform.brandColor }}>
           {platform.brandMark}
@@ -21,6 +27,16 @@ export function Sidebar() {
           <strong>{platform.brandName}</strong>
           <span>{platform.tagline}</span>
         </div>
+        {onClose && (
+          <button
+            aria-label="Close menu"
+            className="sidebar-close"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <div className="platform-switcher">
@@ -42,6 +58,7 @@ export function Sidebar() {
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
             end={item.path === '/dashboard'}
             key={item.path}
+            onClick={onClose}
             to={item.path}
           >
             <item.icon size={18} />

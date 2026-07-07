@@ -420,6 +420,7 @@ export function PricingRulesPage() {
           ) : promos.length === 0 ? (
             <div className="pricing-empty">No promo codes yet.</div>
           ) : (
+            <div className="table-scroll-x">
             <table className="promo-table">
               <thead>
                 <tr>
@@ -465,6 +466,7 @@ export function PricingRulesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

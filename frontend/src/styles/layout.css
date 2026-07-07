@@ -51,6 +51,39 @@
   margin-bottom: 28px;
 }
 
+/* Mobile-nav controls — hidden on desktop, enabled in responsive.css */
+.icon-button.menu-button,
+.sidebar-close,
+.sidebar-backdrop {
+  display: none;
+}
+
+.sidebar-close {
+  margin-left: auto;
+  align-self: flex-start;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgb(0 0 0 / 42%);
+}
+
+/* Generic horizontal scroll wrapper for tables that are wider than a phone */
+.table-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .brand-mark {
   display: grid;
   width: 42px;
@@ -153,6 +186,13 @@
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 24px;
+}
+
+.topbar-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .topbar h1,

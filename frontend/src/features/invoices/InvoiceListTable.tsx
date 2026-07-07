@@ -22,6 +22,7 @@ export function InvoiceListTable({ invoices, onPreview, onMarkPaid, onDelete }: 
 
   return (
     <div className="panel inv-list-panel">
+      <div className="table-scroll-x">
       <table className="inv-list-table">
         <thead>
           <tr>
@@ -68,6 +69,7 @@ export function InvoiceListTable({ invoices, onPreview, onMarkPaid, onDelete }: 
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

@@ -117,6 +117,7 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
             {bucketLabel(selected)} — {detail.length} reservation{detail.length !== 1 ? 's' : ''}
           </p>
           {detail.length > 0 ? (
+            <div className="table-scroll-x">
             <table className="nights-report-table">
               <thead>
                 <tr>
@@ -141,6 +142,7 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <p className="listings-message">No {bucketLabel(selected)} reservations in this month.</p>
           )}

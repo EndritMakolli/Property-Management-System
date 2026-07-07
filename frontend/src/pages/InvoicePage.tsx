@@ -233,6 +233,7 @@ export function InvoicePage() {
         </div>
 
         {/* Line items */}
+        <div className="table-scroll-x">
         <table className="invoice-table">
           <thead>
             <tr>
@@ -276,6 +277,7 @@ export function InvoicePage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Totals */}
         <div className="invoice-totals">
