@@ -86,3 +86,24 @@ export async function fetchBookingAvailability(checkIn: string, checkOut: string
   const params = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests) })
   return apiGet<AvailabilityResponse>(`/api/booking/availability/?${params.toString()}`)
 }
+
+export interface BookingRequestInput {
+  propertyId: string
+  checkIn: string
+  checkOut: string
+  guestName: string
+  guestPhone: string
+  guestsCount: number
+}
+
+export interface BookingRequestResult {
+  token: string
+  expiresAt: string
+  message: string
+}
+
+// Submit a guest booking request (Pay-at-Property path). Email is not collected;
+// the backend only requires name + phone.
+export async function createBookingRequest(input: BookingRequestInput) {
+  return apiSend<BookingRequestResult>('/api/booking/requests/', 'POST', input)
+}

@@ -53,6 +53,8 @@ export function DashboardPage() {
   const [forecast, setForecast] = useState<DashboardForecast | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [addReservationOpen, setAddReservationOpen] = useState(false)
+  const [editingReservation, setEditingReservation] = useState<ReservationRecord | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const reportMonth = Number(reportDate.slice(5, 7))
   const reportYear = Number(reportDate.slice(0, 4))
@@ -92,7 +94,7 @@ export function DashboardPage() {
     return () => {
       ignore = true
     }
-  }, [reportMonth, reportYear])
+  }, [reportMonth, reportYear, refreshKey])
 
   // Forecast (workload + end-of-month turnover) is admin/management only and
   // loaded separately so a 403 for cleaners never breaks the main dashboard.
@@ -104,6 +106,13 @@ export function DashboardPage() {
       .catch(() => { if (!ignore) setForecast(null) })
     return () => { ignore = true }
   }, [user.role])
+
+  function openEditReservation(id: string) {
+    const record = allReservations.find((r) => r.id === id)
+    if (record) {
+      setEditingReservation(record)
+    }
+  }
 
   async function handleMarkCleaned(propertyId: string, isCleaned: boolean) {
     const updated = await markApartmentCleaned(propertyId, isCleaned)
@@ -262,6 +271,17 @@ export function DashboardPage() {
         onSaved={() => setAddReservationOpen(false)}
       />
 
+      <NewReservationModal
+        open={!!editingReservation}
+        mode="edit"
+        reservation={editingReservation}
+        onClose={() => setEditingReservation(null)}
+        onSaved={() => {
+          setEditingReservation(null)
+          setRefreshKey((key) => key + 1)
+        }}
+      />
+
       {user.role === 'admin' && (
         <section className="metric-row" aria-label="Portfolio metrics">
           <Metric label="Turnover" value={`EUR ${totalTurnover.toLocaleString()}`} />
@@ -279,9 +299,9 @@ export function DashboardPage() {
           <section className="panel schedule-panel">
             <PanelHeader icon={Home} title="Daily movement" action="Open calendar" />
             <div className="schedule-columns three-columns">
-              <ReservationList title="Check-ins" items={checkIns} />
-              <ReservationList title="Check-outs" items={checkOuts} />
-              <ReservationList title="Currently staying" items={currentlyStaying} initialVisibleCount={6} />
+              <ReservationList title="Check-ins" items={checkIns} onSelect={openEditReservation} />
+              <ReservationList title="Check-outs" items={checkOuts} onSelect={openEditReservation} />
+              <ReservationList title="Currently staying" items={currentlyStaying} initialVisibleCount={6} onSelect={openEditReservation} />
             </div>
           </section>
 

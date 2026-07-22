@@ -454,3 +454,22 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ── Date & calendar touch targets on tablets/phones ──
+   Native date/month inputs need a ≥44px tap area and a 16px font so iOS does not
+   auto-zoom on focus. Covers the custom DateInput (both its layers) and the raw
+   date/month filters used in search bars. */
+@media (max-width: 980px) {
+  .date-input input,
+  input[type='date'],
+  input[type='month'] {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  /* Reservation pills/bars in calendar views must stay comfortably tappable. */
+  .calendar-reservation-pill,
+  .timeline-reservation-bar {
+    min-height: 30px;
+  }
+}
