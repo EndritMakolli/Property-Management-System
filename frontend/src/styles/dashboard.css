@@ -691,3 +691,8 @@
   flex-shrink: 0;
   font-size: 0.95rem;
 }
+
+/* Payment status donuts panel spans the dashboard grid */
+.payment-status-panel {
+  grid-column: 1 / -1;
+}

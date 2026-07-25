@@ -13,6 +13,14 @@ import {
   MonthlyRevenueChart,
 } from '../features/reports/ReportCharts'
 import {
+  AdrTrendChart,
+  LeadTimeChart,
+  OccupancyTrendChart,
+  PlatformRevenueDonut,
+  StayLengthChart,
+  TopApartmentsBar,
+} from '../features/reports/InsightCharts'
+import {
   aggregateGroupStats,
   bedroomComposition,
   buildPropertyReportStats,
@@ -560,6 +568,45 @@ export function ReportsPage() {
           />
 
           <NightsByMonthReport reservations={includedAllReservations} />
+
+          {/* ── Insights: platform split, top units, trends, booking behavior ── */}
+          <section className="panel stats-section">
+            <h3 className="stats-section-title">Insights — {periodLabel}</h3>
+            <div className="insights-grid">
+              <div>
+                <h4>Revenue by platform</h4>
+                <PlatformRevenueDonut
+                  month={viewMode === 'monthly' ? selectedMonth : 0}
+                  reservations={includedAllReservations}
+                  year={selectedYear}
+                />
+              </div>
+              <div>
+                <h4>Top {platform.unitPlural.toLowerCase()} by revenue</h4>
+                <TopApartmentsBar stats={stats} />
+              </div>
+              <div>
+                <h4>Occupancy % by month — {selectedYear} vs {selectedYear - 1}</h4>
+                <OccupancyTrendChart
+                  properties={visibleProperties}
+                  reservations={includedAllReservations}
+                  year={selectedYear}
+                />
+              </div>
+              <div>
+                <h4>Average nightly rate — {selectedYear} vs {selectedYear - 1}</h4>
+                <AdrTrendChart reservations={includedAllReservations} year={selectedYear} />
+              </div>
+              <div>
+                <h4>Stay length (all reservations)</h4>
+                <StayLengthChart reservations={includedAllReservations} />
+              </div>
+              <div>
+                <h4>Booking lead time (booked → check-in)</h4>
+                <LeadTimeChart reservations={includedAllReservations} />
+              </div>
+            </div>
+          </section>
 
           {lowestPerformers.length > 0 && (
             <section className="panel stats-section">

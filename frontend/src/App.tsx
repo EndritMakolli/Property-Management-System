@@ -8,6 +8,8 @@ import ClientLayout from './pages/client/ClientLayout'
 import ClientHomePage from './pages/client/ClientHomePage'
 import './App.css'
 
+const MapPage = lazy(() => import('./pages/client/MapPage'))
+
 // PMS pages are code-split so the public guest site never downloads the admin app.
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const InvoicePage = lazy(() => import('./pages/InvoicePage').then((m) => ({ default: m.InvoicePage })))
@@ -24,6 +26,8 @@ const FinancePage = lazy(() => import('./pages/FinancePage').then((m) => ({ defa
 const ReceiptsPage = lazy(() => import('./pages/ReceiptsPage').then((m) => ({ default: m.ReceiptsPage })))
 const MaintenancePage = lazy(() => import('./pages/MaintenancePage').then((m) => ({ default: m.MaintenancePage })))
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })))
+const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })))
+const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').then((m) => ({ default: m.BookingRequestsPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })))
@@ -37,6 +41,7 @@ function App() {
             {/* Public guest-facing site */}
             <Route element={<ClientLayout />}>
               <Route path="/" element={<ClientHomePage />} />
+              <Route path="/map" element={<MapPage />} />
             </Route>
 
             <Route path="/login" element={<LoginPage />} />
@@ -56,6 +61,8 @@ function App() {
                 <Route path="/receipts" element={<ReceiptsPage />} />
                 <Route path="/maintenance" element={<MaintenancePage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
+                <Route path="/payments" element={<PaymentsPage />} />
+                <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/booking-requests" element={<BookingRequestsPage />} />
                 <Route path="/pricing-rules" element={<PricingRulesPage />} />
                 <Route path="*" element={<PlaceholderPage />} />

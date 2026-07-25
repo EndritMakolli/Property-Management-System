@@ -1,0 +1,424 @@
+/* ============================================================
+   Form modal v2 — the rounder/smoother popup form system.
+   Composes with the existing .modal-backdrop / .modal convention:
+   <div class="modal-backdrop"><div class="modal form-modal">…
+   Used by: PropertyCreateForm, NewReservationModal, ClientFormModal,
+   invoice editor, EditExpenseModal.
+   ============================================================ */
+
+.form-modal {
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-modal);
+  padding: 0;
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.form-modal--wide {
+  width: min(860px, 100%);
+}
+
+.form-modal .form-modal-head {
+  padding: 22px 26px 14px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.form-modal .form-modal-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.form-modal .form-modal-head p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.form-modal .form-modal-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.form-modal .form-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.form-modal .form-modal-body {
+  padding: 18px 26px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.form-modal .form-modal-footer {
+  padding: 14px 26px 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* --- Sections ------------------------------------------------ */
+
+.form-section {
+  margin-bottom: 22px;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.form-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+/* --- Grid & fields ------------------------------------------- */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.form-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.form-modal label.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-modal input:not([type='checkbox']):not([type='radio']),
+.form-modal select,
+.form-modal textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-modal input:not([type='checkbox']):not([type='radio']):focus,
+.form-modal select:focus,
+.form-modal textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.form-modal textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.form-field-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.form-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-checkbox-row input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* --- Pills --------------------------------------------------- */
+
+.pill-button {
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 9px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pill-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+}
+
+.pill-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pill-button.primary {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-panel);
+}
+
+.pill-button.primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.pill-button.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.pill-button.accent:hover:not(:disabled) {
+  background: var(--accent-mid);
+  border-color: var(--accent-mid);
+}
+
+.pill-button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+
+.pill-button.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+.pill-toggle-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill-toggle-group .pill-toggle {
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pill-toggle-group .pill-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.pill-toggle-group .pill-toggle.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- Dropzone ------------------------------------------------ */
+
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  background: var(--bg-app);
+  padding: 26px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-bg-mid);
+  color: var(--accent);
+}
+
+.dropzone input[type='file'] {
+  display: none;
+}
+
+.dropzone-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzone-preview img {
+  max-height: 110px;
+  max-width: 100%;
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dropzone-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-modal-summary {
+  margin-right: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.returning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--badge-success-bg);
+  color: var(--badge-success-text);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.form-success-note {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  margin: 0 0 14px;
+}
+
+/* --- Inline panels inside forms (smart change, guest search) -- */
+
+.form-inline-panel {
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--bg-app);
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.form-inline-panel h4 {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.form-inline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.form-inline-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.form-inline-list li:hover {
+  border-color: var(--accent-border);
+}
+
+/* --- Responsive ---------------------------------------------- */
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-modal {
+    width: 100%;
+  }
+
+  .form-modal .form-modal-head,
+  .form-modal .form-modal-body,
+  .form-modal .form-modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .form-modal .form-modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .form-modal .form-modal-footer .pill-button {
+    flex: 1;
+    justify-content: center;
+  }
+}

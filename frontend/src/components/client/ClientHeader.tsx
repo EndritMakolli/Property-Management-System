@@ -16,6 +16,12 @@ export default function ClientHeader() {
         </Link>
 
         <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ''}`}>
+          <button
+            className={styles.navLink}
+            onClick={() => { navigate('/map'); setMenuOpen(false) }}
+          >
+            Map
+          </button>
           <button className={styles.navLink} onClick={() => setMenuOpen(false)}>
             Browse apartments
           </button>

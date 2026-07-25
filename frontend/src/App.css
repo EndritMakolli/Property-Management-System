@@ -15,5 +15,6 @@
 @import './styles/invoice.css';
 @import './styles/archive.css';
 @import './styles/receipts.css';
+@import './styles/form-modal.css';
 /* Keep responsive overrides last so they win the cascade at equal specificity */
 @import './styles/responsive.css';

@@ -7,6 +7,8 @@ export type PropertyListing = {
   beds: number
   bathrooms: number
   locationLabel: string
+  latitude?: string
+  longitude?: string
   rating: string
   reviewCount: number
   floor: string
@@ -34,6 +36,8 @@ export type ReservationRecord = {
   id: string
   guestName: string
   guestPhone: string
+  guestEmail?: string
+  guestId?: string
   paymentDue: string
   paid: boolean
   paidMonths?: string[]
@@ -46,10 +50,28 @@ export type ReservationRecord = {
   checkOut: string
   totalNights: number
   nightlyPrice: string
+  monthlyPrice?: string
   totalPaid: string
   isArchived: boolean
   archivedAt: string
   createdAt?: string
+}
+
+export type GuestRecord = {
+  id: string
+  firstName: string
+  lastName: string
+  fullName: string
+  email: string
+  phone: string
+  whatsappNumber: string
+  nationality: string
+  notes: string
+  isReturning: boolean
+  totalStays: number
+  totalNights: number
+  totalPaidEur: string
+  createdAt: string
 }
 
 export type EditableReservation = ReservationRecord & {
@@ -130,6 +152,10 @@ export type FinanceExpenseRecord = {
   endMonth: number | null
   platform: 'airstay' | 'fleet' | ''
   notes: string
+  paid: boolean
+  vendor: string
+  invoiceDate: string
+  invoiceFileUrl: string
 }
 
 export type LoanRecord = {

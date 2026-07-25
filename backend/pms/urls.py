@@ -33,6 +33,18 @@ urlpatterns = [
     path("reservations/<uuid:reservation_id>/attachments/", views.reservation_attachment_list, name="reservation-attachment-list"),
     path("reservations/<uuid:reservation_id>/attachments/<uuid:attachment_id>/", views.reservation_attachment_detail, name="reservation-attachment-detail"),
 
+    # Invoices
+    path("invoices/", views.invoice_list, name="invoice-list"),
+    path("invoices/import/", views.invoice_import, name="invoice-import"),
+    path("invoices/<uuid:invoice_id>/", views.invoice_detail, name="invoice-detail"),
+
+    # Company profile (singleton)
+    path("company-profile/", views.company_profile, name="company-profile"),
+
+    # Clients (guest directory)
+    path("guests/", views.guest_list, name="guest-list"),
+    path("guests/<uuid:guest_id>/", views.guest_detail, name="guest-detail"),
+
     # Access Codes
     path("codes/door/", views.door_code_list, name="door-code-list"),
     path("codes/door/<uuid:code_id>/", views.door_code_detail, name="door-code-detail"),
@@ -44,7 +56,9 @@ urlpatterns = [
     path("finance/categories/", views.expense_category_list, name="expense-category-list"),
     path("finance/categories/<uuid:category_id>/", views.expense_category_detail, name="expense-category-detail"),
     path("finance/expenses/", views.finance_expense_list, name="finance-expense-list"),
+    path("finance/expenses/extract/", views.expense_extract, name="finance-expense-extract"),
     path("finance/expenses/<uuid:expense_id>/", views.finance_expense_detail, name="finance-expense-detail"),
+    path("finance/expenses/<uuid:expense_id>/invoice/", views.expense_invoice, name="finance-expense-invoice"),
     path("finance/loans/", views.loan_list, name="loan-list"),
     path("finance/loans/<uuid:loan_id>/", views.loan_detail, name="loan-detail"),
     path("finance/obligations/", views.obligation_list, name="obligation-list"),

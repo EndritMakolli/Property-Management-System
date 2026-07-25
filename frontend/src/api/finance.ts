@@ -6,7 +6,7 @@ import type {
   LoanRecord,
   MonthlyTaxRecord,
 } from '../types/domain'
-import { apiDelete, apiFetch, apiGet, apiSend, readJson } from './client'
+import { apiDelete, apiFetch, apiForm, apiGet, apiSend, readJson } from './client'
 
 export type FinanceExpensePayload = {
   name: string
@@ -18,6 +18,20 @@ export type FinanceExpensePayload = {
   endYear: number | null
   endMonth: number | null
   platform: 'airstay' | 'fleet' | ''
+  notes: string
+  paid?: boolean
+  vendor?: string
+  invoiceDate?: string
+}
+
+export type ExtractedExpense = {
+  vendor: string
+  name: string
+  amountEur: string
+  currency: string
+  invoiceDate: string
+  categoryId: string
+  categoryName: string
   notes: string
 }
 
@@ -96,6 +110,45 @@ export async function updateFinanceExpense(id: string, payload: FinanceExpensePa
 
 export async function deleteFinanceExpense(id: string) {
   await apiDelete(`/api/finance/expenses/${id}/`, 'Could not delete expense.')
+}
+
+export async function toggleExpensePaid(id: string, paid: boolean) {
+  const data = await apiSend<{ expense: FinanceExpenseRecord }>(`/api/finance/expenses/${id}/`, 'PATCH', { paid })
+  return data.expense
+}
+
+export async function uploadExpenseInvoice(id: string, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const data = await apiForm<{ expense: FinanceExpenseRecord }>(
+    `/api/finance/expenses/${id}/invoice/`,
+    'POST',
+    formData,
+  )
+  return data.expense
+}
+
+export async function deleteExpenseInvoice(id: string) {
+  const data = await apiFetch(`/api/finance/expenses/${id}/invoice/`, { method: 'DELETE' })
+  const body = await readJson<{ expense: FinanceExpenseRecord }>(data)
+  return body.expense
+}
+
+export async function fetchExtractEnabled() {
+  const data = await apiGet<{ enabled: boolean }>('/api/finance/expenses/extract/')
+  return data.enabled
+}
+
+// Send an invoice image/PDF to Claude; returns prefill values for the form.
+export async function extractExpense(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const data = await apiForm<{ extracted: ExtractedExpense }>(
+    '/api/finance/expenses/extract/',
+    'POST',
+    formData,
+  )
+  return data.extracted
 }
 
 export async function createLoan(payload: LoanPayload) {

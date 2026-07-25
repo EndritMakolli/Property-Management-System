@@ -2,7 +2,7 @@ from datetime import date
 from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 
-from ..models import ExpenseCategory, FinanceExpense, Property
+from ..models import ExpenseCategory, FinanceExpense, Guest, Property
 from ._utils import date_value, decimal_value
 
 
@@ -11,6 +11,11 @@ def apply_reservation_payload(reservation, payload):
         reservation.guest_name = (payload.get("guestName") or "").strip()
     if "guestPhone" in payload:
         reservation.guest_phone = (payload.get("guestPhone") or "").strip()
+    if "guestEmail" in payload:
+        reservation.guest_email = (payload.get("guestEmail") or "").strip()
+    if "guestId" in payload:
+        raw = payload.get("guestId")
+        reservation.guest = Guest.objects.get(pk=raw) if raw else None
     if "propertyId" in payload:
         new_property = Property.objects.get(pk=payload.get("propertyId"))
         # Moving a channel-imported booking to another apartment pins it: a later
@@ -51,6 +56,11 @@ def apply_reservation_payload(reservation, payload):
         reservation.notes = payload.get("notes") or ""
     if "nightlyPrice" in payload:
         reservation.nightly_price_eur = decimal_value(payload.get("nightlyPrice"), "nightlyPrice")
+    if "monthlyPrice" in payload:
+        raw = payload.get("monthlyPrice")
+        reservation.monthly_price_eur = (
+            decimal_value(raw, "monthlyPrice") if raw not in ("", None) else None
+        )
     return reservation
 
 
@@ -75,6 +85,12 @@ def apply_finance_expense_payload(expense, payload):
         expense.platform = payload.get("platform") or None
     if "notes" in payload:
         expense.notes = payload.get("notes") or ""
+    if "paid" in payload:
+        expense.paid = bool(payload.get("paid"))
+    if "vendor" in payload:
+        expense.vendor = (payload.get("vendor") or "").strip()
+    if "invoiceDate" in payload:
+        expense.invoice_date = date_value(payload.get("invoiceDate"), "invoiceDate", required=False)
 
     if not expense.name:
         raise ValidationError({"name": "Enter an expense name."})

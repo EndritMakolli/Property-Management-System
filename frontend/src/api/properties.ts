@@ -20,6 +20,8 @@ export type PropertyPayload = {
   beds?: number
   bathrooms?: number
   locationLabel?: string
+  latitude?: string
+  longitude?: string
   rating?: string
   reviewCount?: number
 }
@@ -49,6 +51,8 @@ function appendPropertyFields(formData: FormData, payload: PropertyPayload | Pro
   if (payload.beds !== undefined) formData.append('beds', String(payload.beds))
   if (payload.bathrooms !== undefined) formData.append('bathrooms', String(payload.bathrooms))
   if (payload.locationLabel !== undefined) formData.append('locationLabel', payload.locationLabel)
+  if (payload.latitude !== undefined) formData.append('latitude', payload.latitude)
+  if (payload.longitude !== undefined) formData.append('longitude', payload.longitude)
   if (payload.rating !== undefined) formData.append('rating', payload.rating)
   if (payload.reviewCount !== undefined) formData.append('reviewCount', String(payload.reviewCount))
 }
@@ -95,6 +99,8 @@ export async function updateProperty(id: string, payload: PropertyEditPayload) {
     ...(payload.beds !== undefined ? { beds: payload.beds } : {}),
     ...(payload.bathrooms !== undefined ? { bathrooms: payload.bathrooms } : {}),
     ...(payload.locationLabel !== undefined ? { locationLabel: payload.locationLabel } : {}),
+    ...(payload.latitude !== undefined ? { latitude: payload.latitude } : {}),
+    ...(payload.longitude !== undefined ? { longitude: payload.longitude } : {}),
     ...(payload.rating !== undefined ? { rating: payload.rating } : {}),
     ...(payload.reviewCount !== undefined ? { reviewCount: payload.reviewCount } : {}),
   })

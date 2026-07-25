@@ -305,3 +305,44 @@
   background: var(--row-today-bg) !important;
   font-weight: 600;
 }
+
+/* AI invoice scan row (ExpensesPanel) */
+.expense-scan-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.expense-scan-row .dropzone {
+  flex: 1 1 260px;
+}
+
+.expense-scan-block {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg-mid);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+
+.expense-scan-block .expense-scan-row {
+  margin: 0;
+}
+
+.expense-scan-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--accent);
+}
+
+.expense-scan-hint {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}

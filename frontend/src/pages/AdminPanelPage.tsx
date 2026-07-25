@@ -10,6 +10,7 @@ import {
   type UserAccountPayload,
 } from '../api/pmsApi'
 import { exportBackup, importBackup } from '../api/backup'
+import { CompanyProfileCard } from '../features/company/CompanyProfileCard'
 import { useAuth } from '../auth/AuthContext'
 import type { ManagedUser, PropertyListing } from '../types/domain'
 
@@ -315,6 +316,8 @@ export function AdminPanelPage() {
           ))}
         </div>
       </article>
+
+      <CompanyProfileCard />
 
       <article className="panel admin-backup-card">
         <h3>Backup &amp; restore</h3>

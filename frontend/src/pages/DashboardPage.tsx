@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, CheckSquare, Home, Plus, Square, TrendingUp, Wrench } from 'lucide-react'
+import { Activity, CalendarDays, CheckSquare, Home, Plus, Square, TrendingUp, Users, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -18,6 +18,7 @@ import { DateInput } from '../components/shared/DateInput'
 import { ReservationList } from '../features/dashboard/ReservationList'
 import { CleaningPanel } from '../features/dashboard/CleaningPanel'
 import { PaymentsDuePanel } from '../features/dashboard/PaymentsDuePanel'
+import { PaymentStatusDonuts } from '../features/dashboard/PaymentStatusDonuts'
 import { buildPropertyReportStats } from '../features/reports/reportCalculations'
 import type {
   CleanStatusRecord,
@@ -249,6 +250,10 @@ export function DashboardPage() {
             value={reportDate}
             onChange={setReportDate}
           />
+          <button className="primary-button" onClick={() => navigate('/clients')}>
+            <Users size={17} />
+            Clients
+          </button>
           <button className="primary-button" onClick={() => setAddReservationOpen(true)}>
             <Plus size={17} />
             New reservation
@@ -298,6 +303,12 @@ export function DashboardPage() {
             onReservationUpdated={(saved) =>
               setAllReservations((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
             }
+          />
+
+          <PaymentStatusDonuts
+            month={new Date().getMonth() + 1}
+            reservations={allReservations}
+            year={new Date().getFullYear()}
           />
 
           {workloadData.length > 0 && (

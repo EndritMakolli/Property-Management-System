@@ -1,11 +1,15 @@
-import { Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { FileText, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import {
   createExpenseCategory,
   createFinanceExpense,
   deleteExpenseCategory,
   deleteFinanceExpense,
+  extractExpense,
+  fetchExtractEnabled,
+  toggleExpensePaid,
   updateExpenseCategory,
+  uploadExpenseInvoice,
   type FinanceExpensePayload,
 } from '../../api/pmsApi'
 import { monthOptions, yearOptions } from '../reservations/monthOptions'
@@ -50,7 +54,22 @@ export function ExpensesPanel({
     endMonth: null,
     platform: '',
     notes: '',
+    paid: false,
+    vendor: '',
+    invoiceDate: '',
   })
+
+  // AI invoice scan: file held locally, attached to the expense after create.
+  const [aiEnabled, setAiEnabled] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractNote, setExtractNote] = useState('')
+  const [unpaidOnly, setUnpaidOnly] = useState(false)
+  const scanInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetchExtractEnabled().then(setAiEnabled).catch(() => setAiEnabled(false))
+  }, [])
 
   // Keep the form anchored to the selected period and default to the first category.
   useEffect(() => {
@@ -79,13 +98,76 @@ export function ExpensesPanel({
   async function addExpense(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     try {
-      await createFinanceExpense(expenseForm)
-      setExpenseForm((current) => ({ ...current, name: '', amountEur: '', notes: '', platform: '' }))
+      const created = await createFinanceExpense(expenseForm)
+      if (pendingFile) {
+        await uploadExpenseInvoice(created.id, pendingFile)
+      }
+      setExpenseForm((current) => ({
+        ...current,
+        name: '',
+        amountEur: '',
+        notes: '',
+        platform: '',
+        paid: false,
+        vendor: '',
+        invoiceDate: '',
+      }))
+      setPendingFile(null)
+      setExtractNote('')
       await onReload()
     } catch (caughtError) {
       onError(caughtError instanceof Error ? caughtError.message : 'Could not create expense.')
     }
   }
+
+  function handleScanPicked() {
+    const file = scanInputRef.current?.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      onError('The file is larger than 10 MB — scan it at a lower resolution.')
+      return
+    }
+    setPendingFile(file)
+    setExtractNote('')
+    if (scanInputRef.current) scanInputRef.current.value = ''
+  }
+
+  async function runExtract() {
+    if (!pendingFile) return
+    setExtracting(true)
+    setExtractNote('')
+    try {
+      const extracted = await extractExpense(pendingFile)
+      setExpenseForm((current) => ({
+        ...current,
+        name: extracted.name || current.name,
+        vendor: extracted.vendor || current.vendor,
+        amountEur: extracted.amountEur || current.amountEur,
+        invoiceDate: extracted.invoiceDate || current.invoiceDate,
+        categoryId: extracted.categoryId || current.categoryId,
+        notes: extracted.notes || current.notes,
+      }))
+      setExtractNote(
+        `Read by AI${extracted.vendor ? ` — ${extracted.vendor}` : ''}. Review the values, then add the expense (starts as unpaid).`,
+      )
+    } catch (caughtError) {
+      onError(caughtError instanceof Error ? caughtError.message : 'Extraction failed — fill the form manually.')
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  async function togglePaid(expense: FinanceExpenseRecord) {
+    try {
+      await toggleExpensePaid(expense.id, !expense.paid)
+      await onReload()
+    } catch (caughtError) {
+      onError(caughtError instanceof Error ? caughtError.message : 'Could not update the payment status.')
+    }
+  }
+
+  const visibleExpenses = unpaidOnly ? expenses.filter((expense) => !expense.paid) : expenses
+  const unpaidCount = expenses.filter((expense) => !expense.paid).length
 
   return (
     <article className="panel finance-section">
@@ -178,6 +260,50 @@ export function ExpensesPanel({
           ))}
         </div>
       )}
+      {/* AI invoice scan — pick a file, extract, review, save (unpaid by default). */}
+      <div className="expense-scan-block">
+        <p className="expense-scan-title">
+          <FileText size={15} /> Upload an invoice
+        </p>
+        <p className="expense-scan-hint">
+          Drop a photo or PDF of a supplier invoice here — {aiEnabled ? 'the AI reads the vendor, amount and date for you, ' : ''}
+          the file is attached to the expense, and it starts as <strong>unpaid</strong> until you mark it paid.
+        </p>
+        <div className="expense-scan-row">
+          <label className="dropzone" style={{ padding: 14, flexDirection: 'row', gap: 8 }}>
+            {pendingFile ? (
+              <span className="dropzone-file-chip">
+                <FileText size={14} /> {pendingFile.name}
+              </span>
+            ) : (
+              <>
+                <FileText size={16} />
+                <span>Click to choose the invoice file (image or PDF)</span>
+              </>
+            )}
+            <input accept="image/*,application/pdf" ref={scanInputRef} type="file" onChange={handleScanPicked} />
+          </label>
+          {pendingFile && aiEnabled && (
+            <button className="pill-button accent" disabled={extracting} type="button" onClick={runExtract}>
+              <Sparkles size={14} /> {extracting ? 'Reading…' : 'Extract with AI'}
+            </button>
+          )}
+          {pendingFile && (
+            <button
+              className="pill-button"
+              type="button"
+              onClick={() => {
+                setPendingFile(null)
+                setExtractNote('')
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {extractNote && <p className="form-success-note">{extractNote}</p>}
+      </div>
+
       <form className="finance-form" onSubmit={addExpense}>
         <input
           required
@@ -251,11 +377,37 @@ export function ExpensesPanel({
             </select>
           </>
         )}
+        <label className="form-checkbox-row" title="New expenses start unpaid until you mark them paid">
+          <input
+            checked={expenseForm.paid ?? false}
+            type="checkbox"
+            onChange={(event) => setExpenseForm({ ...expenseForm, paid: event.target.checked })}
+          />
+          Paid
+        </label>
         <button className="primary-button" type="submit">Add expense</button>
       </form>
+
+      <div className="pill-toggle-group" style={{ margin: '10px 0' }}>
+        <button
+          className={`pill-toggle${!unpaidOnly ? ' active' : ''}`}
+          type="button"
+          onClick={() => setUnpaidOnly(false)}
+        >
+          All
+        </button>
+        <button
+          className={`pill-toggle${unpaidOnly ? ' active' : ''}`}
+          type="button"
+          onClick={() => setUnpaidOnly(true)}
+        >
+          Unpaid{unpaidCount > 0 ? ` (${unpaidCount})` : ''}
+        </button>
+      </div>
+
       <FinanceList
-        rows={expenses}
-        empty="No expenses for this month."
+        rows={visibleExpenses}
+        empty={unpaidOnly ? 'No unpaid expenses — everything is settled.' : 'No expenses for this month.'}
         onDelete={(id) => deleteFinanceExpense(id).then(onReload)}
         onEdit={onEdit}
         render={(expense) => (
@@ -266,12 +418,36 @@ export function ExpensesPanel({
                 style={{ background: expense.categoryColor || '#6b7280' }}
               />
               <strong>{expense.name}</strong>
+              {expense.invoiceFileUrl && (
+                <a
+                  href={expense.invoiceFileUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                  title="View attached invoice"
+                  style={{ display: 'inline-flex', color: 'var(--text-muted)' }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <FileText size={13} />
+                </a>
+              )}
             </div>
             <span>{expense.categoryName}</span>
             <span>{expense.frequency === 'repeated' ? 'Repeated' : 'One time'}</span>
             <span className={`finance-platform-badge${expense.platform ? ` platform-${expense.platform}` : ''}`}>
               {expense.platform === 'airstay' ? 'AirStay' : expense.platform === 'fleet' ? 'Fleet' : 'Shared'}
             </span>
+            <button
+              className={`payment-badge ${expense.paid ? 'paid' : 'unpaid'}`}
+              style={{ border: 'none', cursor: 'pointer' }}
+              title={expense.paid ? 'Mark as unpaid' : 'Mark as paid'}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                togglePaid(expense)
+              }}
+            >
+              {expense.paid ? 'Paid' : 'Unpaid'}
+            </button>
             <strong>EUR {money(expense.amountEur)}</strong>
           </>
         )}

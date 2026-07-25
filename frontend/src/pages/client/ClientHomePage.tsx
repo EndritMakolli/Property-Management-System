@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { calculateNights, formatDisplayDate, toDateInputValue } from '../../utils/date'
 import {
   fetchBookingAvailability,
@@ -103,6 +104,10 @@ export default function ClientHomePage() {
           </button>
         </div>
 
+        <Link className={styles.mapCta} to="/map">
+          📍 See all our apartments on the map
+        </Link>
+
         {/* Search bar overlapping the hero bottom */}
         <form className={styles.searchBar} onSubmit={submitSearch}>
           <label className={styles.searchField}>
@@ -140,11 +145,16 @@ export default function ClientHomePage() {
               <p className={styles.eyebrow}>Available now</p>
               <h2 className={styles.apTitle}>Apartments in your area</h2>
             </div>
-            {status === 'ready' && (
-              <span className={styles.summary}>
-                <strong>{available.length}</strong> available for {nights} {nights === 1 ? 'night' : 'nights'}
-              </span>
-            )}
+            <div className={styles.apHeadActions}>
+              {status === 'ready' && (
+                <span className={styles.summary}>
+                  <strong>{available.length}</strong> available for {nights} {nights === 1 ? 'night' : 'nights'}
+                </span>
+              )}
+              <Link className={styles.mapCtaSmall} to="/map">
+                📍 Map view
+              </Link>
+            </div>
           </div>
 
           {status === 'loading' ? (

@@ -48,18 +48,11 @@ export function PropertiesPage() {
     setCreateError('')
 
     try {
+      // Pass the form payload through untouched — rebuilding it here silently
+      // dropped newer fields (coordinates, beds, rating…).
       const property = await createProperty({
-        name: payload.name,
-        bedrooms: payload.bedrooms,
-        basePriceEur: payload.basePriceEur,
-        address: payload.address,
-        floor: payload.floor || '',
-        wifiName: payload.wifiName || '',
-        wifiPassword: payload.wifiPassword || '',
+        ...payload,
         photo: 'photo' in payload ? (payload.photo ?? null) : null,
-        description: payload.description,
-        listingActive: payload.listingActive,
-        maxGuests: payload.maxGuests,
       })
       setProperties((current) => [...current, property].sort((a, b) => a.name.localeCompare(b.name)))
       setCreateOpen(false)
@@ -81,19 +74,7 @@ export function PropertiesPage() {
     setCreateError('')
 
     try {
-      const property = await updateProperty(editingProperty.id, {
-        name: payload.name,
-        bedrooms: payload.bedrooms,
-        basePriceEur: payload.basePriceEur,
-        address: payload.address,
-        floor: payload.floor || '',
-        wifiName: payload.wifiName || '',
-        wifiPassword: payload.wifiPassword || '',
-        photo: 'photo' in payload ? (payload.photo ?? null) : null,
-        description: payload.description,
-        listingActive: payload.listingActive,
-        maxGuests: payload.maxGuests,
-      })
+      const property = await updateProperty(editingProperty.id, payload)
       setProperties((current) =>
         current
           .map((item) => (item.id === property.id ? property : item))

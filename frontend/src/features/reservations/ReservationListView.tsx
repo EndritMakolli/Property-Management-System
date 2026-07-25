@@ -1,19 +1,14 @@
 import { ArrowRight, Check, Pencil, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchProperties, fetchReservations, updateReservation } from '../../api/pmsApi'
+import { fetchProperties, fetchReservations } from '../../api/pmsApi'
 import { CalendarOverviewTimeline } from '../calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../calendar/useCalendarReservationEditor'
 import { NewReservationModal } from './NewReservationModal'
-import { scoreReservation, overlaps, stayCoversDate } from './reservationSearch'
+import { scoreReservation, stayCoversDate } from './reservationSearch'
+import { useSmartChange } from './useSmartChange'
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
-import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../../utils/date'
-
-type FreeUpOption = {
-  targetProperty: PropertyListing
-  blockingReservation: ReservationRecord
-  alternativeProperty: PropertyListing
-}
+import { formatDisplayDate, parseDateValue, toDateInputValue } from '../../utils/date'
 
 // ── Two-level sort ──
 type SortKey = 'apartment' | 'checkIn' | 'checkOut' | 'guest' | 'total'
@@ -89,9 +84,6 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
 
   // ── Change-apartment inline panel ──
   const [changing, setChanging] = useState<ReservationRecord | null>(initialChanging ?? null)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState('')
-  const [saved, setSaved] = useState(false)
   const [timelineStart, setTimelineStart] = useState(() =>
     parseDateValue(initialChanging?.checkIn ?? toDateInputValue(new Date())),
   )
@@ -134,9 +126,9 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
   useEffect(() => {
     if (initialChanging) {
       setChanging(initialChanging)
-      setSaved(false)
-      setSaveError('')
+      resetChange()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialChanging])
 
   useEffect(() => {
@@ -189,45 +181,25 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
 
   const isEmpty = results.length === 0 && status === 'ready'
 
-  // ── Change-apartment availability logic ──
+  // ── Change-apartment availability logic (shared hook) ──
   const changeCheckIn = changing?.checkIn ?? ''
   const changeCheckOut = changing?.checkOut ?? ''
-  const changeNights = changing ? calculateNights(changeCheckIn, changeCheckOut) : 0
-
-  const reservationsWithoutChanging = useMemo(
-    () => allReservations.filter((r) => r.id !== changing?.id),
-    [allReservations, changing],
-  )
-
-  const availableProperties = useMemo(() => {
-    if (!changing || changeNights < 1) return []
-    return properties.filter((p) => {
-      if (p.id === changing.propertyId) return false
-      return !reservationsWithoutChanging.some((r) => r.propertyId === p.id && overlaps(r, changeCheckIn, changeCheckOut))
-    })
-  }, [changing, changeNights, properties, reservationsWithoutChanging, changeCheckIn, changeCheckOut])
-
-  const freeUpOptions = useMemo<FreeUpOption[]>(() => {
-    if (!changing || changeNights < 1 || availableProperties.length > 0) return []
-    const suggestions: FreeUpOption[] = []
-    for (const prop of properties) {
-      if (prop.id === changing.propertyId) continue
-      const blocking = reservationsWithoutChanging.find(
-        (r) => r.propertyId === prop.id && overlaps(r, changeCheckIn, changeCheckOut),
-      )
-      if (!blocking) continue
-      const alt = properties.find(
-        (a) =>
-          a.id !== prop.id &&
-          a.id !== changing.propertyId &&
-          !reservationsWithoutChanging.some(
-            (r) => r.propertyId === a.id && r.id !== blocking.id && overlaps(r, blocking.checkIn, blocking.checkOut),
-          ),
-      )
-      if (alt) suggestions.push({ targetProperty: prop, blockingReservation: blocking, alternativeProperty: alt })
-    }
-    return suggestions
-  }, [changing, changeNights, availableProperties.length, properties, reservationsWithoutChanging, changeCheckIn, changeCheckOut])
+  const {
+    availableProperties,
+    freeUpOptions,
+    nights: changeNights,
+    doChange,
+    doSwap,
+    saving,
+    saveError,
+    saved,
+    reset: resetChange,
+  } = useSmartChange({
+    reservation: changing,
+    properties,
+    reservations: allReservations,
+    onChanged: refetchReservations,
+  })
 
   const calendarProps = useMemo(() => {
     if (!changing) return properties
@@ -236,54 +208,9 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
     return properties
   }, [changing, availableProperties, freeUpOptions, properties])
 
-  async function doChange(newPropertyId: string) {
-    if (!changing) return
-    setSaving(newPropertyId)
-    setSaveError('')
-    try {
-      await updateReservation(changing.id, {
-        guestName: changing.guestName, guestPhone: changing.guestPhone,
-        paymentDue: changing.paymentDue, paid: changing.paid, notes: changing.notes,
-        reservationType: changing.reservationType, propertyId: newPropertyId,
-        checkIn: changing.checkIn, checkOut: changing.checkOut, nightlyPrice: changing.nightlyPrice,
-      })
-      setSaved(true)
-      setAllReservations(await fetchReservations())
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not update reservation.')
-    } finally { setSaving(null) }
-  }
-
-  async function doSwap(opt: FreeUpOption) {
-    if (!changing) return
-    setSaving(opt.targetProperty.id + '-swap')
-    setSaveError('')
-    try {
-      await updateReservation(opt.blockingReservation.id, {
-        guestName: opt.blockingReservation.guestName, guestPhone: opt.blockingReservation.guestPhone,
-        paymentDue: opt.blockingReservation.paymentDue, paid: opt.blockingReservation.paid,
-        notes: opt.blockingReservation.notes, reservationType: opt.blockingReservation.reservationType,
-        propertyId: opt.alternativeProperty.id,
-        checkIn: opt.blockingReservation.checkIn, checkOut: opt.blockingReservation.checkOut,
-        nightlyPrice: opt.blockingReservation.nightlyPrice,
-      })
-      await updateReservation(changing.id, {
-        guestName: changing.guestName, guestPhone: changing.guestPhone,
-        paymentDue: changing.paymentDue, paid: changing.paid, notes: changing.notes,
-        reservationType: changing.reservationType, propertyId: opt.targetProperty.id,
-        checkIn: changing.checkIn, checkOut: changing.checkOut, nightlyPrice: changing.nightlyPrice,
-      })
-      setSaved(true)
-      setAllReservations(await fetchReservations())
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not complete swap.')
-    } finally { setSaving(null) }
-  }
-
   function closeChange() {
     setChanging(null)
-    setSaved(false)
-    setSaveError('')
+    resetChange()
   }
 
   function moveTimeline(days: number) {
@@ -481,7 +408,14 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
                       <button
                         className={`search-res-action-btn${isChanging ? ' active' : ''}`}
                         type="button"
-                        onClick={() => isChanging ? closeChange() : setChanging(r)}
+                        onClick={() => {
+                          if (isChanging) {
+                            closeChange()
+                          } else {
+                            setChanging(r)
+                            resetChange()
+                          }
+                        }}
                       >
                         {isChanging ? 'Cancel' : 'Change apt.'}
                       </button>

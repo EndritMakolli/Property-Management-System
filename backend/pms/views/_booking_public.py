@@ -14,6 +14,7 @@ from ..models import (
     BookingRequest,
     BookingSiteSettings,
     CancellationPolicy,
+    CompanyProfile,
     HouseRule,
     PricingRule,
     PromoCode,
@@ -56,6 +57,8 @@ def _serialize_public_property(prop, request, price_breakdown=None):
         "basePriceEur": str(prop.base_price_eur),
         "description": prop.description or "",
         "locationLabel": prop.location_label or "",
+        "latitude": str(prop.latitude) if prop.latitude is not None else "",
+        "longitude": str(prop.longitude) if prop.longitude is not None else "",
         "rating": str(prop.rating) if prop.rating is not None else "",
         "reviewCount": prop.review_count,
         "photos": photos,
@@ -221,6 +224,7 @@ def booking_settings(request):
             "autoProcess": cp.auto_process,
         })
 
+    company = CompanyProfile.get()
     return JsonResponse({
         "whatsappNumber": settings.whatsapp_number,
         "buildingAddress": settings.building_address,
@@ -230,6 +234,10 @@ def booking_settings(request):
         "sameDayBookingEnabled": settings.same_day_booking_enabled,
         "sameDayBookingCutoffHour": settings.same_day_booking_cutoff_hour,
         "advanceBookingLimitMonths": settings.advance_booking_limit_months,
+        # Public-safe company facts only — never tax or bank details.
+        "companyName": company.name,
+        "companyLatitude": str(company.latitude) if company.latitude is not None else "",
+        "companyLongitude": str(company.longitude) if company.longitude is not None else "",
     })
 
 

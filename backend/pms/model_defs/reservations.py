@@ -8,6 +8,7 @@ from django.db.models import Q
 
 from .base import TimeStampedModel
 from .guests import Guest
+from .monthly import monthly_period_count
 from .properties import Property
 
 
@@ -45,6 +46,12 @@ class Reservation(TimeStampedModel):
     total_price_eur = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     nightly_price_eur = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    # Flat rent per billing period for "monthly" stays (periods run from the
+    # check-in day; €600/month stays €600 whether the month has 28 or 31 days).
+    # NULL for non-monthly stays and for legacy monthly rows until backfilled.
+    monthly_price_eur = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
     )
     payment_due = models.DateField(blank=True, null=True)
     paid = models.BooleanField(default=False)
@@ -134,9 +141,22 @@ class Reservation(TimeStampedModel):
         if self.check_in and self.check_out:
             self.nights = (self.check_out - self.check_in).days
         cents = Decimal("0.01")
-        self.total_price_eur = (self.nightly_price_eur * self.nights).quantize(
-            cents, rounding=ROUND_HALF_UP
-        )
+        if self.platform == self.Platform.MONTHLY and self.monthly_price_eur is not None:
+            # Flat rent per anniversary period; a started period is owed in full.
+            # Nightly stays derived so sheets/reports keep a sensible per-night figure.
+            periods = monthly_period_count(self.check_in, self.check_out)
+            self.total_price_eur = (self.monthly_price_eur * periods).quantize(
+                cents, rounding=ROUND_HALF_UP
+            )
+            self.nightly_price_eur = (
+                (self.total_price_eur / self.nights).quantize(cents, rounding=ROUND_HALF_UP)
+                if self.nights
+                else Decimal("0.00")
+            )
+        else:
+            self.total_price_eur = (self.nightly_price_eur * self.nights).quantize(
+                cents, rounding=ROUND_HALF_UP
+            )
         if self.platform == self.Platform.BOOKING:
             self.platform_commission_eur = (self.total_price_eur * Decimal("0.15")).quantize(
                 cents, rounding=ROUND_HALF_UP

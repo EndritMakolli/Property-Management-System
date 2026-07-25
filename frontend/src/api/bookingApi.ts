@@ -21,6 +21,8 @@ export interface PublicProperty {
   basePriceEur: string
   description: string
   locationLabel: string
+  latitude: string
+  longitude: string
   rating: string
   reviewCount: number
   photos: string[]

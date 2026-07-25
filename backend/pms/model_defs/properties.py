@@ -32,6 +32,8 @@ class Property(TimeStampedModel):
     max_guests = models.PositiveIntegerField(default=2)
     base_price_eur = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     location_label = models.CharField(max_length=255, blank=True, help_text="Short location shown to guests, e.g. 'Prishtina, Kosovo'")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     review_count = models.PositiveIntegerField(default=0)
     photo = models.FileField(upload_to="properties/", blank=True, null=True)

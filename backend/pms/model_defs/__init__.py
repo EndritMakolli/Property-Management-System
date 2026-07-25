@@ -14,6 +14,7 @@ from .booking import (
     PropertyPhoto,
 )
 from .communication import Inquiry
+from .company import CompanyProfile
 from .finance import (
     Expense,
     ExpenseCategory,
@@ -23,6 +24,7 @@ from .finance import (
     Loan,
 )
 from .guests import Guest
+from .invoices import Invoice
 from .maintenance import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto
 from .properties import Property
 from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
@@ -38,6 +40,7 @@ __all__ = [
     "BookingSiteSettings",
     "CancellationPolicy",
     "ClaudeTask",
+    "CompanyProfile",
     "DoorCode",
     "Expense",
     "ExpenseCategory",
@@ -48,6 +51,7 @@ __all__ = [
     "GuestStay",
     "HouseRule",
     "Inquiry",
+    "Invoice",
     "LockboxCode",
     "Loan",
     "MaintenanceIssue",

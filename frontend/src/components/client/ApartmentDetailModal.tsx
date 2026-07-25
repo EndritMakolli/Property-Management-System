@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { calculateNights, formatDisplayDate } from '../../utils/date'
+
+const MiniMap = lazy(() => import('./maps/MiniMap'))
 import {
   fetchBookingPropertyDetail,
   fetchBookingPropertyCalendar,
@@ -285,9 +287,24 @@ export default function ApartmentDetailModal({
 
           {/* Location */}
           <h2 className={styles.h2}>Where you'll be</h2>
-          <div className={styles.mapBox}>
-            <span>📍 {location}</span>
-          </div>
+          {Number.isFinite(Number(property.latitude)) &&
+          Number.isFinite(Number(property.longitude)) &&
+          property.latitude !== '' &&
+          property.longitude !== '' ? (
+            <Suspense
+              fallback={
+                <div className={styles.mapBox}>
+                  <span>📍 {location}</span>
+                </div>
+              }
+            >
+              <MiniMap latitude={Number(property.latitude)} longitude={Number(property.longitude)} />
+            </Suspense>
+          ) : (
+            <div className={styles.mapBox}>
+              <span>📍 {location}</span>
+            </div>
+          )}
         </div>
 
         {/* Full photo viewer */}

@@ -67,6 +67,8 @@ def serialize_property(prop, request):
         "listingActive": prop.listing_active,
         "maxGuests": prop.max_guests or 0,
         "locationLabel": prop.location_label or "",
+        "latitude": str(prop.latitude) if prop.latitude is not None else "",
+        "longitude": str(prop.longitude) if prop.longitude is not None else "",
         "rating": str(prop.rating) if prop.rating is not None else "",
         "reviewCount": prop.review_count,
         # Iterate .all() (not .values_list) so a prefetch_related cache is used.
@@ -79,6 +81,8 @@ def serialize_reservation(reservation):
         "id": str(reservation.id),
         "guestName": reservation.guest_name,
         "guestPhone": reservation.guest_phone,
+        "guestEmail": reservation.guest_email or "",
+        "guestId": str(reservation.guest_id) if reservation.guest_id else "",
         "paymentDue": reservation.payment_due.isoformat() if reservation.payment_due else "",
         "paid": reservation.paid,
         "paidMonths": list(reservation.paid_months or []),
@@ -91,6 +95,9 @@ def serialize_reservation(reservation):
         "checkOut": reservation.check_out.isoformat(),
         "totalNights": reservation.nights,
         "nightlyPrice": str(reservation.nightly_price_eur),
+        "monthlyPrice": str(reservation.monthly_price_eur)
+        if reservation.monthly_price_eur is not None
+        else "",
         "totalPaid": str(reservation.total_price_eur),
         "isArchived": reservation.is_archived,
         "archivedAt": reservation.archived_at.isoformat() if reservation.archived_at else "",
@@ -150,7 +157,12 @@ def serialize_expense_category(category):
     }
 
 
-def serialize_finance_expense(expense):
+def serialize_finance_expense(expense, request=None):
+    invoice_url = ""
+    if expense.invoice_file and request is not None:
+        invoice_url = request.build_absolute_uri(expense.invoice_file.url)
+    elif expense.invoice_file:
+        invoice_url = expense.invoice_file.url
     return {
         "id": str(expense.id),
         "name": expense.name,
@@ -165,6 +177,10 @@ def serialize_finance_expense(expense):
         "endMonth": expense.end_month,
         "platform": expense.platform or "",
         "notes": expense.notes,
+        "paid": expense.paid,
+        "vendor": expense.vendor or "",
+        "invoiceDate": expense.invoice_date.isoformat() if expense.invoice_date else "",
+        "invoiceFileUrl": invoice_url,
     }
 
 

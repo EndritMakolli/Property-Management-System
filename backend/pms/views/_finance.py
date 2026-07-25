@@ -1,10 +1,11 @@
-import calendar
+﻿import calendar
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
+from ..model_defs.monthly import monthly_periods
 from ..models import ExpenseCategory, FinanceExpense, FinancialObligation, Loan, Reservation
 from ._payloads import apply_finance_expense_payload, apply_loan_payload, apply_obligation_payload
 from ._roles import ROLE_ADMIN, require_roles
@@ -75,7 +76,7 @@ def finance_summary(request):
             "loanPaymentsEur": str(loan_total),
             "totalDebtEur": str(unpaid_obligations_total),
         },
-        "expenses": [serialize_finance_expense(e) for e in all_expenses],
+        "expenses": [serialize_finance_expense(e, request) for e in all_expenses],
         "loans": [serialize_loan(l) for l in loans],
         "obligations": [serialize_financial_obligation(o) for o in obligations],
     })
@@ -155,6 +156,17 @@ def expense_category_detail(request, category_id):
 
 
 def reservation_revenue_inside_month(reservation, month_start, month_end):
+    if reservation.platform == "monthly" and reservation.monthly_price_eur is not None:
+        # Flat rent per anniversary period, attributed to the period-start month.
+        return sum(
+            (
+                reservation.monthly_price_eur
+                for start, _end in monthly_periods(reservation.check_in, reservation.check_out)
+                if month_start <= start <= month_end
+            ),
+            Decimal("0.00"),
+        )
+
     if not reservation.nights:
         return Decimal("0.00")
 
@@ -179,7 +191,7 @@ def finance_expense_list(request):
 
     if request.method == "GET":
         expenses = FinanceExpense.objects.select_related("category")
-        return JsonResponse({"expenses": [serialize_finance_expense(item) for item in expenses]})
+        return JsonResponse({"expenses": [serialize_finance_expense(item, request) for item in expenses]})
 
     if request.method == "POST":
         try:
@@ -195,7 +207,7 @@ def finance_expense_list(request):
                 {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
                 status=400,
             )
-        return JsonResponse({"expense": serialize_finance_expense(expense)}, status=201)
+        return JsonResponse({"expense": serialize_finance_expense(expense, request)}, status=201)
 
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
@@ -224,7 +236,7 @@ def finance_expense_detail(request, expense_id):
                 {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
                 status=400,
             )
-        return JsonResponse({"expense": serialize_finance_expense(expense)})
+        return JsonResponse({"expense": serialize_finance_expense(expense, request)})
 
     if request.method == "DELETE":
         expense.delete()

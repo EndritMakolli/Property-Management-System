@@ -1,5 +1,6 @@
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
 import { calculateNights, nextDateValue } from '../../utils/date'
+import { stayPeriods } from '../payments/paymentPeriods'
 
 export type PropertyReportStat = {
   averageNightlyPrice: number
@@ -200,6 +201,17 @@ export function nightsInsideMonth(reservation: ReservationRecord, monthStart: st
 }
 
 export function revenueInsideMonth(reservation: ReservationRecord, year: number, month: number) {
+  // Monthly stays with a flat rent contribute the full price to each month a
+  // billing period starts in — never prorated by nights.
+  if (reservation.reservationType === 'monthly') {
+    const flat = Number(reservation.monthlyPrice)
+    if (Number.isFinite(flat) && flat > 0) {
+      const key = `${year}-${String(month).padStart(2, '0')}`
+      const startsInMonth = stayPeriods(reservation).filter((p) => p.key === key).length
+      return startsInMonth * flat
+    }
+  }
+
   const daysInMonth = new Date(year, month, 0).getDate()
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`

@@ -48,6 +48,11 @@ if _render_host and _render_host not in ALLOWED_HOSTS:
 
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default='')
 
+# Claude API (optional) — powers expense-invoice auto-extraction. Leave
+# ANTHROPIC_API_KEY blank to disable the feature (manual entry still works).
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+ANTHROPIC_MODEL = config('ANTHROPIC_MODEL', default='claude-haiku-4-5')
+
 # Google Sheets reservation sync (optional). Leave GOOGLE_SHEETS_ID blank to
 # disable the integration entirely.
 GOOGLE_SHEETS_ID = config('GOOGLE_SHEETS_ID', default='')

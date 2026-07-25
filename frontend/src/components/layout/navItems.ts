@@ -13,6 +13,8 @@ import {
   Search,
   ShieldCheck,
   Tag,
+  Users,
+  Wallet,
   Wrench,
 } from 'lucide-react'
 import type { PlatformId } from '../../context/PlatformContext'
@@ -30,6 +32,8 @@ export const navItems: { label: string; path: string; icon: typeof Search; roles
   { label: 'To Fix', path: '/maintenance', icon: Wrench, roles: ['admin', 'management', 'cleaning'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['admin'] },
   { label: 'Finance', path: '/finance', icon: CircleDollarSign, roles: ['admin'] },
+  { label: 'Clients', path: '/clients', icon: Users, roles: ['admin', 'management'] },
+  { label: 'Payments', path: '/payments', icon: Wallet, roles: ['admin', 'management'] },
   { label: 'Invoices', path: '/invoices', icon: FileText, roles: ['admin', 'management'] },
   { label: 'Receipts', path: '/receipts', icon: Receipt, roles: ['admin'] },
   { label: 'Synchronizations', path: '/synchronizations', icon: RefreshCw, roles: ['admin', 'management'] },

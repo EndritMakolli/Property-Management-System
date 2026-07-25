@@ -156,6 +156,16 @@ def backup_import(request):
         for model in _delete_order(_backup_models()):
             model.objects.all().delete()
         call_command("loaddata", tmp_path, verbosity=0, ignorenonexistent=True)
+        # Backups from before monthly pricing carry no monthly_price_eur; heal
+        # them so per-period payment tracking works right away.
+        from ..management.commands.backfill_monthly_prices import backfill
+
+        backfill()
+        # Likewise, backups from before the client directory carry no Guest
+        # rows/links — rebuild them so the Clients page stays populated.
+        from django.core.management import call_command as _call
+
+        _call("link_guests", verbosity=0)
     except Exception as exc:  # noqa: BLE001 — surface any load failure to the client
         return JsonResponse({"error": f"Import failed: {exc}"}, status=400)
     finally:

@@ -1,20 +1,18 @@
-import { ArrowLeft, Check, Printer } from 'lucide-react'
-import { calcSubtotal, fmtCurrency, fmtDate, type InvoiceRecord } from './invoiceModel'
+import { ArrowLeft, Check, Pencil, Printer } from 'lucide-react'
+import type { InvoiceApiRecord } from '../../api/invoices'
+import { fmtCurrency, fmtDate } from './invoiceModel'
 
 type InvoicePreviewProps = {
-  inv: InvoiceRecord
+  inv: InvoiceApiRecord
   onPrint: () => void
   onBack: () => void
-  onMarkPaid: () => void
+  onEdit: () => void
+  onTogglePaid: () => void
 }
 
-export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePreviewProps) {
-  const sub = calcSubtotal(inv.lineItems)
+export function InvoicePreview({ inv, onPrint, onBack, onEdit, onTogglePaid }: InvoicePreviewProps) {
+  const c = inv.companySnapshot
   const taxPct = parseFloat(inv.taxRate) || 0
-  const tax = sub * (taxPct / 100)
-  const total = sub + tax
-  const c = inv.company
-  const cl = inv.client
 
   return (
     <div className="inv-preview-wrap">
@@ -22,15 +20,16 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
         <button className="inv-back-btn" type="button" onClick={onBack}>
           <ArrowLeft size={15} /> Back to list
         </button>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {inv.status === 'draft' && (
-            <button className="btn-ghost inv-mark-paid-btn" type="button" onClick={onMarkPaid}>
-              <Check size={15} /> Mark as paid
-            </button>
-          )}
-          {inv.status === 'paid' && (
-            <span className="inv-status-badge inv-status-paid" style={{ alignSelf: 'center' }}>Paid</span>
-          )}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span className={`inv-status-badge inv-status-${inv.status}`} style={{ alignSelf: 'center' }}>
+            {inv.status}
+          </span>
+          <button className="btn-ghost inv-mark-paid-btn" type="button" onClick={onTogglePaid}>
+            <Check size={15} /> {inv.paid ? 'Mark unpaid' : 'Mark as paid'}
+          </button>
+          <button className="btn-ghost" type="button" onClick={onEdit}>
+            <Pencil size={15} /> Edit
+          </button>
           <button className="btn-primary" type="button" onClick={onPrint}>
             <Printer size={16} /> Print / Save PDF
           </button>
@@ -41,10 +40,11 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
         {/* Header */}
         <div className="inv-doc-header">
           <div className="inv-doc-from">
+            {c.logoUrl && <img alt="" className="inv-doc-logo" src={c.logoUrl} />}
             {c.name && <strong className="inv-doc-company-name">{c.name}</strong>}
             {c.address && <span>{c.address}</span>}
             {(c.city || c.country) && <span>{[c.city, c.country].filter(Boolean).join(', ')}</span>}
-            {c.taxId && <span>Tax ID: {c.taxId}</span>}
+            {c.taxId && <span>Business No. (NUI): {c.taxId}</span>}
             {c.vatId && <span>VAT: {c.vatId}</span>}
             {c.email && <span>{c.email}</span>}
             {c.phone && <span>{c.phone}</span>}
@@ -53,7 +53,7 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
           <div className="inv-doc-title-block">
             <h2 className="inv-doc-title">INVOICE</h2>
             <div className="inv-doc-meta">
-              <div><span>Number</span><strong>{inv.invoiceNumber}</strong></div>
+              <div><span>Number</span><strong>{inv.number}</strong></div>
               <div><span>Date</span><strong>{fmtDate(inv.issueDate)}</strong></div>
               {inv.dueDate && <div><span>Due</span><strong>{fmtDate(inv.dueDate)}</strong></div>}
               <div><span>Currency</span><strong>{inv.currency}</strong></div>
@@ -64,54 +64,58 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
         {/* Bill To */}
         <div className="inv-doc-bill-to">
           <p className="inv-doc-section-label">Bill To</p>
-          {cl.name && <strong>{cl.name}</strong>}
-          {cl.address && <span>{cl.address}</span>}
-          {(cl.city || cl.country) && <span>{[cl.city, cl.country].filter(Boolean).join(', ')}</span>}
-          {cl.taxId && <span>Tax ID: {cl.taxId}</span>}
-          {cl.vatId && <span>VAT: {cl.vatId}</span>}
-          {cl.email && <span>{cl.email}</span>}
-          {cl.phone && <span>{cl.phone}</span>}
+          {inv.clientName && <strong>{inv.clientName}</strong>}
+          {inv.clientAddress && <span>{inv.clientAddress}</span>}
+          {(inv.clientCity || inv.clientCountry) && (
+            <span>{[inv.clientCity, inv.clientCountry].filter(Boolean).join(', ')}</span>
+          )}
+          {inv.clientTaxId && <span>Tax ID: {inv.clientTaxId}</span>}
+          {inv.clientVatId && <span>VAT: {inv.clientVatId}</span>}
+          {inv.clientEmail && <span>{inv.clientEmail}</span>}
+          {inv.clientPhone && <span>{inv.clientPhone}</span>}
         </div>
 
         {/* Items */}
         <div className="table-scroll-x">
-        <table className="invoice-table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th style={{ textAlign: 'center', width: 70 }}>Qty</th>
-              <th style={{ textAlign: 'right', width: 130 }}>Unit Price</th>
-              <th style={{ textAlign: 'right', width: 130 }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inv.lineItems.filter(l => l.description.trim()).map(l => {
-              const qty = parseFloat(l.quantity) || 0
-              const price = parseFloat(l.unitPrice) || 0
-              return (
-                <tr key={l.id}>
-                  <td>{l.description}</td>
-                  <td style={{ textAlign: 'center' }}>{qty}</td>
-                  <td style={{ textAlign: 'right' }}>{fmtCurrency(price, inv.currency)}</td>
-                  <td style={{ textAlign: 'right' }}>{fmtCurrency(qty * price, inv.currency)}</td>
-                </tr>
-              )
-            })}
-            {inv.lineItems.filter(l => l.description.trim()).length === 0 && (
-              <tr><td colSpan={4} className="invoice-no-data">No items</td></tr>
-            )}
-          </tbody>
-        </table>
+          <table className="invoice-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style={{ textAlign: 'center', width: 70 }}>Qty</th>
+                <th style={{ textAlign: 'right', width: 130 }}>Unit Price</th>
+                <th style={{ textAlign: 'right', width: 130 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inv.lineItems.map((line, index) => {
+                const qty = parseFloat(line.quantity) || 0
+                const price = parseFloat(line.unitPrice) || 0
+                return (
+                  <tr key={index}>
+                    <td>{line.description}</td>
+                    <td style={{ textAlign: 'center' }}>{qty}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtCurrency(price, inv.currency)}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtCurrency(qty * price, inv.currency)}</td>
+                  </tr>
+                )
+              })}
+              {inv.lineItems.length === 0 && (
+                <tr><td colSpan={4} className="invoice-no-data">No items</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Totals */}
         <div className="invoice-totals">
           <div className="invoice-totals-grid">
-            <span>Subtotal</span><span>{fmtCurrency(sub, inv.currency)}</span>
+            <span>{inv.pricesIncludeVat ? 'Price without VAT' : 'Subtotal'}</span>
+            <span>{fmtCurrency(Number(inv.subtotal), inv.currency)}</span>
             {taxPct > 0 && (
-              <><span>Tax ({taxPct}%)</span><span>{fmtCurrency(tax, inv.currency)}</span></>
+              <><span>VAT ({taxPct}%)</span><span>{fmtCurrency(Number(inv.taxAmount), inv.currency)}</span></>
             )}
-            <strong>Total</strong><strong>{fmtCurrency(total, inv.currency)}</strong>
+            <strong>Total{inv.pricesIncludeVat && taxPct > 0 ? ' (incl. VAT)' : ''}</strong>
+            <strong>{fmtCurrency(Number(inv.total), inv.currency)}</strong>
           </div>
         </div>
 
@@ -139,6 +143,12 @@ export function InvoicePreview({ inv, onPrint, onBack, onMarkPaid }: InvoicePrev
             <p className="inv-doc-notes-text">{inv.notes}</p>
           </div>
         )}
+
+        <p className="inv-doc-footer">
+          {[c.name, c.taxId ? `NUI ${c.taxId}` : '', c.vatId ? `VAT ${c.vatId}` : '']
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
       </div>
     </div>
   )

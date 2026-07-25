@@ -8,6 +8,8 @@ import { activePlatform, apiDelete, apiForm, apiGet, apiSend } from './client'
 export type ReservationPayload = {
   guestName: string
   guestPhone: string
+  guestEmail?: string
+  guestId?: string
   paymentDue: string
   paid: boolean
   notes: string
@@ -16,6 +18,7 @@ export type ReservationPayload = {
   checkIn: string
   checkOut: string
   nightlyPrice: string
+  monthlyPrice?: string
 }
 
 export async function fetchReservations(filters?: { month: number; propertyId?: string; year: number; archived?: boolean }) {

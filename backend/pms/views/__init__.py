@@ -34,6 +34,10 @@ from ._booking_public import (
     booking_validate_promo,
 )
 from ._codes import door_code_detail, door_code_list, lockbox_code_detail, lockbox_code_list
+from ._company import company_profile
+from ._expense_ai import expense_extract, expense_invoice
+from ._guests import guest_detail, guest_list
+from ._invoices import invoice_detail, invoice_import, invoice_list
 from ._finance import (
     expense_category_detail,
     expense_category_list,
@@ -111,15 +115,23 @@ __all__ = [
     "cancellation_policy_list",
     "clean_status_list",
     "clean_status_mark",
+    "company_profile",
     "door_code_detail",
     "door_code_list",
     "expense_category_detail",
     "expense_category_list",
+    "expense_extract",
+    "expense_invoice",
     "finance_expense_detail",
     "finance_expense_list",
     "finance_summary",
+    "guest_detail",
+    "guest_list",
     "house_rule_detail",
     "house_rule_list",
+    "invoice_detail",
+    "invoice_import",
+    "invoice_list",
     "loan_detail",
     "loan_list",
     "lockbox_code_detail",

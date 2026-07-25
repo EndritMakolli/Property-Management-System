@@ -4,7 +4,8 @@ from datetime import date, timezone, datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
-from ..models import Property, Reservation, ReservationAuditLog, ReservationAttachment
+from ..models import Guest, Property, Reservation, ReservationAuditLog, ReservationAttachment
+from ._guests import link_or_create_guest, refresh_returning_flag
 from ._payloads import apply_reservation_payload
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_reservation, serialize_reservation_audit
@@ -92,7 +93,9 @@ def reservation_list(request):
         try:
             payload = json_payload(request)
             reservation = apply_reservation_payload(Reservation(), payload)
+            link_or_create_guest(reservation)
             reservation.save()
+            refresh_returning_flag(reservation.guest)
             ReservationAuditLog.objects.create(
                 reservation_id=reservation.id,
                 changed_by=request.user.username,
@@ -102,6 +105,8 @@ def reservation_list(request):
             )
         except Property.DoesNotExist:
             return JsonResponse({"error": "Choose an existing property."}, status=400)
+        except Guest.DoesNotExist:
+            return JsonResponse({"error": "Choose an existing client."}, status=400)
         except ValidationError as error:
             return JsonResponse(
                 {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},
@@ -131,6 +136,8 @@ def reservation_detail(request, reservation_id):
             _log_changes(reservation, old_values, request.user.username)
         except Property.DoesNotExist:
             return JsonResponse({"error": "Choose an existing property."}, status=400)
+        except Guest.DoesNotExist:
+            return JsonResponse({"error": "Choose an existing client."}, status=400)
         except ValidationError as error:
             return JsonResponse(
                 {"error": error.message_dict if hasattr(error, "message_dict") else error.messages},

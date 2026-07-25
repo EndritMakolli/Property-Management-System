@@ -135,6 +135,11 @@ class FinanceExpense(TimeStampedModel):
         default=None,
     )
     notes = models.TextField(blank=True)
+    # Payment tracking + attached supplier invoice (new expenses start unpaid).
+    paid = models.BooleanField(default=False)
+    vendor = models.CharField(max_length=255, blank=True, default="")
+    invoice_date = models.DateField(null=True, blank=True)
+    invoice_file = models.FileField(upload_to="expenses/", null=True, blank=True)
 
     class Meta:
         ordering = ["name"]

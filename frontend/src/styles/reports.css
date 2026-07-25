@@ -604,3 +604,65 @@
   }
 }
 
+
+/* === Insights section (new graphs) === */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.insights-grid .panel h4,
+.insight-subtitle {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.insight-donut-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.insight-donut {
+  position: relative;
+}
+
+.insight-donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+  gap: 2px;
+}
+
+.insight-donut-center strong {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.insight-donut-center span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.insight-footnote {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.payment-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 860px) {
+  .insights-grid,
+  .payment-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

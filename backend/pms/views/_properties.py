@@ -7,10 +7,20 @@ from django.http import HttpResponse, JsonResponse
 from django.http.multipartparser import MultiPartParser
 
 from ..models import Property, PropertyReview, Reservation, SyncLog
+from ._company import coord_value
 from ._ical import escape_ical, fetch_ical_events, import_ical_reservations, reservation_label_for_export
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles, user_role
 from ._serializers import serialize_property
 from ._utils import decimal_value, json_payload
+
+from decimal import Decimal
+
+
+def _apply_coordinates(prop, payload):
+    if "latitude" in payload:
+        prop.latitude = coord_value(payload.get("latitude"), "latitude", Decimal("-90"), Decimal("90"))
+    if "longitude" in payload:
+        prop.longitude = coord_value(payload.get("longitude"), "longitude", Decimal("-180"), Decimal("180"))
 
 
 def property_list(request):
@@ -63,11 +73,12 @@ def property_list(request):
                 active=True,
                 description=request.POST.get("description") or "",
                 listing_active=listing_active,
-                max_guests=int(max_guests_raw) if max_guests_raw else None,
+                max_guests=int(max_guests_raw) if max_guests_raw else 2,
                 location_label=request.POST.get("locationLabel") or "",
                 rating=decimal_value(rating_raw, "rating") if rating_raw else None,
                 review_count=int(review_count_raw) if review_count_raw else 0,
             )
+            _apply_coordinates(prop, request.POST)
             if request.FILES.get("photo"):
                 prop.photo = request.FILES["photo"]
             prop.save()
@@ -155,6 +166,7 @@ def property_detail(request, property_id):
                     prop.airbnb_ical_url = (payload.get("airbnbIcalUrl") or "").strip() or None
                 if "bookingIcalUrl" in payload:
                     prop.booking_ical_url = (payload.get("bookingIcalUrl") or "").strip() or None
+            _apply_coordinates(prop, payload)
             if files.get("photo"):
                 prop.photo = files["photo"]
             prop.full_clean()
