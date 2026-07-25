@@ -530,10 +530,9 @@ def booking_create_request(request):
     errors = {}
     if not guest_name:
         errors["guestName"] = "Name is required."
-    if not guest_email:
-        errors["guestEmail"] = "Email is required."
     if not guest_phone:
-        errors["guestPhone"] = "WhatsApp number is required."
+        errors["guestPhone"] = "Phone number is required."
+    # Email is optional for booking requests: guests supply only name + phone.
     if errors:
         return JsonResponse({"error": errors}, status=400)
 

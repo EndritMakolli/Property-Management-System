@@ -20,6 +20,10 @@ export function DateInput({
 }: DateInputProps) {
   const pickerRef = useRef<HTMLInputElement>(null)
 
+  // Desktop convenience: clicking anywhere in the field opens the picker. On mobile
+  // the real <input type="date"> receives the tap directly (see .date-input-picker),
+  // so this is only an enhancement and must never throw if showPicker() is unsupported
+  // or the picker is already opening.
   function openPicker() {
     if (readOnly) {
       return
@@ -30,13 +34,15 @@ export function DateInput({
       return
     }
 
-    if (picker.showPicker) {
-      picker.showPicker()
-      return
+    try {
+      if (picker.showPicker) {
+        picker.showPicker()
+      } else {
+        picker.focus()
+      }
+    } catch {
+      /* showPicker() can throw (e.g. called without a user gesture) — ignore. */
     }
-
-    picker.click()
-    picker.focus()
   }
 
   return (

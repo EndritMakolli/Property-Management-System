@@ -608,7 +608,11 @@
 }
 
 .calendar-reservation-pill:hover .reservation-popover,
-.timeline-reservation-bar:hover .reservation-popover {
+.timeline-reservation-bar:hover .reservation-popover,
+/* Touch/keyboard fallback: hover doesn't exist on phones, so reveal the detail
+   popover on focus too. */
+.calendar-reservation-pill:focus-within .reservation-popover,
+.timeline-reservation-bar:focus-within .reservation-popover {
   display: grid;
   gap: 4px;
 }

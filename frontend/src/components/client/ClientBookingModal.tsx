@@ -1,6 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { formatDisplayDate } from '../../utils/date'
+import { createBookingRequest } from '../../api/bookingApi'
 import styles from './ClientBookingModal.module.css'
+
+export interface BookingSegment {
+  propertyId: string
+  name: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  price: number
+}
 
 export interface BookingDraft {
   title: string
@@ -8,8 +18,11 @@ export interface BookingDraft {
   checkOut: string
   nights: number
   price: number
-  // For split stays: a per-apartment breakdown.
-  segments?: { name: string; checkIn: string; checkOut: string; nights: number; price: number }[]
+  guests?: number
+  // Present for a single-apartment booking.
+  propertyId?: string
+  // For split stays: a per-apartment breakdown (each carries its own propertyId).
+  segments?: BookingSegment[]
 }
 
 interface Props {
@@ -18,15 +31,62 @@ interface Props {
 }
 
 export default function ClientBookingModal({ draft, onClose }: Props) {
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
-  function handleSubmit(e: FormEvent) {
+  const guestsCount = draft.guests ?? 1
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !phone.trim()) return
-    // Placeholder — no backend call yet.
-    setSubmitted(true)
+    setError('')
+
+    const first = firstName.trim()
+    const last = lastName.trim()
+    const guestPhone = phone.trim()
+    if (!first || !last || !guestPhone) {
+      setError('Please enter your first name, last name, and phone number.')
+      return
+    }
+
+    // A split stay books each apartment for the same dates; everything else is a
+    // single-apartment request.
+    const targets = draft.segments?.length
+      ? draft.segments.map((s) => ({ propertyId: s.propertyId, checkIn: s.checkIn, checkOut: s.checkOut }))
+      : draft.propertyId
+        ? [{ propertyId: draft.propertyId, checkIn: draft.checkIn, checkOut: draft.checkOut }]
+        : []
+
+    if (targets.length === 0) {
+      setError('This apartment can no longer be booked here. Please refine your search and try again.')
+      return
+    }
+
+    const guestName = `${first} ${last}`
+    setSubmitting(true)
+    try {
+      let lastMessage = ''
+      // Sequential so a partial failure stops early and is reportable.
+      for (const target of targets) {
+        const result = await createBookingRequest({
+          propertyId: target.propertyId,
+          checkIn: target.checkIn,
+          checkOut: target.checkOut,
+          guestName,
+          guestPhone,
+          guestsCount,
+        })
+        lastMessage = result.message
+      }
+      setSuccessMessage(lastMessage || 'Your booking request has been received.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not submit your request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -34,13 +94,11 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <button className={styles.close} onClick={onClose} aria-label="Close">×</button>
 
-        {submitted ? (
+        {successMessage ? (
           <div className={styles.success}>
             <div className={styles.successIcon}>✓</div>
             <h3>Request received</h3>
-            <p>
-              Thanks {name.split(' ')[0]} — we'll call you on {phone} shortly to confirm your stay.
-            </p>
+            <p>Thanks {firstName} — {successMessage}</p>
             <button className={styles.primaryBtn} onClick={onClose}>Done</button>
           </div>
         ) : (
@@ -72,12 +130,24 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
 
             <form className={styles.form} onSubmit={handleSubmit}>
               <label className={styles.label}>
-                Full name
+                First name
                 <input
                   className={styles.input}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Doe"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Jane"
+                  autoComplete="given-name"
+                  required
+                />
+              </label>
+              <label className={styles.label}>
+                Last name
+                <input
+                  className={styles.input}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  autoComplete="family-name"
                   required
                 />
               </label>
@@ -89,6 +159,7 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+383 4x xxx xxx"
                   type="tel"
+                  autoComplete="tel"
                   required
                 />
               </label>
@@ -98,8 +169,10 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
                 <strong>€{draft.price}</strong>
               </div>
 
-              <button type="submit" className={styles.primaryBtn}>
-                Request booking
+              {error && <p className={styles.error}>{error}</p>}
+
+              <button type="submit" className={styles.primaryBtn} disabled={submitting}>
+                {submitting ? 'Sending…' : 'Request booking'}
               </button>
             </form>
           </>

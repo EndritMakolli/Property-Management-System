@@ -126,8 +126,8 @@ export default function MapPage() {
           checkOut={checkOut}
           guests={2}
           onClose={() => setDetail(null)}
-          onReserve={(ci, co, _g, total) => {
-            setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total })
+          onReserve={(ci, co, g, total) => {
+            setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })
             setDetail(null)
           }}
         />

@@ -192,7 +192,7 @@ export default function ClientHomePage() {
                             </div>
                             <button
                               className={styles.resBookBtn}
-                              onClick={(e) => { e.stopPropagation(); setDraft({ title: p.name, checkIn, checkOut, nights, price }) }}
+                              onClick={(e) => { e.stopPropagation(); setDraft({ title: p.name, checkIn, checkOut, nights, price, propertyId: p.id, guests }) }}
                             >
                               Book
                             </button>
@@ -211,7 +211,7 @@ export default function ClientHomePage() {
                   {combinations.map((combo, ci) => {
                     const total = Math.round(Number(combo.combinedTotal))
                     const segments = combo.apartments.map(({ property: a }) => ({
-                      name: a.name, checkIn, checkOut, nights, price: priceOf(a),
+                      propertyId: a.id, name: a.name, checkIn, checkOut, nights, price: priceOf(a),
                     }))
                     return (
                       <div className={styles.splitCombo} key={ci}>
@@ -234,7 +234,7 @@ export default function ClientHomePage() {
                           </div>
                           <button
                             className={styles.resBookBtn}
-                            onClick={() => setDraft({ title: 'Split stay', checkIn, checkOut, nights, price: total, segments })}
+                            onClick={() => setDraft({ title: 'Split stay', checkIn, checkOut, nights, price: total, segments, guests })}
                           >
                             Book split stay
                           </button>
@@ -317,8 +317,8 @@ export default function ClientHomePage() {
           checkOut={checkOut}
           guests={guests}
           onClose={() => setDetail(null)}
-          onReserve={(ci, co, _g, total) => {
-            setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total })
+          onReserve={(ci, co, g, total) => {
+            setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })
             setDetail(null)
           }}
         />

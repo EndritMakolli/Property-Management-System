@@ -160,6 +160,26 @@
   justify-content: space-between;
 }
 
+/* Clickable check-in/out rows on the dashboard: visible hover highlight + keyboard
+   focus ring, opening the reservation editor. Cleaner view omits onSelect, so its
+   rows never get this class and stay static. */
+.reservation-item.is-clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding-inline: 8px;
+  margin-inline: -8px;
+  transition: background 0.14s;
+}
+
+.reservation-item.is-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.reservation-item.is-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .reservation-item strong,
 .reservation-item span,
 .reservation-item small,

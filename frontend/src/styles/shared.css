@@ -19,7 +19,13 @@
   width: 100%;
   height: 100%;
   opacity: 0;
-  pointer-events: none;
+  /* Keep the real date input interactive and on top so a direct tap opens the
+     native picker on mobile (a trusted gesture) — synthetic .click()/showPicker()
+     from JS is ignored by mobile Safari/Android WebViews. */
+  z-index: 2;
+  cursor: pointer;
+  /* 16px avoids iOS auto-zoom when the field gains focus. */
+  font-size: 16px;
 }
 
 /* ── Needs Attention page ── */

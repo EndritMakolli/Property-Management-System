@@ -149,6 +149,14 @@
 }
 .primaryBtn:hover { background: var(--c-gold); transform: translateY(-2px); }
 .primaryBtn:active { transform: translateY(0); }
+.primaryBtn:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b3261e;
+  line-height: 1.5;
+}
 
 .success {
   display: grid;
