@@ -81,10 +81,10 @@
 .admin-users-head,
 .admin-users-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.75fr) minmax(120px, 0.55fr) minmax(190px, 1fr) minmax(120px, auto);
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, 0.7fr) minmax(110px, 0.5fr) minmax(160px, 0.9fr) minmax(200px, 1.1fr) minmax(120px, auto);
   gap: 10px;
   align-items: center;
-  min-width: 860px;
+  min-width: 1040px;
 }
 
 .admin-users-head {
@@ -193,4 +193,23 @@
 .admin-backup-import.disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.admin-backup-subtitle {
+  border-top: 1px solid var(--border);
+  font-size: 0.92rem;
+  margin: 18px 0 6px;
+  padding-top: 14px;
+}
+
+.admin-2fa-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-2fa-cell input[type='email'] {
+  flex: 1;
+  min-width: 0;
 }

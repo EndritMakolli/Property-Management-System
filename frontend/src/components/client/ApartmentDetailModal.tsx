@@ -43,6 +43,7 @@ export default function ApartmentDetailModal({
   const [calOpen, setCalOpen] = useState(false)
   const [blocked, setBlocked] = useState<BlockedRange[]>([])
   const [liveBd, setLiveBd] = useState<PublicPriceBreakdown | null>(property.priceBreakdown)
+  const [quoteError, setQuoteError] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -56,7 +57,16 @@ export default function ApartmentDetailModal({
     setCo(nextCo)
     if (nextCi && nextCo) {
       setCalOpen(false)
-      calculateBookingPrice(property.id, nextCi, nextCo).then(setLiveBd).catch(() => {})
+      setQuoteError('')
+      calculateBookingPrice(property.id, nextCi, nextCo)
+        .then((quote) => setLiveBd(quote))
+        .catch((err) => {
+          // Don't leave the previous dates' price on screen as if it applied.
+          setLiveBd(null)
+          setQuoteError(
+            err instanceof Error ? err.message : 'We could not price these dates. Please try again.',
+          )
+        })
     }
   }
 
@@ -71,6 +81,21 @@ export default function ApartmentDetailModal({
   const longStay = Math.round(Number(bd?.long_stay_amount ?? 0))
   const lastMinute = Math.round(Number(bd?.last_minute_amount ?? 0))
   const promo = Math.round(Number(bd?.promo_amount ?? 0))
+  const minNightsRequired = Number(bd?.min_nights_required ?? property.minNights ?? 0)
+  // Backend validation errors for the chosen dates (e.g. minimum stay). When no
+  // breakdown has loaded yet (the property came from the min-stay-blocked list,
+  // or a re-quote failed) fall back to the property's own minimum so Reserve is
+  // never enabled for a stay the backend will reject.
+  const stayErrors = !hasDates
+    ? []
+    : quoteError
+      ? [quoteError]
+      : bd?.errors?.length
+        ? bd.errors
+        : minNightsRequired > 0 && nights < minNightsRequired
+          ? [`Minimum stay is ${minNightsRequired} nights.`]
+          : []
+  const canReserve = hasDates && stayErrors.length === 0
 
   const ratingNum = property.rating ? Number(property.rating) : null
   const reviewCount = property.reviewCount
@@ -198,6 +223,9 @@ export default function ApartmentDetailModal({
                     <span className={styles.reserveStar}>★ {ratingNum.toFixed(2)} · {reviewCount} reviews</span>
                   )}
                 </div>
+                {minNightsRequired > 1 && (
+                  <p className={styles.stayNote}>Minimum stay: {minNightsRequired} nights</p>
+                )}
 
                 <div className={styles.reserveDates}>
                   <button type="button" className={styles.reserveCell} onClick={() => setCalOpen((o) => !o)}>
@@ -226,11 +254,14 @@ export default function ApartmentDetailModal({
 
                 <button
                   className={styles.reserveBtn}
-                  disabled={!hasDates}
+                  disabled={!canReserve}
                   onClick={() => onReserve(ci, co, g, total)}
                 >
                   {hasDates ? 'Reserve' : 'Select dates'}
                 </button>
+                {stayErrors.length > 0 && (
+                  <p className={styles.stayError}>{stayErrors.join(' ')}</p>
+                )}
                 <p className={styles.noCharge}>You won't be charged yet</p>
 
                 {hasDates && (
@@ -298,7 +329,11 @@ export default function ApartmentDetailModal({
                 </div>
               }
             >
-              <MiniMap latitude={Number(property.latitude)} longitude={Number(property.longitude)} />
+              <MiniMap
+                latitude={Number(property.latitude)}
+                longitude={Number(property.longitude)}
+                radiusM={property.mapRadiusM}
+              />
             </Suspense>
           ) : (
             <div className={styles.mapBox}>

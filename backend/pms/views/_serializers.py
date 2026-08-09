@@ -28,6 +28,7 @@ def serialize_user(user):
 
 
 def serialize_managed_user(user):
+    security = getattr(user, "security", None)
     return {
         "id": user.id,
         "username": user.username,
@@ -35,6 +36,9 @@ def serialize_managed_user(user):
         "isActive": user.is_active,
         "isStaff": user.is_staff,
         "isSuperuser": user.is_superuser,
+        "twoFactorEmail": security.two_factor_email if security else "",
+        "twoFactorEnabled": bool(security and security.two_factor_enabled),
+        "twoFactorActive": bool(security and security.is_active),
     }
 
 
@@ -157,7 +161,13 @@ def serialize_expense_category(category):
     }
 
 
-def serialize_finance_expense(expense, request=None):
+def serialize_finance_expense(expense, request=None, paid_expense_ids=None):
+    """Serialize an expense.
+
+    paid_expense_ids — when given (a set of expense ids paid for the month the
+    caller is viewing), the row carries a month-specific `paidForMonth` flag.
+    The legacy whole-expense `paid` bool is still emitted for compatibility.
+    """
     invoice_url = ""
     if expense.invoice_file and request is not None:
         invoice_url = request.build_absolute_uri(expense.invoice_file.url)
@@ -178,6 +188,7 @@ def serialize_finance_expense(expense, request=None):
         "platform": expense.platform or "",
         "notes": expense.notes,
         "paid": expense.paid,
+        "paidForMonth": (expense.id in paid_expense_ids) if paid_expense_ids is not None else None,
         "vendor": expense.vendor or "",
         "invoiceDate": expense.invoice_date.isoformat() if expense.invoice_date else "",
         "invoiceFileUrl": invoice_url,

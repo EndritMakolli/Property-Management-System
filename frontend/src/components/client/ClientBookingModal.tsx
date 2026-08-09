@@ -28,9 +28,12 @@ export interface BookingDraft {
 interface Props {
   draft: BookingDraft
   onClose: () => void
+  // Called after at least one request was submitted, so the page behind the
+  // modal can refresh availability instead of showing stale results.
+  onBooked?: () => void
 }
 
-export default function ClientBookingModal({ draft, onClose }: Props) {
+export default function ClientBookingModal({ draft, onClose, onBooked }: Props) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
@@ -67,6 +70,7 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
 
     const guestName = `${first} ${last}`
     setSubmitting(true)
+    let submittedCount = 0
     try {
       let lastMessage = ''
       // Sequential so a partial failure stops early and is reportable.
@@ -79,13 +83,25 @@ export default function ClientBookingModal({ draft, onClose }: Props) {
           guestPhone,
           guestsCount,
         })
+        submittedCount += 1
         lastMessage = result.message
       }
       setSuccessMessage(lastMessage || 'Your booking request has been received.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'We could not submit your request. Please try again.')
+      const reason = err instanceof Error ? err.message : 'We could not submit your request. Please try again.'
+      if (submittedCount > 0) {
+        const failed = draft.segments?.[submittedCount]?.name
+        setError(
+          `Your request for ${submittedCount} of ${targets.length} apartments was submitted, but ` +
+            `${failed ? `"${failed}"` : 'the next apartment'} failed: ${reason} ` +
+            'Please contact us so we can complete the remaining part of your stay.',
+        )
+      } else {
+        setError(reason)
+      }
     } finally {
       setSubmitting(false)
+      if (submittedCount > 0) onBooked?.()
     }
   }
 

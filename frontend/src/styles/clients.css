@@ -109,3 +109,82 @@
   font-size: 0.85rem;
   margin: 0;
 }
+
+/* ── Client ID documents (inside ClientFormModal) ── */
+
+.client-doc-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.client-doc-item {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.client-doc-name {
+  color: var(--text-primary);
+  flex: 1;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.client-doc-name:hover {
+  text-decoration: underline;
+}
+
+.client-doc-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  padding: 4px;
+  place-items: center;
+}
+
+.client-doc-delete:hover {
+  color: #b3261e;
+}
+
+.client-doc-upload {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.client-doc-upload select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 7px 10px;
+}
+
+.client-doc-upload .pill-button {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.client-doc-upload .pill-button.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.client-doc-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 8px 0 0;
+}

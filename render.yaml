@@ -40,8 +40,11 @@ services:
         value: /var/data/media
       - key: WEB_CONCURRENCY
         value: "2"
+      # The /api/* rewrite on the frontend service makes the SPA same-origin
+      # with the API, so Lax works and keeps the browser's CSRF protection.
+      # Only switch to "None" if you stop using that proxy.
       - key: COOKIE_SAMESITE
-        value: "None"
+        value: "Lax"
       - key: DATA_UPLOAD_MAX_MEMORY_SIZE
         value: "10485760"
       - key: FILE_UPLOAD_MAX_MEMORY_SIZE
@@ -57,13 +60,20 @@ services:
       - key: PUBLIC_BASE_URL
         sync: false
 
-      # Optional Google Sheets reservation sync. Leave blank to disable.
-      - key: GOOGLE_SHEETS_ID
+      # SMTP for two-step login codes. Without these, 2FA logins are
+      # refused (the app fails closed rather than skipping the factor).
+      - key: EMAIL_HOST
         sync: false
-      - key: GOOGLE_SHEETS_CREDENTIALS_JSON
+      - key: EMAIL_HOST_USER
         sync: false
-      - key: GOOGLE_SHEETS_YEAR
+      - key: EMAIL_HOST_PASSWORD
         sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      # Render sits behind a proxy, so X-Forwarded-For is trustworthy here
+      # and per-IP rate limiting keys on the real client address.
+      - key: TRUST_PROXY_HEADERS
+        value: "True"
 
   # Hourly iCal auto-sync. The command only syncs properties whose per-property
   # interval is due, so running hourly is safe regardless of those settings.
@@ -103,6 +113,9 @@ services:
       - path: /*
         name: Permissions-Policy
         value: camera=(), microphone=(), geolocation=()
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
     routes:
       # Proxy /api to the backend so the browser sees ONE origin. This makes the
       # session/CSRF cookies first-party, which iOS/Safari requires (it blocks

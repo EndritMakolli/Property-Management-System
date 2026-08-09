@@ -70,6 +70,9 @@ class BookingSiteSettings(models.Model):
     same_day_booking_cutoff_hour = models.PositiveIntegerField(default=18)
     advance_booking_limit_months = models.PositiveIntegerField(default=12)
     non_refundable_discount_pct = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("10.00"))
+    # Radius (meters) of the approximate-location circle shown to guests on maps.
+    # Exact coordinates are never sent to the public site while this is > 0.
+    map_privacy_radius_m = models.PositiveIntegerField(default=300)
 
     class Meta:
         verbose_name = "Booking Site Settings"

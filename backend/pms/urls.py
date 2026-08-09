@@ -7,6 +7,9 @@ urlpatterns = [
     path("auth/me/", views.auth_me, name="auth-me"),
     path("auth/login/", views.auth_login, name="auth-login"),
     path("auth/logout/", views.auth_logout, name="auth-logout"),
+    path("auth/login/verify/", views.auth_login_verify, name="auth-login-verify"),
+    path("auth/login/resend/", views.auth_login_resend, name="auth-login-resend"),
+    path("auth/security/", views.auth_security, name="auth-security"),
 
     # Users
     path("users/", views.user_list, name="user-list"),
@@ -15,6 +18,7 @@ urlpatterns = [
     # Properties (PMS)
     path("properties/", views.property_list, name="property-list"),
     path("properties/<uuid:property_id>/", views.property_detail, name="property-detail"),
+    path("properties/sync-all/", views.property_sync_all, name="property-sync-all"),
     path("properties/<uuid:property_id>/sync/", views.property_sync, name="property-sync"),
     path("properties/<uuid:property_id>/calendar.ics", views.property_calendar_export, name="property-calendar-export"),
     path("properties/<uuid:property_id>/photos/", views.property_photo_list, name="property-photo-list"),
@@ -44,6 +48,9 @@ urlpatterns = [
     # Clients (guest directory)
     path("guests/", views.guest_list, name="guest-list"),
     path("guests/<uuid:guest_id>/", views.guest_detail, name="guest-detail"),
+    path("guests/<uuid:guest_id>/documents/", views.guest_document_list, name="guest-document-list"),
+    path("guests/<uuid:guest_id>/documents/<uuid:document_id>/", views.guest_document_detail, name="guest-document-detail"),
+    path("guests/<uuid:guest_id>/documents/<uuid:document_id>/download/", views.guest_document_download, name="guest-document-download"),
 
     # Access Codes
     path("codes/door/", views.door_code_list, name="door-code-list"),
@@ -59,6 +66,9 @@ urlpatterns = [
     path("finance/expenses/extract/", views.expense_extract, name="finance-expense-extract"),
     path("finance/expenses/<uuid:expense_id>/", views.finance_expense_detail, name="finance-expense-detail"),
     path("finance/expenses/<uuid:expense_id>/invoice/", views.expense_invoice, name="finance-expense-invoice"),
+    path("finance/expenses/<uuid:expense_id>/payments/", views.expense_payment_view, name="finance-expense-payment"),
+    path("finance/analytics/", views.finance_analytics, name="finance-analytics"),
+    path("finance/outstanding/", views.finance_outstanding_expenses, name="finance-outstanding"),
     path("finance/loans/", views.loan_list, name="loan-list"),
     path("finance/loans/<uuid:loan_id>/", views.loan_detail, name="loan-detail"),
     path("finance/obligations/", views.obligation_list, name="obligation-list"),
@@ -127,4 +137,8 @@ urlpatterns = [
     # Backup / restore (admin only)
     path("backup/export/", views.backup_export, name="backup-export"),
     path("backup/import/", views.backup_import, name="backup-import"),
+    path("backup/media/export/", views.backup_media_export, name="backup-media-export"),
+    path("backup/media/import/", views.backup_media_import, name="backup-media-import"),
+    path("backup/archive/export/", views.backup_archive_export, name="backup-archive-export"),
+    path("backup/archive/import/", views.backup_archive_import, name="backup-archive-import"),
 ]

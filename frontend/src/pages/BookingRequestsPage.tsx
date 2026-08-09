@@ -1,23 +1,23 @@
 import { CheckCircle, XCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   approveBookingRequest,
   fetchBookingRequests,
   rejectBookingRequest,
 } from '../api/pmsApi'
-import type { BookingRequestRecord } from '../types/domain'
+import type { BookingRequestRecord, ConfirmedBookingRecord } from '../types/domain'
 import '../styles/booking-requests.css'
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  expired: 'Expired',
+function paymentLabel(booking: ConfirmedBookingRecord): string {
+  if (booking.paid) return 'Paid'
+  if (booking.onlinePaymentStatus === 'full') return 'Paid online'
+  if (booking.onlinePaymentStatus === 'first_night') return 'Deposit paid'
+  return 'Pay at property'
 }
 
 export function BookingRequestsPage() {
   const [pending, setPending] = useState<BookingRequestRecord[]>([])
-  const [confirmed, setConfirmed] = useState<BookingRequestRecord[]>([])
+  const [confirmed, setConfirmed] = useState<ConfirmedBookingRecord[]>([])
   const [totalConfirmed, setTotalConfirmed] = useState(0)
   const [confirmedOffset, setConfirmedOffset] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -27,6 +27,18 @@ export function BookingRequestsPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectMessage, setRejectMessage] = useState('')
   const [actionError, setActionError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const successTimer = useRef<number | null>(null)
+
+  function showSuccess(message: string) {
+    setSuccessMessage(message)
+    if (successTimer.current) window.clearTimeout(successTimer.current)
+    successTimer.current = window.setTimeout(() => setSuccessMessage(''), 6000)
+  }
+
+  useEffect(() => () => {
+    if (successTimer.current) window.clearTimeout(successTimer.current)
+  }, [])
 
   const LIMIT = 10
 
@@ -52,10 +64,16 @@ export function BookingRequestsPage() {
   useEffect(() => { load(0) }, [])
 
   async function handleApprove(id: string) {
+    const req = pending.find((r) => r.id === id)
     setApprovingId(id)
     setActionError('')
     try {
       await approveBookingRequest(id)
+      showSuccess(
+        req
+          ? `Request approved — reservation created for ${req.guestName} (${req.checkIn} → ${req.checkOut}).`
+          : 'Request approved and reservation created.',
+      )
       await load(0)
       setConfirmedOffset(0)
     } catch (e: unknown) {
@@ -71,6 +89,7 @@ export function BookingRequestsPage() {
       await rejectBookingRequest(id, rejectMessage)
       setRejectingId(null)
       setRejectMessage('')
+      showSuccess('Request rejected.')
       await load(0)
       setConfirmedOffset(0)
     } catch (e: unknown) {
@@ -93,6 +112,12 @@ export function BookingRequestsPage() {
 
       {error && <p style={{ color: 'var(--error)' }}>{error}</p>}
       {actionError && <p style={{ color: 'var(--error)' }}>{actionError}</p>}
+      {successMessage && (
+        <p className="br-success" role="status">
+          <CheckCircle size={15} />
+          {successMessage}
+        </p>
+      )}
 
       <div className="br-section">
         <div className="br-section-header">
@@ -190,29 +215,29 @@ export function BookingRequestsPage() {
                   <th>Check-out</th>
                   <th>Nights</th>
                   <th>Total</th>
-                  <th>Status</th>
+                  <th>Payment</th>
                   <th>Booked</th>
                 </tr>
               </thead>
               <tbody>
-                {confirmed.map((req) => (
-                  <tr key={req.id}>
+                {confirmed.map((booking) => (
+                  <tr key={booking.id}>
                     <td>
-                      <div>{req.guestName}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{req.guestEmail}</div>
+                      <div>{booking.guestName}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{booking.guestEmail}</div>
                     </td>
-                    <td>{req.property.name}</td>
-                    <td>{req.checkIn}</td>
-                    <td>{req.checkOut}</td>
-                    <td>{req.nights}</td>
-                    <td>€{parseFloat(req.totalPriceEur).toFixed(2)}</td>
+                    <td>{booking.property?.name ?? '—'}</td>
+                    <td>{booking.checkIn}</td>
+                    <td>{booking.checkOut}</td>
+                    <td>{booking.nights}</td>
+                    <td>€{(parseFloat(booking.totalPriceEur) || 0).toFixed(2)}</td>
                     <td>
-                      <span className={`br-status-badge br-status-${req.status}`}>
-                        {STATUS_LABEL[req.status] || req.status}
+                      <span className={`br-status-badge br-status-${booking.paid || booking.onlinePaymentStatus === 'full' ? 'approved' : 'pending'}`}>
+                        {paymentLabel(booking)}
                       </span>
                     </td>
                     <td style={{ fontSize: '0.78rem' }}>
-                      {new Date(req.createdAt).toLocaleDateString()}
+                      {new Date(booking.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}

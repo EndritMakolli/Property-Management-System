@@ -1,3 +1,5 @@
+import hashlib
+import math
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
@@ -23,15 +25,42 @@ from ..models import (
     PropertyPhoto,
     Reservation,
 )
-from ._pricing import calculate_price, _match_scope
+from ._pricing import calculate_price, _match_scope, _min_nights_required
 from ._utils import json_payload, throttle
+
+# The split-stay search pairs every candidate with every other, so it grows
+# quadratically. These caps keep an unauthenticated request cheap.
+MAX_COMBINATION_CANDIDATES = 12
+MAX_COMBINATION_RESULTS = 20
 
 
 # ---------------------------------------------------------------------------
 # Serializers (public — never include private fields like WiFi/door codes)
 # ---------------------------------------------------------------------------
 
-def _serialize_public_property(prop, request, price_breakdown=None):
+def _approximate_coords(prop, radius_m):
+    """Return privacy-shifted (lat, lng) strings for the public site.
+
+    The offset is deterministic per property (seeded by its id) so repeated
+    requests cannot be averaged to recover the true point, and it is capped at
+    60% of the circle radius so the real location is always inside the circle
+    the guest sees. With radius 0 the exact coordinates pass through.
+    """
+    if prop.latitude is None or prop.longitude is None:
+        return "", ""
+    lat = float(prop.latitude)
+    lng = float(prop.longitude)
+    if not radius_m:
+        return str(prop.latitude), str(prop.longitude)
+    digest = hashlib.sha256(str(prop.id).encode()).digest()
+    angle = (digest[0] * 256 + digest[1]) / 65536.0 * 2 * math.pi
+    distance = radius_m * (0.2 + (digest[2] / 255.0) * 0.4)  # 20–60% of radius
+    dlat = distance * math.cos(angle) / 111320.0
+    dlng = distance * math.sin(angle) / (111320.0 * max(math.cos(math.radians(lat)), 0.01))
+    return f"{lat + dlat:.5f}", f"{lng + dlng:.5f}"
+
+
+def _serialize_public_property(prop, request, price_breakdown=None, site_settings=None, min_nights=None):
     photos = [
         request.build_absolute_uri(p.photo.url)
         for p in prop.photos.order_by("sort_order", "id")
@@ -46,6 +75,13 @@ def _serialize_public_property(prop, request, price_breakdown=None):
         PropertyAmenity.objects.filter(property=prop)
         .values_list("amenity_id", flat=True)
     )
+    settings = site_settings or BookingSiteSettings.get()
+    radius_m = settings.map_privacy_radius_m
+    # Guests only ever see an approximate point inside the privacy circle;
+    # exact coordinates stay internal (admin serializers).
+    approx_lat, approx_lng = _approximate_coords(prop, radius_m)
+    if min_nights is None and price_breakdown is not None:
+        min_nights = price_breakdown.get("min_nights_required") or 0
     return {
         "id": str(prop.id),
         "name": prop.name,
@@ -57,8 +93,10 @@ def _serialize_public_property(prop, request, price_breakdown=None):
         "basePriceEur": str(prop.base_price_eur),
         "description": prop.description or "",
         "locationLabel": prop.location_label or "",
-        "latitude": str(prop.latitude) if prop.latitude is not None else "",
-        "longitude": str(prop.longitude) if prop.longitude is not None else "",
+        "latitude": approx_lat,
+        "longitude": approx_lng,
+        "mapRadiusM": radius_m,
+        "minNights": min_nights or 0,
         "rating": str(prop.rating) if prop.rating is not None else "",
         "reviewCount": prop.review_count,
         "photos": photos,
@@ -234,6 +272,7 @@ def booking_settings(request):
         "sameDayBookingEnabled": settings.same_day_booking_enabled,
         "sameDayBookingCutoffHour": settings.same_day_booking_cutoff_hour,
         "advanceBookingLimitMonths": settings.advance_booking_limit_months,
+        "mapRadiusM": settings.map_privacy_radius_m,
         # Public-safe company facts only — never tax or bank details.
         "companyName": company.name,
         "companyLatitude": str(company.latitude) if company.latitude is not None else "",
@@ -252,9 +291,38 @@ def booking_properties(request):
         platform=Property.Platform.AIRSTAY,
     ).prefetch_related("photos", "property_amenities").order_by("bedrooms", "name")
 
-    return JsonResponse({
-        "properties": [_serialize_public_property(p, request) for p in props]
-    })
+    # Optional stay dates let listings (e.g. the map page) show the real
+    # rule-adjusted price for the guest's dates instead of the base rate.
+    check_in = check_out = None
+    try:
+        if request.GET.get("check_in") and request.GET.get("check_out"):
+            check_in = _parse_date(request.GET.get("check_in"), "check_in")
+            check_out = _parse_date(request.GET.get("check_out"), "check_out")
+            if check_out <= check_in:
+                check_in = check_out = None
+    except ValueError:
+        check_in = check_out = None
+
+    site_settings = BookingSiteSettings.get()
+    today = localdate()
+    serialized = []
+    for prop in props:
+        breakdown = None
+        if check_in and check_out:
+            breakdown = calculate_price(prop, check_in, check_out)
+            min_nights = breakdown.get("min_nights_required") or 0
+        else:
+            min_nights = _min_nights_required(prop, today, today + timedelta(days=1))
+        serialized.append(
+            _serialize_public_property(
+                prop, request,
+                price_breakdown=breakdown,
+                site_settings=site_settings,
+                min_nights=min_nights,
+            )
+        )
+
+    return JsonResponse({"properties": serialized})
 
 
 @csrf_exempt
@@ -274,7 +342,11 @@ def booking_property_detail(request, property_id):
         for pa in prop.property_amenities.select_related("amenity").order_by("amenity__sort_order", "amenity__name")
     ]
 
-    data = _serialize_public_property(prop, request)
+    today = localdate()
+    data = _serialize_public_property(
+        prop, request,
+        min_nights=_min_nights_required(prop, today, today + timedelta(days=1)),
+    )
     data["amenities"] = amenities
     data["reviews"] = [_serialize_review(r) for r in prop.reviews.all()]
     return JsonResponse({"property": data})
@@ -287,7 +359,7 @@ def booking_property_calendar(request, property_id):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
     try:
-        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
@@ -316,6 +388,7 @@ def booking_property_calendar(request, property_id):
 
 
 @csrf_exempt
+@throttle("60/m", methods=("GET",))
 def booking_availability(request):
     """
     GET /api/booking/availability/?check_in=&check_out=&guests=&amenities=id1,id2
@@ -357,7 +430,9 @@ def booking_availability(request):
             all_props = all_props.filter(property_amenities__amenity_id=aid)
         all_props = all_props.distinct()
 
+    site_settings = BookingSiteSettings.get()
     available = []
+    min_stay_blocked = []
     unavailable_ids = set()
 
     for prop in all_props:
@@ -368,9 +443,21 @@ def booking_availability(request):
             continue
         breakdown = calculate_price(prop, check_in, check_out)
         if breakdown["errors"]:
+            # Free but the requested stay is too short — surface it with its
+            # minimum instead of hiding the apartment without explanation.
+            min_required = breakdown.get("min_nights_required") or 0
+            if min_required and nights < min_required:
+                min_stay_blocked.append({
+                    "property": _serialize_public_property(
+                        prop, request, site_settings=site_settings, min_nights=min_required,
+                    ),
+                    "minNights": min_required,
+                })
             continue
         available.append({
-            "property": _serialize_public_property(prop, request, price_breakdown=breakdown),
+            "property": _serialize_public_property(
+                prop, request, price_breakdown=breakdown, site_settings=site_settings,
+            ),
         })
 
     # Sort cheapest first
@@ -387,34 +474,45 @@ def booking_availability(request):
             if _is_property_available(prop.id, check_in, check_out):
                 candidate_props.append(prop)
 
+        # Bound the pair search: it is O(n^2) on an unauthenticated endpoint.
+        candidate_props = candidate_props[:MAX_COMBINATION_CANDIDATES]
+
+        # Price each candidate ONCE. Pricing inside the pair loop repeated the
+        # same ~5 queries per property for every pair it appeared in.
+        priced = {}
+        for prop in candidate_props:
+            bd = calculate_price(prop, check_in, check_out)
+            if not bd["errors"]:
+                priced[prop.id] = bd
+
         for combo in combinations(candidate_props, 2):
             total_guests = sum(p.max_guests for p in combo)
             if total_guests < guests:
                 continue
-            combo_items = []
-            combo_total = Decimal("0")
-            valid = True
-            for prop in combo:
-                bd = calculate_price(prop, check_in, check_out)
-                if bd["errors"]:
-                    valid = False
-                    break
-                combo_items.append({
-                    "property": _serialize_public_property(prop, request, price_breakdown=bd),
-                })
-                combo_total += Decimal(bd["total"])
-            if valid:
-                combinations_list.append({
-                    "apartments": combo_items,
-                    "combinedTotal": str(combo_total),
-                    "nights": nights,
-                })
+            if any(prop.id not in priced for prop in combo):
+                continue
+            combo_items = [
+                {
+                    "property": _serialize_public_property(
+                        prop, request, price_breakdown=priced[prop.id], site_settings=site_settings,
+                    ),
+                }
+                for prop in combo
+            ]
+            combo_total = sum((Decimal(priced[prop.id]["total"]) for prop in combo), Decimal("0"))
+            combinations_list.append({
+                "apartments": combo_items,
+                "combinedTotal": str(combo_total),
+                "nights": nights,
+            })
 
         combinations_list.sort(key=lambda x: Decimal(x["combinedTotal"]))
+        combinations_list = combinations_list[:MAX_COMBINATION_RESULTS]
 
     return JsonResponse({
         "available": available,
         "combinations": combinations_list,
+        "minStayBlocked": min_stay_blocked,
         "checkIn": check_in.isoformat(),
         "checkOut": check_out.isoformat(),
         "nights": nights,
@@ -439,7 +537,7 @@ def booking_calculate(request):
         return JsonResponse({"error": str(e)}, status=400)
 
     try:
-        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
@@ -481,7 +579,7 @@ def booking_validate_promo(request):
         return JsonResponse({"error": str(e)}, status=400)
 
     try:
-        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
@@ -537,7 +635,7 @@ def booking_create_request(request):
         return JsonResponse({"error": errors}, status=400)
 
     try:
-        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
@@ -627,7 +725,7 @@ def booking_create_direct(request):
         return JsonResponse({"error": errors}, status=400)
 
     try:
-        prop = Property.objects.get(pk=property_id, active=True, listing_active=True)
+        prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 

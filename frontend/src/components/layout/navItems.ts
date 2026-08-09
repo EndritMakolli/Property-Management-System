@@ -8,6 +8,7 @@ import {
   Globe,
   KeyRound,
   LayoutDashboard,
+  Lock,
   Receipt,
   RefreshCw,
   Search,
@@ -40,6 +41,7 @@ export const navItems: { label: string; path: string; icon: typeof Search; roles
   { label: 'Booking Requests', path: '/booking-requests', icon: Globe, roles: ['admin', 'management'] },
   { label: 'Pricing Rules', path: '/pricing-rules', icon: Tag, roles: ['admin', 'management'] },
   { label: 'Admin Panel', path: '/admin-panel', icon: ShieldCheck, roles: ['admin'] },
+  { label: 'My Security', path: '/security', icon: Lock, roles: ['admin', 'management', 'cleaning'] },
 ]
 
 export function navItemsForRole(role: UserRole, platformId?: PlatformId) {

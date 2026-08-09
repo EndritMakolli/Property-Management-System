@@ -33,7 +33,6 @@ export function EditExpenseModal({
     endMonth: expense.endMonth,
     platform: expense.platform,
     notes: expense.notes,
-    paid: expense.paid,
     vendor: expense.vendor,
     invoiceDate: expense.invoiceDate,
   })
@@ -217,14 +216,8 @@ export function EditExpenseModal({
                   onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })}
                 />
               </label>
-              <label className="form-checkbox-row">
-                <input
-                  checked={form.paid ?? false}
-                  type="checkbox"
-                  onChange={(e) => setForm({ ...form, paid: e.target.checked })}
-                />
-                Paid
-              </label>
+              {/* Paid status is month-specific — toggle it on the expense row
+                  for the month you are viewing, not here. */}
             </div>
           </div>
 

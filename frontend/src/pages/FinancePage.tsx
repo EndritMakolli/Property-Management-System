@@ -10,6 +10,7 @@ import { usePlatform } from '../context/PlatformContext'
 import { ExpensesYearlyChart } from '../features/reports/ReportCharts'
 import { Metric } from '../components/shared/Metric'
 import { EditExpenseModal } from '../features/finance/EditExpenseModal'
+import { ExpenseAnalyticsSection } from '../features/finance/ExpenseAnalytics'
 import { ExpensesPanel } from '../features/finance/ExpensesPanel'
 import { LoansPanel } from '../features/finance/LoansPanel'
 import { ObligationsPanel } from '../features/finance/ObligationsPanel'
@@ -96,6 +97,17 @@ export function FinancePage() {
   const visibleAllExpenses = allExpenses.filter((e) => !excludedCategorySet.has(e.categoryId))
   const visibleExpenses = expenses.filter((e) => !excludedCategorySet.has(e.categoryId))
 
+  // Total / Paid / Unpaid for the selected month. Uses the same platform filter
+  // and category exclusions as the Expenses metric and panel below, so all the
+  // figures on the page agree. Paid is month-specific (ExpensePayment rows).
+  const monthExpenses = visibleExpenses.filter((e) => !e.platform || e.platform === platform.id)
+  const monthExpensesTotal = monthExpenses.reduce((sum, e) => sum + dec(e.amountEur), 0)
+  const monthExpensesPaid = monthExpenses.reduce(
+    (sum, e) => sum + (e.paidForMonth ? dec(e.amountEur) : 0),
+    0,
+  )
+  const monthExpensesUnpaid = monthExpensesTotal - monthExpensesPaid
+
   const platformSummary = summary[platform.id]
   const turnover = dec(platformSummary.turnoverEur)
   const loanPayments = dec(summary.loanPaymentsEur)
@@ -155,6 +167,22 @@ export function FinancePage() {
         <Metric label="Loans" value={`EUR ${money(summary.loanPaymentsEur)}`} />
       </section>
 
+      {/* Month-specific expense stats — react to the selected period */}
+      <section className="metric-row expense-stat-row">
+        <article className="metric expense-stat total">
+          <span>Total Expenses ({monthLabel})</span>
+          <strong>EUR {money(monthExpensesTotal.toFixed(2))}</strong>
+        </article>
+        <article className="metric expense-stat paid">
+          <span>Total Paid</span>
+          <strong>EUR {money(monthExpensesPaid.toFixed(2))}</strong>
+        </article>
+        <article className="metric expense-stat unpaid">
+          <span>Total Unpaid</span>
+          <strong>EUR {money(monthExpensesUnpaid.toFixed(2))}</strong>
+        </article>
+      </section>
+
       {(categories.length > 0 || taxes.length > 0) && (
         <section className="panel exclusions-panel">
           <div className="stats-section-header">
@@ -206,6 +234,12 @@ export function FinancePage() {
         platformId={platform.id}
         showTaxes={!taxesExcluded}
         taxesColor={taxesColor}
+      />
+
+      <ExpenseAnalyticsSection
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        refreshKey={refreshKey}
       />
 
       <section className="finance-sections">

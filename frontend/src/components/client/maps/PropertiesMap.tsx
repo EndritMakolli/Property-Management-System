@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
+import { Circle, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import type { PublicProperty } from '../../../api/bookingApi'
 import L, { DEFAULT_CENTER, OSM_ATTRIBUTION, OSM_TILE_URL } from '../../shared/leafletSetup'
 
@@ -15,7 +15,9 @@ type PropertiesMapProps = {
 }
 
 function priceIcon(property: MapProperty, selected: boolean) {
-  const price = Math.round(Number(property.basePriceEur) || 0)
+  // Prefer the rule-adjusted nightly rate for the guest's dates when present.
+  const nightly = property.priceBreakdown?.effective_nightly
+  const price = Math.round(Number(nightly ?? property.basePriceEur) || 0)
   return L.divIcon({
     className: '',
     html: `<span class="map-price-pin${selected ? ' selected' : ''}">€${price}</span>`,
@@ -24,10 +26,22 @@ function priceIcon(property: MapProperty, selected: boolean) {
   })
 }
 
+// Leaflet's divIcon takes raw HTML, so anything interpolated into it must be
+// fully escaped — the company name is admin-supplied but renders for every
+// public visitor, which is exactly the shape of a stored-XSS bug.
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function homeIcon(name: string) {
   return L.divIcon({
     className: '',
-    html: `<span class="map-home-pin">🏢 ${name.replace(/</g, '&lt;')}</span>`,
+    html: `<span class="map-home-pin">🏢 ${escapeHtml(name)}</span>`,
     iconSize: [0, 0],
     iconAnchor: [40, 16],
   })
@@ -58,6 +72,27 @@ export default function PropertiesMap({ properties, selectedId, onPinClick, home
       <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
       <FitToPins home={home} properties={properties} />
       {home && <Marker icon={homeIcon(home.name)} position={[home.lat, home.lng]} />}
+      {/* Approximate-location circle (Airbnb style): the apartment is somewhere
+          inside it. Coordinates are already privacy-shifted server-side, so no
+          exact point is revealed — the price pin sits at the circle center.
+          mapRadiusM of 0 means privacy is off and the coordinates are exact, so
+          drawing a circle would falsely imply the location is approximate. */}
+      {properties
+        .filter((property) => property.mapRadiusM > 0)
+        .map((property) => (
+          <Circle
+            key={`area-${property.id}`}
+            center={[property.lat, property.lng]}
+            pathOptions={{
+              color: property.id === selectedId ? '#4a9be0' : '#7db8e8',
+              fillColor: '#8ec5f2',
+              fillOpacity: property.id === selectedId ? 0.35 : 0.22,
+              weight: property.id === selectedId ? 2.5 : 1.5,
+            }}
+            radius={property.mapRadiusM}
+            eventHandlers={{ click: () => onPinClick(property) }}
+          />
+        ))}
       {properties.map((property) => (
         <Marker
           key={property.id}

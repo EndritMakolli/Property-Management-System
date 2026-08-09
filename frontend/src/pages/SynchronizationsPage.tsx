@@ -1,10 +1,12 @@
-import { ChevronDown, ChevronRight, RefreshCw, Save } from 'lucide-react'
+import { ChevronDown, ChevronRight, RefreshCw, Save, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   fetchProperties,
   fetchSyncLogs,
+  syncAllProperties,
   syncPropertyCalendar,
   updatePropertySync,
+  type SyncAllResult,
 } from '../api/pmsApi'
 import type { PropertyListing, SyncLogRecord } from '../types/domain'
 
@@ -26,6 +28,8 @@ export function SynchronizationsPage() {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
+  const [syncAllBusy, setSyncAllBusy] = useState(false)
+  const [syncAllResult, setSyncAllResult] = useState<SyncAllResult | null>(null)
 
   async function loadProperties() {
     try {
@@ -104,6 +108,25 @@ export function SynchronizationsPage() {
     }
   }
 
+  async function handleSyncAll() {
+    if (syncAllBusy) return
+    setSyncAllBusy(true)
+    setSyncAllResult(null)
+    setError('')
+    try {
+      const result = await syncAllProperties()
+      setSyncAllResult(result)
+      const logs = await fetchSyncLogs()
+      setSyncLogs(logs)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Sync All failed.')
+    } finally {
+      setSyncAllBusy(false)
+    }
+  }
+
+  const anyRowSyncing = properties.some((p) => p.syncing)
+
   function toggleLogs(propertyId: string) {
     setExpandedLogs((prev) => {
       const next = new Set(prev)
@@ -120,11 +143,51 @@ export function SynchronizationsPage() {
           <p className="eyebrow">Channels</p>
           <h2>Synchronizations</h2>
         </div>
-        <button className="primary-button" onClick={loadProperties}>
-          <RefreshCw size={17} />
-          Refresh
-        </button>
+        <div className="sync-header-actions">
+          <button
+            className="primary-button"
+            disabled={syncAllBusy || anyRowSyncing || status !== 'ready'}
+            onClick={handleSyncAll}
+          >
+            <Zap size={17} />
+            {syncAllBusy ? 'Syncing all…' : 'Sync All'}
+          </button>
+          <button className="primary-button" disabled={syncAllBusy} onClick={loadProperties}>
+            <RefreshCw size={17} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {syncAllBusy && (
+        <p className="sync-all-progress">Syncing every configured channel — this can take a moment…</p>
+      )}
+      {syncAllResult && (
+        <section
+          className={`sync-all-summary ${
+            syncAllResult.summary.failed === 0
+              ? 'ok'
+              : syncAllResult.summary.succeeded === 0
+                ? 'fail'
+                : 'partial'
+          }`}
+        >
+          <strong>
+            {syncAllResult.summary.total === 0
+              ? 'No calendars to sync — add iCal links first.'
+              : syncAllResult.summary.failed === 0
+                ? `Sync All finished: all ${syncAllResult.summary.succeeded} calendar${syncAllResult.summary.succeeded !== 1 ? 's' : ''} synced.`
+                : syncAllResult.summary.succeeded === 0
+                  ? `Sync All failed: 0 of ${syncAllResult.summary.total} calendars synced.`
+                  : `Sync All partially finished: ${syncAllResult.summary.succeeded} of ${syncAllResult.summary.total} calendars synced.`}
+          </strong>
+          {syncAllResult.results.filter((entry) => entry.status === 'failed').map((entry) => (
+            <p key={`${entry.propertyId}-${entry.channel}`}>
+              {entry.propertyName} ({entry.channel}): {entry.error}
+            </p>
+          ))}
+        </section>
+      )}
 
       <section className="sync-status-row">
         <article>
@@ -221,14 +284,14 @@ export function SynchronizationsPage() {
                     Save settings
                   </button>
                   <button
-                    disabled={!property.airbnbIcalUrl || property.syncing !== null && property.syncing !== undefined}
+                    disabled={!property.airbnbIcalUrl || syncAllBusy || (property.syncing !== null && property.syncing !== undefined)}
                     onClick={() => syncChannel(property, 'airbnb')}
                   >
                     <RefreshCw size={16} />
                     {property.syncing === 'airbnb' ? 'Syncing...' : 'Sync Airbnb now'}
                   </button>
                   <button
-                    disabled={!property.bookingIcalUrl || property.syncing !== null && property.syncing !== undefined}
+                    disabled={!property.bookingIcalUrl || syncAllBusy || (property.syncing !== null && property.syncing !== undefined)}
                     onClick={() => syncChannel(property, 'booking')}
                   >
                     <RefreshCw size={16} />

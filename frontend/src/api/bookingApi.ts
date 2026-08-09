@@ -21,8 +21,12 @@ export interface PublicProperty {
   basePriceEur: string
   description: string
   locationLabel: string
+  // Privacy-shifted approximate coordinates — the real location is somewhere
+  // inside the mapRadiusM circle around this point.
   latitude: string
   longitude: string
+  mapRadiusM: number
+  minNights: number
   rating: string
   reviewCount: number
   photos: string[]
@@ -52,6 +56,8 @@ export interface PublicPropertyDetail extends PublicProperty {
 export interface AvailabilityResponse {
   available: { property: PublicProperty }[]
   combinations: { apartments: { property: PublicProperty }[]; combinedTotal: string; nights: number }[]
+  // Free apartments whose minimum-stay rule exceeds the searched nights.
+  minStayBlocked: { property: PublicProperty; minNights: number }[]
   checkIn: string
   checkOut: string
   nights: number
@@ -79,8 +85,18 @@ export async function fetchBookingPropertyDetail(id: string) {
   return data.property
 }
 
-export async function fetchBookingProperties() {
-  const data = await apiGet<{ properties: PublicProperty[] }>('/api/booking/properties/')
+export async function fetchBookingProperties(checkIn?: string, checkOut?: string) {
+  // With dates, each property carries a priceBreakdown for that stay so
+  // listings show rule-adjusted prices instead of the base rate.
+  const params = new URLSearchParams()
+  if (checkIn && checkOut) {
+    params.set('check_in', checkIn)
+    params.set('check_out', checkOut)
+  }
+  const query = params.toString()
+  const data = await apiGet<{ properties: PublicProperty[] }>(
+    `/api/booking/properties/${query ? `?${query}` : ''}`,
+  )
   return data.properties
 }
 

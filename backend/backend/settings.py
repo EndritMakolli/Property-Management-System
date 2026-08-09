@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -53,16 +54,45 @@ PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 ANTHROPIC_MODEL = config('ANTHROPIC_MODEL', default='claude-haiku-4-5')
 
-# Google Sheets reservation sync (optional). Leave GOOGLE_SHEETS_ID blank to
-# disable the integration entirely.
-GOOGLE_SHEETS_ID = config('GOOGLE_SHEETS_ID', default='')
-GOOGLE_SHEETS_CREDENTIALS_FILE = config('GOOGLE_SHEETS_CREDENTIALS_FILE', default='')
-if GOOGLE_SHEETS_CREDENTIALS_FILE and not os.path.isabs(GOOGLE_SHEETS_CREDENTIALS_FILE):
-    GOOGLE_SHEETS_CREDENTIALS_FILE = str(BASE_DIR / GOOGLE_SHEETS_CREDENTIALS_FILE)
-GOOGLE_SHEETS_CREDENTIALS_JSON = config('GOOGLE_SHEETS_CREDENTIALS_JSON', default='')
-GOOGLE_SHEETS_YEAR = int(config('GOOGLE_SHEETS_YEAR', default=0) or 0)
+# ── Email (two-factor login codes) ───────────────────────────────────────────
+# Without EMAIL_HOST configured, codes are printed to the console — fine for
+# local development, but 2FA logins will NOT work in production until real SMTP
+# credentials are set. For Gmail use an App Password, never the account password.
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=15, cast=int)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'no-reply@localhost')
+
+# Only switch to SMTP once the config can actually authenticate. A half-filled
+# block (host set, password still blank) would otherwise fail every send — and
+# since 2FA login fails closed, that would lock every 2FA user out of the app.
+# Falling back to the console backend keeps them able to sign in using the code
+# printed in the server log while the credentials are being set up.
+EMAIL_IS_CONFIGURED = bool(EMAIL_HOST) and (bool(EMAIL_HOST_PASSWORD) or not EMAIL_HOST_USER)
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if EMAIL_IS_CONFIGURED
+    else 'django.core.mail.backends.console.EmailBackend'
+)
+
+# Only read X-Forwarded-For when a trusted proxy actually sets it; otherwise a
+# client could spoof its IP and evade per-IP rate limiting.
+TRUST_PROXY_HEADERS = config('TRUST_PROXY_HEADERS', default=not DEBUG, cast=bool)
+
+# The Django admin is a second login form that does NOT enforce this app's
+# email two-step verification, and the session it mints is trusted by the whole
+# API — so it is disabled unless explicitly turned on, and never on a guessable
+# path. Manage staff accounts through the app's own Admin Panel instead.
+DJANGO_ADMIN_ENABLED = config('DJANGO_ADMIN_ENABLED', default=False, cast=bool)
+DJANGO_ADMIN_PATH = config('DJANGO_ADMIN_PATH', default='admin').strip('/')
 
 INSTALLED_APPS = [
+    # django.contrib.admin stays installed (its templates/permissions are cheap
+    # and other apps expect it); the URL route is what DJANGO_ADMIN_ENABLED gates.
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -127,6 +157,23 @@ else:
         }
     }
 
+# Rate limiting must be shared across gunicorn workers, otherwise every limit is
+# silently multiplied by WEB_CONCURRENCY and resets on each deploy. The database
+# cache needs no extra service; swap in Redis if one is available.
+# Run `python manage.py createcachetable` after migrating.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'pms_cache_table',
+    }
+}
+
+# django-ratelimit keys on REMOTE_ADDR by default, which behind a proxy is the
+# load balancer — putting every visitor in one bucket, so a single attacker
+# could rate-limit the whole product. Point it at the forwarded client IP, but
+# only where a trusted proxy sets it (otherwise the header is attacker-supplied).
+RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR' if TRUST_PROXY_HEADERS else None
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -181,6 +228,15 @@ COOKIE_SAMESITE = {
 }.get(_cookie_samesite, 'Lax')
 
 if not DEBUG:
+    # Fail loudly rather than shipping with the development key: every signature
+    # Django makes (sessions, CSRF, password reset) derives from SECRET_KEY, so a
+    # published or default value undermines all of them at once.
+    if SECRET_KEY.startswith('django-insecure-') or len(SECRET_KEY) < 32:
+        raise ImproperlyConfigured(
+            'Set a strong, unique SECRET_KEY in the environment before running '
+            'with DEBUG=False.'
+        )
+
     # Render terminates TLS at its load balancer and forwards the real scheme in
     # this header. Without it, Django may think HTTPS requests are plain HTTP.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

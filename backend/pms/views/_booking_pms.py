@@ -20,8 +20,9 @@ from ..models import (
     PropertyPhoto,
     Reservation,
 )
+from ._expense_ai import _validate_upload
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
-from ._serializers import serialize_property, serialize_reservation
+from ._serializers import serialize_property
 from ._utils import decimal_value, json_payload
 
 
@@ -105,34 +106,61 @@ def _serialize_booking_settings(settings):
         "sameDayBookingCutoffHour": settings.same_day_booking_cutoff_hour,
         "advanceBookingLimitMonths": settings.advance_booking_limit_months,
         "nonRefundableDiscountPct": str(settings.non_refundable_discount_pct),
+        "mapRadiusM": settings.map_privacy_radius_m,
+    }
+
+
+def _booking_common(obj, request):
+    """Fields shared by pending requests and confirmed bookings on the PMS page.
+
+    Sorting the prefetched photo list in Python (rather than .order_by() on the
+    related manager, which starts a fresh query) keeps prefetch_related useful.
+    """
+    photos = sorted(obj.property.photos.all(), key=lambda p: (p.sort_order, str(p.id)))
+    prop_photo = photos[0] if photos else None
+    photo_url = request.build_absolute_uri(prop_photo.photo.url) if prop_photo and prop_photo.photo else ""
+    return {
+        "id": str(obj.id),
+        "property": {
+            "id": str(obj.property_id),
+            "name": obj.property.name,
+            "photoUrl": photo_url,
+        },
+        "guestName": obj.guest_name,
+        "guestEmail": obj.guest_email,
+        "guestPhone": obj.guest_phone,
+        "checkIn": obj.check_in.isoformat(),
+        "checkOut": obj.check_out.isoformat(),
+        "nights": obj.nights,
+        "guestsCount": obj.guests_count,
+        "totalPriceEur": str(obj.total_price_eur),
+        "createdAt": obj.created_at.isoformat(),
     }
 
 
 def _serialize_booking_request_pms(req, request):
-    prop_photo = req.property.photos.order_by("sort_order", "id").first()
-    photo_url = request.build_absolute_uri(prop_photo.photo.url) if prop_photo and prop_photo.photo else ""
     return {
-        "id": str(req.id),
+        **_booking_common(req, request),
         "token": str(req.token),
         "status": req.status,
-        "property": {
-            "id": str(req.property_id),
-            "name": req.property.name,
-            "photoUrl": photo_url,
-        },
-        "guestName": req.guest_name,
-        "guestEmail": req.guest_email,
-        "guestPhone": req.guest_phone,
-        "checkIn": req.check_in.isoformat(),
-        "checkOut": req.check_out.isoformat(),
-        "nights": req.nights,
-        "guestsCount": req.guests_count,
-        "totalPriceEur": str(req.total_price_eur),
         "priceBreakdown": req.price_breakdown,
         "expiresAt": req.expires_at.isoformat(),
         "rejectionMessage": req.rejection_message,
-        "createdAt": req.created_at.isoformat(),
         "promoCode": req.promo_code.code if req.promo_code else None,
+    }
+
+
+def _serialize_confirmed_booking(res, request):
+    """Serialize a DIRECT reservation for the Booking Requests page.
+
+    The page renders pending requests and confirmed bookings side by side, so
+    this mirrors the _serialize_booking_request_pms shape (nested property,
+    nights, totalPriceEur) instead of the flat serialize_reservation shape.
+    """
+    return {
+        **_booking_common(res, request),
+        "paid": res.paid,
+        "onlinePaymentStatus": res.online_payment_status,
     }
 
 
@@ -172,7 +200,7 @@ def booking_request_list(request):
     confirmed = Reservation.objects.filter(
         platform=Reservation.Platform.DIRECT,
         is_archived=False,
-    ).select_related("property").order_by("-created_at")[offset:offset + limit]
+    ).select_related("property").prefetch_related("property__photos").order_by("-created_at")[offset:offset + limit]
     total_confirmed = Reservation.objects.filter(
         platform=Reservation.Platform.DIRECT,
         is_archived=False,
@@ -180,7 +208,7 @@ def booking_request_list(request):
 
     return JsonResponse({
         "pendingRequests": [_serialize_booking_request_pms(r, request) for r in pending],
-        "confirmedBookings": [serialize_reservation(r) for r in confirmed],
+        "confirmedBookings": [_serialize_confirmed_booking(r, request) for r in confirmed],
         "totalConfirmed": total_confirmed,
     })
 
@@ -668,6 +696,11 @@ def booking_settings_pms(request):
                 settings.advance_booking_limit_months = int(payload.get("advanceBookingLimitMonths") or 12)
             if "nonRefundableDiscountPct" in payload:
                 settings.non_refundable_discount_pct = Decimal(str(payload["nonRefundableDiscountPct"]))
+            if "mapRadiusM" in payload:
+                radius = int(payload.get("mapRadiusM") or 0)
+                if radius < 0 or radius > 5000:
+                    return JsonResponse({"error": "Map radius must be 0–5000 meters."}, status=400)
+                settings.map_privacy_radius_m = radius
             settings.save()
         except (ValueError, TypeError) as e:
             return JsonResponse({"error": str(e)}, status=400)
@@ -697,8 +730,9 @@ def property_photo_list(request, property_id):
     if request.method == "POST":
         parser = MultiPartParser(request.META, request, request.upload_handlers)
         post_data, files = parser.parse()
-        if not files.get("photo"):
-            return JsonResponse({"error": "A photo file is required."}, status=400)
+        upload_error = _validate_upload(files.get("photo"), label="image")
+        if upload_error:
+            return JsonResponse({"error": upload_error}, status=400)
         sort_order = int(post_data.get("sortOrder") or PropertyPhoto.objects.filter(property=prop).count())
         photo = PropertyPhoto(property=prop, photo=files["photo"], sort_order=sort_order)
         photo.save()

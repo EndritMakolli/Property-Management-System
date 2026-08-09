@@ -1,15 +1,15 @@
 import { CheckSquare, Download, FileText, Square } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchAllFinanceExpenses,
+  fetchOutstandingExpenses,
   fetchProperties,
   fetchReservations,
-  toggleExpensePaid,
+  setExpensePaidForMonth,
   updateReservationPayment,
+  type OutstandingExpense,
 } from '../api/pmsApi'
 import { useAuth } from '../auth/AuthContext'
 import { Metric } from '../components/shared/Metric'
-import type { FinanceExpenseRecord } from '../types/domain'
 import { PaymentStatusDonuts } from '../features/dashboard/PaymentStatusDonuts'
 import { buildDueRows, togglePayload, type DueRow } from '../features/payments/paymentPeriods'
 import { monthNames } from '../features/reports/reportCalculations'
@@ -32,7 +32,7 @@ export function PaymentsPage() {
   const isAdmin = user?.role === 'admin'
   const [reservations, setReservations] = useState<ReservationRecord[]>([])
   const [properties, setProperties] = useState<PropertyListing[]>([])
-  const [unpaidExpenses, setUnpaidExpenses] = useState<FinanceExpenseRecord[]>([])
+  const [unpaidExpenses, setUnpaidExpenses] = useState<OutstandingExpense[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -55,8 +55,10 @@ export function PaymentsPage() {
       setStatus('error')
     }
     if (isAdmin) {
-      fetchAllFinanceExpenses()
-        .then((rows) => setUnpaidExpenses(rows.filter((row) => !row.paid)))
+      // Every unpaid expense month up to now — including arrears from earlier
+      // months, which a current-month-only view would hide.
+      fetchOutstandingExpenses()
+        .then((data) => setUnpaidExpenses(data.outstanding))
         .catch(() => setUnpaidExpenses([]))
     }
   }
@@ -94,11 +96,16 @@ export function PaymentsPage() {
   const collected = rows.filter((row) => row.paid).reduce((sum, row) => sum + row.amount, 0)
   const remaining = rows.filter((row) => !row.paid).length
 
-  async function markExpensePaid(expense: FinanceExpenseRecord) {
+  // Marks the specific month this row represents, not "the expense" as a whole.
+  async function markExpensePaid(expense: OutstandingExpense) {
     setError('')
     try {
-      await toggleExpensePaid(expense.id, true)
-      setUnpaidExpenses((current) => current.filter((row) => row.id !== expense.id))
+      await setExpensePaidForMonth(expense.id, expense.year, expense.month, true)
+      setUnpaidExpenses((current) =>
+        current.filter(
+          (row) => !(row.id === expense.id && row.year === expense.year && row.month === expense.month),
+        ),
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not update the expense.')
     }
@@ -282,9 +289,15 @@ export function PaymentsPage() {
           </h3>
           <ul className="payments-due-list">
             {unpaidExpenses.map((expense) => (
-              <li className="payments-due-row" key={expense.id}>
+              <li className="payments-due-row" key={`${expense.id}-${expense.year}-${expense.month}`}>
                 <div className="payments-due-info">
-                  <strong>{expense.name}</strong>
+                  <strong>
+                    {expense.name}
+                    <span className="payments-due-period">
+                      {' '}
+                      · {monthNames[expense.month - 1]} {expense.year}
+                    </span>
+                  </strong>
                   <span>
                     {expense.categoryName}
                     {expense.vendor ? ` · ${expense.vendor}` : ''}

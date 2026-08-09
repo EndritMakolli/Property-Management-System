@@ -18,17 +18,19 @@ from .company import CompanyProfile
 from .finance import (
     Expense,
     ExpenseCategory,
+    ExpensePayment,
     FinanceExpense,
     FinancialObligation,
     FinancialReport,
     Loan,
 )
-from .guests import Guest
+from .guests import Guest, GuestDocument
 from .invoices import Invoice
 from .maintenance import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto
 from .properties import Property
 from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
 from .reviews import PropertyReview
+from .security import LoginChallenge, UserSecurity
 from .reservations import GuestStay, Reservation
 from .sync_log import SyncConflict, SyncLog
 from .taxes import MonthlyTax
@@ -44,15 +46,18 @@ __all__ = [
     "DoorCode",
     "Expense",
     "ExpenseCategory",
+    "ExpensePayment",
     "FinanceExpense",
     "FinancialObligation",
     "FinancialReport",
     "Guest",
+    "GuestDocument",
     "GuestStay",
     "HouseRule",
     "Inquiry",
     "Invoice",
     "LockboxCode",
+    "LoginChallenge",
     "Loan",
     "MaintenanceIssue",
     "MaintenancePhoto",
@@ -64,6 +69,7 @@ __all__ = [
     "PropertyAmenity",
     "PropertyPhoto",
     "PropertyReview",
+    "UserSecurity",
     "ReceiptItem",
     "ReceiptItemReservation",
     "Reservation",

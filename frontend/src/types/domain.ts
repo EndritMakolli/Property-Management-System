@@ -152,7 +152,11 @@ export type FinanceExpenseRecord = {
   endMonth: number | null
   platform: 'airstay' | 'fleet' | ''
   notes: string
+  // Legacy whole-expense flag; the UI now uses the month-specific value below.
   paid: boolean
+  // Whether this expense is paid for the month the caller requested.
+  // Null when the row was fetched without a month context.
+  paidForMonth: boolean | null
   vendor: string
   invoiceDate: string
   invoiceFileUrl: string
@@ -199,6 +203,41 @@ export type FinanceSummary = {
   fleet: PlatformFinanceSummary
   loanPaymentsEur: string
   totalDebtEur: string
+}
+
+// ── Expense analytics (per-month series + top lists) ──────────────────────────
+
+export type ExpenseAnalyticsMonth = {
+  year: number
+  month: number
+  totalEur: string
+  paidEur: string
+  unpaidEur: string
+  taxesEur: string
+  byCategory: Record<string, string>
+}
+
+export type ExpenseAnalyticsEntry = {
+  id: string
+  name: string
+  vendor: string
+  frequency: 'one_time' | 'repeated'
+  categoryId: string
+  categoryName: string
+  categoryColor: string
+  amountEur: string
+  totalEur: string
+  monthsActive: number
+}
+
+export type ExpenseAnalytics = {
+  months: ExpenseAnalyticsMonth[]
+  topExpenses: ExpenseAnalyticsEntry[]
+  topRecurring: ExpenseAnalyticsEntry[]
+  topCategories: { id: string; name: string; color: string; totalEur: string }[]
+  categories: ExpenseCategoryRecord[]
+  start: string
+  end: string
 }
 
 export type MaintenanceIssueRecord = {
@@ -313,6 +352,24 @@ export type BookingRequestRecord = {
   promoCode: string | null
 }
 
+// Confirmed DIRECT reservation as listed on the Booking Requests page. This is
+// a Reservation, not a BookingRequest — it has payment info instead of a status.
+export type ConfirmedBookingRecord = {
+  id: string
+  property: { id: string; name: string; photoUrl: string }
+  guestName: string
+  guestEmail: string
+  guestPhone: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  guestsCount: number
+  totalPriceEur: string
+  paid: boolean
+  onlinePaymentStatus: 'none' | 'first_night' | 'full'
+  createdAt: string
+}
+
 export type AmenityRecord = {
   id: string
   name: string
@@ -378,6 +435,7 @@ export type BookingSiteSettingsRecord = {
   sameDayBookingCutoffHour: number
   advanceBookingLimitMonths: number
   nonRefundableDiscountPct: string
+  mapRadiusM: number
 }
 
 export type PropertyPhotoRecord = {
@@ -412,4 +470,9 @@ export type ManagedUser = {
   isActive: boolean
   isStaff: boolean
   isSuperuser: boolean
+  /** Address that receives this account's login codes. */
+  twoFactorEmail: string
+  twoFactorEnabled: boolean
+  /** Enabled AND an address is set — i.e. actually enforced at sign-in. */
+  twoFactorActive: boolean
 }

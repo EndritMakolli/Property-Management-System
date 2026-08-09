@@ -135,7 +135,9 @@ class FinanceExpense(TimeStampedModel):
         default=None,
     )
     notes = models.TextField(blank=True)
-    # Payment tracking + attached supplier invoice (new expenses start unpaid).
+    # LEGACY payment flag — superseded by per-month ExpensePayment rows so a
+    # repeated expense can be paid in July and still show unpaid in August.
+    # Kept for backward-compatible backups; not written by the UI anymore.
     paid = models.BooleanField(default=False)
     vendor = models.CharField(max_length=255, blank=True, default="")
     invoice_date = models.DateField(null=True, blank=True)
@@ -150,6 +152,38 @@ class FinanceExpense(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} - EUR {self.amount_eur}"
+
+
+class ExpensePayment(TimeStampedModel):
+    """One paid month of an expense.
+
+    A one-time expense has at most one payment (its start month); a repeated
+    expense gets one row per month it was paid, so history is preserved and a
+    new month starts unpaid automatically.
+    """
+
+    expense = models.ForeignKey(
+        FinanceExpense, on_delete=models.CASCADE, related_name="payments"
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    # Snapshot of the expense amount when it was paid, so later edits to the
+    # expense don't rewrite payment history.
+    amount_eur = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ["year", "month"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["expense", "year", "month"], name="unique_expense_payment_month"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["year", "month"]),
+        ]
+
+    def __str__(self):
+        return f"{self.expense.name} — {self.year}-{self.month:02d} paid"
 
 
 class Loan(TimeStampedModel):

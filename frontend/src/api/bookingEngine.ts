@@ -6,6 +6,7 @@ import type {
   BookingRequestRecord,
   BookingSiteSettingsRecord,
   CancellationPolicyRecord,
+  ConfirmedBookingRecord,
   HouseRuleRecord,
   PricingRuleRecord,
   PromoCodeRecord,
@@ -54,7 +55,7 @@ export async function fetchBookingRequests(offset = 0, limit = 10) {
   const params = new URLSearchParams({ offset: String(offset), limit: String(limit) })
   return apiGet<{
     pendingRequests: BookingRequestRecord[]
-    confirmedBookings: BookingRequestRecord[]
+    confirmedBookings: ConfirmedBookingRecord[]
     totalConfirmed: number
   }>(`/api/booking-requests/?${params}`)
 }
@@ -181,11 +182,11 @@ export async function deleteHouseRule(id: string) {
 // ── Booking site settings (PMS) ───────────────────────────────────────────────
 
 export async function fetchPmsBookingSettings() {
-  const data = await apiGet<{ settings: BookingSiteSettingsRecord }>('/api/booking-settings/')
-  return data.settings
+  const data = await apiGet<{ bookingSettings: BookingSiteSettingsRecord }>('/api/booking-settings/')
+  return data.bookingSettings
 }
 
 export async function updatePmsBookingSettings(payload: Partial<BookingSiteSettingsRecord>) {
-  const data = await apiSend<{ settings: BookingSiteSettingsRecord }>('/api/booking-settings/', 'PATCH', payload)
-  return data.settings
+  const data = await apiSend<{ bookingSettings: BookingSiteSettingsRecord }>('/api/booking-settings/', 'PATCH', payload)
+  return data.bookingSettings
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, type RefObject, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth, type PendingTwoFactor } from '../auth/AuthContext'
 import { defaultPathForRole } from '../auth/roleAccess'
+import { resendLoginCode } from '../api/pmsApi'
 
 const SLIDES = [
   {
@@ -94,13 +95,19 @@ function useStreakCanvas(canvasRef: RefObject<HTMLCanvasElement>) {
 }
 
 export function LoginPage() {
-  const { login, user } = useAuth()
+  const { login, verifyCode, user } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [slideIndex, setSlideIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Second factor: set once the password step reports a pending challenge.
+  const [pending, setPending] = useState<PendingTwoFactor | null>(null)
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
 
   useStreakCanvas(canvasRef)
 
@@ -122,11 +129,61 @@ export function LoginPage() {
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
+    setNotice('')
+    setBusy(true)
     try {
-      await login(username, password)
+      const challenge = await login(username, password)
+      if (challenge) {
+        setPending(challenge)
+        setPassword('') // the password is done — don't keep it in memory
+        setNotice(`We sent a 6-digit code to ${challenge.emailHint || 'your verification email'}.`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not log in.')
+    } finally {
+      setBusy(false)
     }
+  }
+
+  async function submitCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!pending) return
+    setError('')
+    setBusy(true)
+    try {
+      await verifyCode(pending.challengeToken, code)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not verify the code.')
+      setCode('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function requestNewCode() {
+    if (!pending) return
+    setError('')
+    setNotice('')
+    setBusy(true)
+    try {
+      const result = await resendLoginCode(pending.challengeToken)
+      if (result.challengeToken) {
+        setPending({ ...pending, challengeToken: result.challengeToken })
+      }
+      setCode('')
+      setNotice('If that request is still valid, a new code is on its way.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send a new code.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function cancelTwoFactor() {
+    setPending(null)
+    setCode('')
+    setError('')
+    setNotice('')
   }
 
   const slide = SLIDES[slideIndex]
@@ -172,47 +229,96 @@ export function LoginPage() {
           </div>
         </div>
 
-        <form className="lp-card" onSubmit={submitLogin}>
-          <div className="lp-card-top">
-            <p className="lp-card-eyebrow">Staff Access</p>
-            <h2 className="lp-card-title">Sign in to PMS</h2>
-            <p className="lp-card-sub">Enter your credentials to access the hotel management dashboard.</p>
-          </div>
+        {pending ? (
+          <form className="lp-card" onSubmit={submitCode}>
+            <div className="lp-card-top">
+              <p className="lp-card-eyebrow">Two-Step Verification</p>
+              <h2 className="lp-card-title">Enter your code</h2>
+              <p className="lp-card-sub">
+                For your security we emailed a 6-digit code to{' '}
+                <strong>{pending.emailHint || 'your verification address'}</strong>. It expires in
+                10 minutes.
+              </p>
+            </div>
 
-          {error && <p className="lp-error">{error}</p>}
+            {error && <p className="lp-error">{error}</p>}
+            {notice && <p className="lp-notice">{notice}</p>}
 
-          <label className="lp-label">
-            Username
-            <input
-              className="lp-input"
-              autoComplete="username"
-              required
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="your.username"
-            />
-          </label>
+            <label className="lp-label">
+              Verification code
+              <input
+                className="lp-input lp-input--code"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                autoFocus
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+              />
+            </label>
 
-          <label className="lp-label">
-            Password
-            <input
-              className="lp-input"
-              autoComplete="current-password"
-              required
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </label>
+            <button className="lp-btn" type="submit" disabled={busy || code.length < 6}>
+              {busy ? 'Verifying…' : 'Verify and continue'}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="lp-btn-arrow">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
 
-          <button className="lp-btn" type="submit">
-            Access Dashboard
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="lp-btn-arrow">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </form>
+            <div className="lp-2fa-actions">
+              <button type="button" className="lp-link-btn" disabled={busy} onClick={requestNewCode}>
+                Send a new code
+              </button>
+              <button type="button" className="lp-link-btn" onClick={cancelTwoFactor}>
+                Use a different account
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form className="lp-card" onSubmit={submitLogin}>
+            <div className="lp-card-top">
+              <p className="lp-card-eyebrow">Staff Access</p>
+              <h2 className="lp-card-title">Sign in to PMS</h2>
+              <p className="lp-card-sub">Enter your credentials to access the hotel management dashboard.</p>
+            </div>
+
+            {error && <p className="lp-error">{error}</p>}
+
+            <label className="lp-label">
+              Username
+              <input
+                className="lp-input"
+                autoComplete="username"
+                required
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="your.username"
+              />
+            </label>
+
+            <label className="lp-label">
+              Password
+              <input
+                className="lp-input"
+                autoComplete="current-password"
+                required
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </label>
+
+            <button className="lp-btn" type="submit" disabled={busy}>
+              {busy ? 'Signing in…' : 'Access Dashboard'}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="lp-btn-arrow">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </form>
+        )}
       </div>
 
       <footer className="lp-footer">

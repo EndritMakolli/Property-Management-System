@@ -23,6 +23,17 @@ type StaySegment = {
   property: PropertyListing
 }
 
+// A split-stay plan is pinned to the search that produced it. Re-deriving it
+// from live reservations after booking one segment would collapse the plan
+// (the remaining window is a single segment, which the builder rejects), so
+// the plan is kept and each segment's status is evaluated against live data.
+type PinnedPlan = {
+  searchKey: string
+  segments: StaySegment[]
+}
+
+type SegmentStatus = 'available' | 'booked' | 'unavailable'
+
 // What each apartment CAN do when nothing matches the full stay: either the
 // maximum stay starting on the requested check-in, or its next free window.
 type ApartmentInsight = {
@@ -129,19 +140,58 @@ export function AvailabilityPage() {
   }, [bedrooms, checkIn, checkOut, properties, reservations])
 
   const nights = calculateNights(checkIn, checkOut)
-  const recommendation = useMemo(() => {
-    if (!checkIn || !checkOut || nights < 1 || availableProperties.length > 0) {
-      return []
-    }
+  const searchKey = `${checkIn}|${checkOut}|${bedrooms}`
+  const [pinnedPlan, setPinnedPlan] = useState<PinnedPlan | null>(null)
 
-    return buildSplitStayRecommendation({
+  // Compute a split-stay plan once per search and pin it. Booking a segment
+  // refetches reservations, but the pinned plan survives — only the per-segment
+  // statuses below change, so the other segments stay visible and bookable.
+  useEffect(() => {
+    if (status !== 'ready' || !checkIn || !checkOut || nights < 1) return
+    if (pinnedPlan && pinnedPlan.searchKey === searchKey) return
+    if (availableProperties.length > 0) {
+      if (pinnedPlan) setPinnedPlan(null)
+      return
+    }
+    const segments = buildSplitStayRecommendation({
       bedrooms,
       checkIn,
       checkOut,
       properties,
       reservations,
     })
-  }, [availableProperties.length, bedrooms, checkIn, checkOut, nights, properties, reservations])
+    setPinnedPlan({ searchKey, segments })
+  }, [
+    availableProperties.length,
+    bedrooms,
+    checkIn,
+    checkOut,
+    nights,
+    pinnedPlan,
+    properties,
+    reservations,
+    searchKey,
+    status,
+  ])
+
+  const recommendation = useMemo(() => {
+    if (!pinnedPlan || pinnedPlan.searchKey !== searchKey) return []
+    return pinnedPlan.segments.map((segment) => {
+      const exactMatch = reservations.some(
+        (reservation) =>
+          reservation.propertyId === segment.property.id &&
+          reservation.checkIn === segment.checkIn &&
+          reservation.checkOut === segment.checkOut,
+      )
+      const overlaps = reservations.some(
+        (reservation) =>
+          reservation.propertyId === segment.property.id &&
+          reservationOverlapsStay(reservation, segment.checkIn, segment.checkOut),
+      )
+      const segmentStatus: SegmentStatus = exactMatch ? 'booked' : overlaps ? 'unavailable' : 'available'
+      return { ...segment, status: segmentStatus }
+    })
+  }, [pinnedPlan, reservations, searchKey])
   const recommendedProperties = useMemo(
     () => uniqueProperties(recommendation.map((segment) => segment.property)),
     [recommendation],
@@ -152,7 +202,8 @@ export function AvailabilityPage() {
   }, [availableProperties.length, bedrooms, checkIn, checkOut, nights, properties, reservations])
   const calendarProperties = availableProperties.length > 0 ? availableProperties : recommendedProperties
   const recommendationReservations = useMemo(
-    () => buildRecommendationReservations(recommendation),
+    // Booked segments already exist as real reservations — only ghost the rest.
+    () => buildRecommendationReservations(recommendation.filter((segment) => segment.status === 'available')),
     [recommendation],
   )
   const calendarReservations = useMemo(
@@ -344,10 +395,19 @@ export function AvailabilityPage() {
               <div>
                 <p className="eyebrow">Recommendation</p>
                 <h3>Split the stay between apartments</h3>
+                {recommendation.some((segment) => segment.status === 'booked') && (
+                  <p className="recommendation-progress">
+                    {recommendation.filter((segment) => segment.status === 'booked').length} of{' '}
+                    {recommendation.length} segments booked — the remaining segments stay available below.
+                  </p>
+                )}
               </div>
               <div className="recommendation-route">
                 {recommendation.map((segment, index) => (
-                  <article className="recommendation-segment" key={`${segment.property.id}-${segment.checkIn}`}>
+                  <article
+                    className={`recommendation-segment${segment.status !== 'available' ? ` segment-${segment.status}` : ''}`}
+                    key={`${segment.property.id}-${segment.checkIn}`}
+                  >
                     <span>{index + 1}</span>
                     <div>
                       <strong>{segment.property.name}</strong>
@@ -357,18 +417,28 @@ export function AvailabilityPage() {
                       </p>
                       <small>{segment.property.apartmentType}</small>
                     </div>
-                    <button
-                      className="primary-button availability-book-btn"
-                      type="button"
-                      onClick={() => setBookModal({
-                        propertyId: segment.property.id,
-                        checkIn: segment.checkIn,
-                        checkOut: segment.checkOut,
-                        nightlyPrice: '0.00',
-                      })}
-                    >
-                      Book segment
-                    </button>
+                    {segment.status === 'available' ? (
+                      <button
+                        className="primary-button availability-book-btn"
+                        type="button"
+                        onClick={() => setBookModal({
+                          propertyId: segment.property.id,
+                          checkIn: segment.checkIn,
+                          checkOut: segment.checkOut,
+                          nightlyPrice: '0.00',
+                        })}
+                      >
+                        Book segment
+                      </button>
+                    ) : (
+                      <div>
+                        <span
+                          className={`insight-badge ${segment.status === 'booked' ? 'free-now' : 'free-later'}`}
+                        >
+                          {segment.status === 'booked' ? 'Booked ✓' : 'No longer available'}
+                        </span>
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>

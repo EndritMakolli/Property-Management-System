@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { NewReservationModal } from '../../features/reservations/NewReservationModal'
+import { ErrorBoundary } from '../shared/ErrorBoundary'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppLayout() {
   const { user } = useAuth()
+  const location = useLocation()
   const [reservationModalOpen, setReservationModalOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const canCreateReservation = user.role === 'admin' || user.role === 'management'
@@ -35,7 +37,10 @@ export function AppLayout() {
           onMenuToggle={() => setNavOpen((open) => !open)}
           onNewReservation={() => setReservationModalOpen(true)}
         />
-        <Outlet />
+        {/* Keyed by path so navigating away from a crashed page resets the boundary */}
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       {canCreateReservation && (
         <NewReservationModal

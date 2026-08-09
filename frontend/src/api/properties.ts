@@ -137,6 +137,33 @@ export async function syncPropertyCalendar(id: string, channel: 'airbnb' | 'book
   }>(`/api/properties/${id}/sync/`, 'POST', { channel })
 }
 
+export type SyncAllEntry = {
+  propertyId: string
+  propertyName: string
+  channel: 'airbnb' | 'booking'
+  status: 'completed' | 'failed'
+  error?: string
+  sync?: {
+    imported: number
+    updated: number
+    skipped: number
+    conflicts: number
+    cancelled: number
+    errors: string[]
+  }
+}
+
+export type SyncAllResult = {
+  results: SyncAllEntry[]
+  summary: { total: number; succeeded: number; failed: number }
+}
+
+// Syncs every configured property × channel in one request. The backend
+// rejects overlapping runs with a 409.
+export async function syncAllProperties() {
+  return apiSend<SyncAllResult>('/api/properties/sync-all/', 'POST', {})
+}
+
 // ── Photos ────────────────────────────────────────────────────────────────────
 
 export async function fetchPropertyPhotos(propertyId: string) {

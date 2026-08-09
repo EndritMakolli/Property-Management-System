@@ -1,5 +1,8 @@
+import ipaddress
+import socket
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from django.core.exceptions import ValidationError
@@ -12,15 +15,54 @@ CHANNEL_LABELS = {
     Reservation.Platform.BOOKING: "Booking.com",
 }
 
+# Cap the download so a hostile or broken feed cannot exhaust memory.
+MAX_ICAL_BYTES = 5 * 1024 * 1024
+
 
 def channel_label(platform):
     return CHANNEL_LABELS.get(platform, "Channel")
 
 
+def _assert_public_url(url):
+    """Refuse anything that isn't a public http(s) endpoint.
+
+    The iCal URL is operator-supplied and fetched server-side, so without this
+    it is a server-side request forgery primitive: a management-role user (or a
+    stolen session) could point it at cloud metadata or an internal service and
+    use success/failure timing as a port scanner.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise ValidationError("Calendar links must start with http:// or https://.")
+    if not parts.hostname:
+        raise ValidationError("That calendar link has no host.")
+
+    try:
+        resolved = socket.getaddrinfo(parts.hostname, None)
+    except socket.gaierror:
+        raise ValidationError("Could not resolve the calendar link's host.")
+
+    for info in resolved:
+        address = ipaddress.ip_address(info[4][0])
+        if (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            raise ValidationError("Calendar links must point at a public address.")
+
+
 def fetch_ical_events(url):
+    _assert_public_url(url)
     req = Request(url, headers={"User-Agent": "PMS/1.0", "Accept": "text/calendar,*/*"})
     with urlopen(req, timeout=20) as response:
-        content = response.read().decode("utf-8", errors="replace")
+        raw = response.read(MAX_ICAL_BYTES + 1)
+    if len(raw) > MAX_ICAL_BYTES:
+        raise ValidationError("That calendar feed is too large to import.")
+    content = raw.decode("utf-8", errors="replace")
     return parse_ical_events(content)
 
 

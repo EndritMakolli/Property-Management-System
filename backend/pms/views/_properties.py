@@ -1,4 +1,5 @@
 import calendar
+import threading
 from datetime import datetime, timezone
 from urllib.error import URLError
 
@@ -302,6 +303,92 @@ def property_sync(request, property_id):
         )
 
     return JsonResponse({"sync": result})
+
+
+# Guards against overlapping "Sync All" runs from double-clicks or two tabs.
+# Per-process only, which matches the single-instance deployment.
+_sync_all_lock = threading.Lock()
+
+
+def property_sync_all(request):
+    """POST — sync every active property's configured channels in one call.
+
+    Returns per-channel results so the UI can show success / partial / failure.
+    409 if another Sync All is already running.
+    """
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    if not _sync_all_lock.acquire(blocking=False):
+        return JsonResponse({"error": "A Sync All run is already in progress."}, status=409)
+
+    try:
+        results = []
+        succeeded = failed = 0
+        props = Property.objects.filter(active=True).order_by("name")
+        for prop in props:
+            channels = [
+                (Reservation.Platform.AIRBNB, prop.airbnb_ical_url),
+                (Reservation.Platform.BOOKING, prop.booking_ical_url),
+            ]
+            for channel, ical_url in channels:
+                if not ical_url:
+                    continue
+                entry = {
+                    "propertyId": str(prop.id),
+                    "propertyName": prop.name,
+                    "channel": channel,
+                }
+                try:
+                    events = fetch_ical_events(ical_url)
+                    result = import_ical_reservations(prop, channel, events)
+                    SyncLog.objects.create(
+                        property=prop,
+                        channel=channel,
+                        status="completed",
+                        imported_count=result["imported"],
+                        updated_count=result["updated"],
+                        skipped_count=result["skipped"],
+                        conflict_count=result.get("conflicts", 0),
+                        error_message="; ".join(result["errors"]) if result["errors"] else "",
+                    )
+                    entry.update(status="completed", sync=result)
+                    succeeded += 1
+                except (URLError, TimeoutError, OSError):
+                    SyncLog.objects.create(
+                        property=prop,
+                        channel=channel,
+                        status="failed",
+                        error_message="Could not reach the calendar link.",
+                    )
+                    entry.update(status="failed", error="Could not reach the calendar link.")
+                    failed += 1
+                except ValidationError as error:
+                    message = "; ".join(error.messages) if hasattr(error, "messages") else str(error)
+                    SyncLog.objects.create(
+                        property=prop,
+                        channel=channel,
+                        status="failed",
+                        error_message=message[:500],
+                    )
+                    entry.update(status="failed", error=message)
+                    failed += 1
+                results.append(entry)
+    finally:
+        _sync_all_lock.release()
+
+    return JsonResponse({
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "succeeded": succeeded,
+            "failed": failed,
+        },
+    })
 
 
 def build_property_calendar_response(prop, public=False):

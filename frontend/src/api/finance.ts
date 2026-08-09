@@ -1,4 +1,5 @@
 import type {
+  ExpenseAnalytics,
   ExpenseCategoryRecord,
   FinanceExpenseRecord,
   FinanceSummary,
@@ -112,9 +113,40 @@ export async function deleteFinanceExpense(id: string) {
   await apiDelete(`/api/finance/expenses/${id}/`, 'Could not delete expense.')
 }
 
-export async function toggleExpensePaid(id: string, paid: boolean) {
-  const data = await apiSend<{ expense: FinanceExpenseRecord }>(`/api/finance/expenses/${id}/`, 'PATCH', { paid })
+// Paid status is per month: paying July never marks August as paid.
+export async function setExpensePaidForMonth(id: string, year: number, month: number, paid: boolean) {
+  const data = await apiSend<{ expense: FinanceExpenseRecord }>(
+    `/api/finance/expenses/${id}/payments/`,
+    'POST',
+    { year, month, paid },
+  )
   return data.expense
+}
+
+// One row per unpaid expense-month, oldest arrears first.
+export type OutstandingExpense = FinanceExpenseRecord & { year: number; month: number }
+
+export async function fetchOutstandingExpenses(months = 24) {
+  const data = await apiGet<{ outstanding: OutstandingExpense[]; totalEur: string }>(
+    `/api/finance/outstanding/?months=${months}`,
+  )
+  return data
+}
+
+export type ExpenseAnalyticsQuery =
+  | { year: number }
+  | { start: string; end: string }
+  | { all: true }
+
+export async function fetchExpenseAnalytics(query: ExpenseAnalyticsQuery) {
+  const params = new URLSearchParams()
+  if ('all' in query) params.set('all', '1')
+  else if ('year' in query) params.set('year', String(query.year))
+  else {
+    params.set('start', query.start)
+    params.set('end', query.end)
+  }
+  return apiGet<ExpenseAnalytics>(`/api/finance/analytics/?${params.toString()}`)
 }
 
 export async function uploadExpenseInvoice(id: string, file: File) {

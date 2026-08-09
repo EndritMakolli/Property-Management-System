@@ -111,6 +111,19 @@
   font-weight: 700;
   padding: 2px 8px;
 }
+.br-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .br-status-pending { background: #fef3c7; color: #92400e; }
 .br-status-approved { background: #dcfce7; color: #15803d; }
 .br-status-rejected { background: #fee2e2; color: #991b1b; }

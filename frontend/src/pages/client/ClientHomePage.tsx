@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { calculateNights, formatDisplayDate, toDateInputValue } from '../../utils/date'
+import { calculateNights, formatDisplayDate } from '../../utils/date'
+import { readClientSearch, saveClientSearch } from '../../utils/clientSearch'
 import {
   fetchBookingAvailability,
   type AvailabilityResponse,
@@ -16,23 +17,16 @@ const FEATURES = [
   { num: '03', title: 'Always available', desc: 'Real-time availability and instant confirmation, with a local team a message away around the clock.' },
 ]
 
-function defaultRange() {
-  const a = new Date()
-  a.setDate(a.getDate() + 2)
-  const b = new Date()
-  b.setDate(b.getDate() + 5)
-  return { checkIn: toDateInputValue(a), checkOut: toDateInputValue(b) }
-}
-
 function priceOf(property: PublicProperty) {
   return Math.round(Number(property.priceBreakdown?.total ?? property.basePriceEur))
 }
 
 export default function ClientHomePage() {
-  const fallback = defaultRange()
-  const [checkIn, setCheckIn] = useState(fallback.checkIn)
-  const [checkOut, setCheckOut] = useState(fallback.checkOut)
-  const [guests, setGuests] = useState(2)
+  // Last selection survives navigation (e.g. to the map page and back).
+  const [stored] = useState(readClientSearch)
+  const [checkIn, setCheckIn] = useState(stored.checkIn)
+  const [checkOut, setCheckOut] = useState(stored.checkOut)
+  const [guests, setGuests] = useState(stored.guests)
   const [email, setEmail] = useState('')
 
   const [result, setResult] = useState<AvailabilityResponse | null>(null)
@@ -54,11 +48,16 @@ export default function ClientHomePage() {
       })
   }
 
-  // Initial availability so apartments show right away.
+  // Initial availability so apartments show right away, using the remembered range.
   useEffect(() => {
-    runSearch(fallback.checkIn, fallback.checkOut, 2)
+    runSearch(stored.checkIn, stored.checkOut, stored.guests)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Remember the selection across navigation.
+  useEffect(() => {
+    saveClientSearch({ checkIn, checkOut, guests })
+  }, [checkIn, checkOut, guests])
 
   function submitSearch(e: FormEvent) {
     e.preventDefault()
@@ -76,6 +75,7 @@ export default function ClientHomePage() {
 
   const available = result?.available ?? []
   const combinations = result?.combinations ?? []
+  const minStayBlocked = result?.minStayBlocked ?? []
   const nights = result?.nights ?? 0
 
   return (
@@ -184,6 +184,7 @@ export default function ClientHomePage() {
                           <h3 className={styles.resName}>{p.name}</h3>
                           <p className={styles.resMeta}>
                             {p.apartmentType}{p.maxGuests ? ` · up to ${p.maxGuests} guests` : ''}
+                            {p.minNights > 1 ? ` · min stay ${p.minNights} nights` : ''}
                           </p>
                           <div className={styles.resFoot}>
                             <div className={styles.priceBlock}>
@@ -245,7 +246,54 @@ export default function ClientHomePage() {
                 </div>
               )}
 
-              {available.length === 0 && combinations.length === 0 && (
+              {/* Free apartments requiring a longer stay than searched */}
+              {minStayBlocked.length > 0 && (
+                <div className={styles.splitSection}>
+                  <p className={styles.splitLead}>
+                    These apartments are free but need a longer stay:
+                  </p>
+                  <div className={styles.resultsGrid}>
+                    {minStayBlocked.map(({ property: p, minNights }) => {
+                      const photo = p.photos[0]
+                      return (
+                        <article
+                          className={styles.resCard}
+                          key={p.id}
+                          onClick={() => setDetail(p)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter') setDetail(p) }}
+                        >
+                          <div className={styles.resImg}>
+                            {photo ? <img src={photo} alt={p.name} loading="lazy" /> : <span>🏠</span>}
+                          </div>
+                          <div className={styles.resBody}>
+                            <h3 className={styles.resName}>{p.name}</h3>
+                            <p className={styles.resMeta}>
+                              {p.apartmentType}{p.maxGuests ? ` · up to ${p.maxGuests} guests` : ''}
+                            </p>
+                            <div className={styles.resFoot}>
+                              <div className={styles.priceBlock}>
+                                <span className={styles.priceSub}>
+                                  Minimum stay: {minNights} {minNights === 1 ? 'night' : 'nights'}
+                                </span>
+                              </div>
+                              <button
+                                className={styles.resBookBtn}
+                                onClick={(e) => { e.stopPropagation(); setDetail(p) }}
+                              >
+                                Choose dates
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {available.length === 0 && combinations.length === 0 && minStayBlocked.length === 0 && (
                 <p className={styles.notice}>No apartments are available for these dates. Try a different range.</p>
               )}
             </>
@@ -324,7 +372,13 @@ export default function ClientHomePage() {
         />
       )}
 
-      {draft && <ClientBookingModal draft={draft} onClose={() => setDraft(null)} />}
+      {draft && (
+        <ClientBookingModal
+          draft={draft}
+          onClose={() => setDraft(null)}
+          onBooked={() => runSearch(checkIn, checkOut, guests)}
+        />
+      )}
     </div>
   )
 }

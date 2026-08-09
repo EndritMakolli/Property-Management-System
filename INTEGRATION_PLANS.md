@@ -59,7 +59,7 @@ Build these once; all three projects use them.
 ### 1.1 Credential storage
 
 Static secrets (client IDs, app secrets) go in env vars via `python-decouple`,
-matching the existing `GOOGLE_SHEETS_*` pattern.
+matching the existing `ANTHROPIC_API_KEY` pattern.
 
 **But rotating tokens cannot live in env vars.** TTLock access tokens and Gmail
 OAuth refresh tokens rotate at runtime; on Render an env var can only change via

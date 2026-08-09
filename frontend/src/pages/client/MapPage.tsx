@@ -4,18 +4,11 @@ import { apiGet } from '../../api/client'
 import ApartmentDetailModal from '../../components/client/ApartmentDetailModal'
 import ClientBookingModal, { type BookingDraft } from '../../components/client/ClientBookingModal'
 import type { HomeMarker, MapProperty } from '../../components/client/maps/PropertiesMap'
-import { calculateNights, toDateInputValue } from '../../utils/date'
+import { calculateNights } from '../../utils/date'
+import { readClientSearch } from '../../utils/clientSearch'
 import styles from './MapPage.module.css'
 
 const PropertiesMap = lazy(() => import('../../components/client/maps/PropertiesMap'))
-
-function defaultRange() {
-  const a = new Date()
-  a.setDate(a.getDate() + 2)
-  const b = new Date()
-  b.setDate(b.getDate() + 5)
-  return { checkIn: toDateInputValue(a), checkOut: toDateInputValue(b) }
-}
 
 // Public split view: apartment cards on the left, price pins on the map.
 export default function MapPage() {
@@ -25,11 +18,12 @@ export default function MapPage() {
   const [detail, setDetail] = useState<PublicProperty | null>(null)
   const [draft, setDraft] = useState<BookingDraft | null>(null)
   const [home, setHome] = useState<HomeMarker | null>(null)
-  const { checkIn, checkOut } = useMemo(defaultRange, [])
+  // Same remembered range as the home page search form.
+  const { checkIn, checkOut, guests } = useMemo(readClientSearch, [])
 
   useEffect(() => {
     let ignore = false
-    fetchBookingProperties()
+    fetchBookingProperties(checkIn, checkOut)
       .then((rows) => {
         if (!ignore) {
           setProperties(rows)
@@ -53,7 +47,7 @@ export default function MapPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [checkIn, checkOut])
 
   const pinnable = useMemo<MapProperty[]>(
     () =>
@@ -105,7 +99,11 @@ export default function MapPage() {
                   {property.bathrooms} bath{property.bathrooms !== 1 ? 's' : ''}
                 </span>
                 <span className={styles.cardPrice}>
-                  <strong>€{Math.round(Number(property.basePriceEur))}</strong> / night
+                  <strong>
+                    €{Math.round(Number(property.priceBreakdown?.effective_nightly ?? property.basePriceEur))}
+                  </strong>{' '}
+                  / night
+                  {property.minNights > 1 ? ` · min ${property.minNights} nights` : ''}
                 </span>
               </span>
             </button>
@@ -124,7 +122,7 @@ export default function MapPage() {
           property={detail}
           checkIn={checkIn}
           checkOut={checkOut}
-          guests={2}
+          guests={guests}
           onClose={() => setDetail(null)}
           onReserve={(ci, co, g, total) => {
             setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })
@@ -133,7 +131,7 @@ export default function MapPage() {
         />
       )}
 
-      {draft && <ClientBookingModal draft={draft} onClose={() => setDraft(null)} />}
+      {draft && <ClientBookingModal draft={draft} onClose={() => setDraft(null)} onBooked={() => setSelectedId(null)} />}
     </div>
   )
 }

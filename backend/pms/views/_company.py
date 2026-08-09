@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
 from ..models import CompanyProfile
+from ._expense_ai import _validate_upload
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles, user_role
 from ._utils import json_payload
 
@@ -105,6 +106,9 @@ def company_profile(request):
             payload = request.POST
             profile = apply_company_payload(profile, payload)
             if request.FILES.get("logo"):
+                upload_error = _validate_upload(request.FILES["logo"], label="image")
+                if upload_error:
+                    return JsonResponse({"error": upload_error}, status=400)
                 profile.logo = request.FILES["logo"]
             elif payload.get("removeLogo") in ("1", "true", "True"):
                 profile.logo = None

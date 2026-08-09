@@ -21,6 +21,7 @@ const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
     '/pricing-rules',
     '/settings',
     '/invoice',
+    '/security',
   ],
   management: [
     '/dashboard',
@@ -38,8 +39,9 @@ const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
     '/pricing-rules',
     '/settings',
     '/invoice',
+    '/security',
   ],
-  cleaning: ['/dashboard', '/codes', '/maintenance', '/invoice'],
+  cleaning: ['/dashboard', '/codes', '/maintenance', '/invoice', '/security'],
 }
 
 export function canAccess(role: UserRole, path: string) {

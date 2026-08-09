@@ -150,6 +150,22 @@
   padding: 12px;
 }
 
+.recommendation-progress {
+  margin: 6px 0 0;
+  color: #1f6f5b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recommendation-segment.segment-booked {
+  background: #eef8f2;
+  border-color: #bfe3d2;
+}
+
+.recommendation-segment.segment-unavailable {
+  opacity: 0.62;
+}
+
 .recommendation-segment > span {
   display: grid;
   width: 34px;

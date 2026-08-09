@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from ..models import Guest, Property, Reservation, ReservationAuditLog, ReservationAttachment
 from ._guests import link_or_create_guest, refresh_returning_flag
 from ._payloads import apply_reservation_payload
+from ._expense_ai import _validate_upload
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_reservation, serialize_reservation_audit
 from ._utils import json_payload
@@ -230,8 +231,9 @@ def reservation_attachment_list(request, reservation_id):
 
     if request.method == "POST":
         file = request.FILES.get("file")
-        if not file:
-            return JsonResponse({"error": "No file provided."}, status=400)
+        upload_error = _validate_upload(file, label="attachment")
+        if upload_error:
+            return JsonResponse({"error": upload_error}, status=400)
         attachment = ReservationAttachment.objects.create(
             reservation_id=reservation.id,
             file=file,

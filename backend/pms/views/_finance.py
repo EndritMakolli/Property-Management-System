@@ -1,4 +1,5 @@
 ﻿import calendar
+from collections import defaultdict
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -6,7 +7,15 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
 from ..model_defs.monthly import monthly_periods
-from ..models import ExpenseCategory, FinanceExpense, FinancialObligation, Loan, Reservation
+from ..models import (
+    ExpenseCategory,
+    ExpensePayment,
+    FinanceExpense,
+    FinancialObligation,
+    Loan,
+    MonthlyTax,
+    Reservation,
+)
 from ._payloads import apply_finance_expense_payload, apply_loan_payload, apply_obligation_payload
 from ._roles import ROLE_ADMIN, require_roles
 from ._serializers import (
@@ -16,6 +25,26 @@ from ._serializers import (
     serialize_loan,
 )
 from ._utils import is_active_for_month, json_payload, selected_period
+
+# NOTE on the time basis used across the Expenses module: every statistic is
+# keyed by the EXPENSE MONTH (start_year/start_month plus the recurrence),
+# never by invoice date or payment date. invoice_date is metadata only.
+
+
+def paid_amounts_for_month(year, month):
+    """{expense_id: amount actually paid} for the given month.
+
+    The amount comes from the ExpensePayment snapshot, not the expense's
+    current value, so editing an expense later never rewrites what was paid.
+    If an expense's price rises after payment, the difference correctly shows
+    up as still unpaid.
+    """
+    return {
+        expense_id: amount
+        for expense_id, amount in ExpensePayment.objects.filter(
+            year=year, month=month
+        ).values_list("expense_id", "amount_eur")
+    }
 
 
 def finance_summary(request):
@@ -69,6 +98,11 @@ def finance_summary(request):
             "profitEur": str(turnover - expenses_total),
         }
 
+    # Month-specific paid state for each row. The Total/Paid/Unpaid tiles are
+    # derived on the client from these rows so they honour the platform and
+    # category filters the page applies — one source of truth, not two.
+    paid_ids = set(paid_amounts_for_month(year, month))
+
     return JsonResponse({
         "summary": {
             "airstay": platform_summary("airstay"),
@@ -76,7 +110,9 @@ def finance_summary(request):
             "loanPaymentsEur": str(loan_total),
             "totalDebtEur": str(unpaid_obligations_total),
         },
-        "expenses": [serialize_finance_expense(e, request) for e in all_expenses],
+        "expenses": [
+            serialize_finance_expense(e, request, paid_expense_ids=paid_ids) for e in all_expenses
+        ],
         "loans": [serialize_loan(l) for l in loans],
         "obligations": [serialize_financial_obligation(o) for o in obligations],
     })
@@ -198,6 +234,14 @@ def finance_expense_list(request):
             payload = json_payload(request)
             expense = apply_finance_expense_payload(FinanceExpense(), payload)
             expense.save()
+            # Creating an expense already marked paid = its first month is paid.
+            if payload.get("paid"):
+                ExpensePayment.objects.get_or_create(
+                    expense=expense,
+                    year=expense.start_year,
+                    month=expense.start_month,
+                    defaults={"amount_eur": expense.amount_eur},
+                )
         except (ExpenseCategory.DoesNotExist, ValueError):
             return JsonResponse(
                 {"error": "Choose a valid expense category and date range."}, status=400
@@ -210,6 +254,274 @@ def finance_expense_list(request):
         return JsonResponse({"expense": serialize_finance_expense(expense, request)}, status=201)
 
     return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+def expense_payment_view(request, expense_id):
+    """POST {year, month, paid} — set an expense's paid state for one month."""
+    denied = require_roles(request, [ROLE_ADMIN])
+    if denied:
+        return denied
+
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    try:
+        expense = FinanceExpense.objects.select_related("category").get(pk=expense_id)
+    except FinanceExpense.DoesNotExist:
+        return JsonResponse({"error": "Expense not found."}, status=404)
+
+    try:
+        payload = json_payload(request)
+        year = int(payload.get("year"))
+        month = int(payload.get("month"))
+        paid = bool(payload.get("paid"))
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Provide year, month and paid."}, status=400)
+
+    if month < 1 or month > 12 or year < 2000 or year > 2100:
+        return JsonResponse({"error": "Choose a valid month."}, status=400)
+    if not is_active_for_month(expense, year, month):
+        return JsonResponse(
+            {"error": "This expense is not active in the selected month."}, status=400
+        )
+
+    if paid:
+        ExpensePayment.objects.get_or_create(
+            expense=expense,
+            year=year,
+            month=month,
+            defaults={"amount_eur": expense.amount_eur},
+        )
+    else:
+        ExpensePayment.objects.filter(expense=expense, year=year, month=month).delete()
+
+    return JsonResponse({
+        "expense": serialize_finance_expense(
+            expense, request, paid_expense_ids={expense.id} if paid else set()
+        )
+    })
+
+
+def finance_outstanding_expenses(request):
+    """GET — every unpaid expense month up to and including the current month.
+
+    The Payments page needs arrears, not just this month: a July wage left
+    unpaid must stay visible in August. Looks back `?months=` months (default
+    24, max 60) so old finished expenses don't pile up forever.
+    """
+    denied = require_roles(request, [ROLE_ADMIN])
+    if denied:
+        return denied
+
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    try:
+        lookback = int(request.GET.get("months") or 24)
+    except ValueError:
+        lookback = 24
+    lookback = max(1, min(lookback, 60))
+
+    today = date.today()
+    current_period = today.year * 12 + (today.month - 1)
+    first_period = current_period - (lookback - 1)
+
+    paid_lookup = set(
+        ExpensePayment.objects.filter(
+            year__gte=first_period // 12
+        ).values_list("expense_id", "year", "month")
+    )
+
+    outstanding = []
+    for expense in FinanceExpense.objects.select_related("category"):
+        for period in range(first_period, current_period + 1):
+            year, month = period // 12, period % 12 + 1
+            if not is_active_for_month(expense, year, month):
+                continue
+            if (expense.id, year, month) in paid_lookup:
+                continue
+            row = serialize_finance_expense(expense, request)
+            row["year"] = year
+            row["month"] = month
+            outstanding.append(row)
+
+    # Oldest arrears first — those need attention most.
+    outstanding.sort(key=lambda row: (row["year"], row["month"], row["name"]))
+    total = sum((Decimal(row["amountEur"]) for row in outstanding), Decimal("0.00"))
+
+    return JsonResponse({"outstanding": outstanding, "totalEur": str(total)})
+
+
+def _month_range_from_params(request):
+    """Resolve ?all=1, ?year= or ?start=YYYY-MM&end=YYYY-MM into a month list."""
+    start_raw = (request.GET.get("start") or "").strip()
+    end_raw = (request.GET.get("end") or "").strip()
+    if request.GET.get("all"):
+        today = date.today()
+        first = (
+            FinanceExpense.objects.order_by("start_year", "start_month")
+            .values_list("start_year", "start_month")
+            .first()
+        )
+        start_year, start_month = first if first else (today.year, 1)
+        # Guard against typo years creating enormous ranges.
+        if today.year - start_year > 30:
+            start_year, start_month = today.year - 30, 1
+        return [
+            (p // 12, p % 12 + 1)
+            for p in range(
+                start_year * 12 + (start_month - 1), today.year * 12 + today.month
+            )
+        ]
+    if start_raw and end_raw:
+        try:
+            start_year, start_month = (int(p) for p in start_raw.split("-")[:2])
+            end_year, end_month = (int(p) for p in end_raw.split("-")[:2])
+        except (TypeError, ValueError):
+            raise ValidationError("Use YYYY-MM for start and end.")
+        if not (1 <= start_month <= 12 and 1 <= end_month <= 12):
+            raise ValidationError("Use YYYY-MM for start and end.")
+    else:
+        try:
+            year = int(request.GET.get("year") or date.today().year)
+        except ValueError:
+            raise ValidationError("Choose a valid year.")
+        start_year, start_month = year, 1
+        end_year, end_month = year, 12
+
+    start_period = start_year * 12 + (start_month - 1)
+    end_period = end_year * 12 + (end_month - 1)
+    if end_period < start_period:
+        raise ValidationError("The end month is before the start month.")
+    if end_period - start_period + 1 > 120:
+        raise ValidationError("Choose a range of at most 10 years.")
+
+    return [(p // 12, p % 12 + 1) for p in range(start_period, end_period + 1)]
+
+
+def finance_analytics(request):
+    """GET — per-month expense series + top lists for a period.
+
+    Period: ?year=YYYY (default: current year) or ?start=YYYY-MM&end=YYYY-MM.
+    Amounts always use the expense's current amount as the consistent basis
+    (payment snapshots stay in the DB for audit but are not mixed in here).
+    """
+    denied = require_roles(request, [ROLE_ADMIN])
+    if denied:
+        return denied
+
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    try:
+        months = _month_range_from_params(request)
+    except ValidationError as error:
+        return JsonResponse({"error": error.messages}, status=400)
+
+    if not months:
+        # e.g. ?all=1 when the only expenses start in a future month.
+        return JsonResponse({
+            "months": [],
+            "topExpenses": [],
+            "topRecurring": [],
+            "topCategories": [],
+            "categories": [serialize_expense_category(c) for c in ExpenseCategory.objects.all()],
+            "start": "",
+            "end": "",
+        })
+
+    expenses = list(FinanceExpense.objects.select_related("category"))
+    # Amount paid per (expense, month) — the snapshot, so historical paid
+    # figures stay put when an expense's current amount is edited later.
+    paid_lookup = {
+        (expense_id, year, month): amount
+        for expense_id, year, month, amount in ExpensePayment.objects.filter(
+            year__gte=months[0][0], year__lte=months[-1][0]
+        ).values_list("expense_id", "year", "month", "amount_eur")
+    }
+    tax_lookup = {
+        (t.year, t.month): (t.tvsh or Decimal("0")) + (t.tatim_ne_fitim or Decimal("0"))
+        for t in MonthlyTax.objects.filter(year__gte=months[0][0], year__lte=months[-1][0])
+    }
+
+    month_rows = []
+    expense_totals = defaultdict(lambda: Decimal("0.00"))
+    expense_months = defaultdict(int)
+    category_totals = defaultdict(lambda: Decimal("0.00"))
+
+    for year, month in months:
+        total = Decimal("0.00")
+        paid = Decimal("0.00")
+        by_category = defaultdict(lambda: Decimal("0.00"))
+        for expense in expenses:
+            if not is_active_for_month(expense, year, month):
+                continue
+            amount = expense.amount_eur
+            total += amount
+            by_category[str(expense.category_id)] += amount
+            expense_totals[expense.id] += amount
+            expense_months[expense.id] += 1
+            category_totals[str(expense.category_id)] += amount
+            paid += paid_lookup.get((expense.id, year, month), Decimal("0.00"))
+        month_rows.append({
+            "year": year,
+            "month": month,
+            "totalEur": str(total),
+            "paidEur": str(paid),
+            # Never negative: an overpaid month (amount later reduced) reads as
+            # fully settled rather than a negative outstanding balance.
+            "unpaidEur": str(max(total - paid, Decimal("0.00"))),
+            "taxesEur": str(tax_lookup.get((year, month), Decimal("0.00"))),
+            "byCategory": {cat_id: str(amount) for cat_id, amount in by_category.items()},
+        })
+
+    categories = {str(c.id): c for c in ExpenseCategory.objects.all()}
+
+    def expense_entry(expense):
+        return {
+            "id": str(expense.id),
+            "name": expense.name,
+            "vendor": expense.vendor or "",
+            "frequency": expense.frequency,
+            "categoryId": str(expense.category_id),
+            "categoryName": expense.category.name,
+            "categoryColor": expense.category.color or "#6b7280",
+            "amountEur": str(expense.amount_eur),
+            "totalEur": str(expense_totals[expense.id]),
+            "monthsActive": expense_months[expense.id],
+        }
+
+    active_expenses = [e for e in expenses if expense_totals[e.id] > 0]
+    top_expenses = sorted(active_expenses, key=lambda e: expense_totals[e.id], reverse=True)[:12]
+    top_recurring = sorted(
+        (e for e in active_expenses if e.frequency == FinanceExpense.Frequency.REPEATED),
+        key=lambda e: expense_totals[e.id],
+        reverse=True,
+    )[:12]
+    top_categories = sorted(
+        (
+            {
+                "id": cat_id,
+                "name": categories[cat_id].name if cat_id in categories else "Unknown",
+                "color": (categories[cat_id].color or "#6b7280") if cat_id in categories else "#6b7280",
+                "totalEur": str(total),
+            }
+            for cat_id, total in category_totals.items()
+            if total > 0
+        ),
+        key=lambda row: Decimal(row["totalEur"]),
+        reverse=True,
+    )
+
+    return JsonResponse({
+        "months": month_rows,
+        "topExpenses": [expense_entry(e) for e in top_expenses],
+        "topRecurring": [expense_entry(e) for e in top_recurring],
+        "topCategories": top_categories,
+        "categories": [serialize_expense_category(c) for c in categories.values()],
+        "start": f"{months[0][0]:04d}-{months[0][1]:02d}",
+        "end": f"{months[-1][0]:04d}-{months[-1][1]:02d}",
+    })
 
 
 def finance_expense_detail(request, expense_id):

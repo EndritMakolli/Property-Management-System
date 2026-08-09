@@ -31,3 +31,50 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Graphify knowledge-graph output (regenerate with `/graphify .`).
+# Large generated artifacts + a full mirror of the source — never commit.
+graphify-out/
+.graphify/
+*.graphml
+cypher.txt
+GRAPH_REPORT.md
+raw/
+
+# AI assistant local state
+.claude/
+.cursor/
+.aider*
+.codebuddy/
+CLAUDE.local.md
+
+# Secrets — belt and braces. Never commit real credentials; only *.example.
+*.pem
+*.key
+*.pfx
+*.p12
+.env
+.env.*
+!.env.example
+**/google-credentials*.json
+**/service-account*.json
+secrets.json
+
+# Python tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node / build noise
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# Backups & archives produced by the app's export features
+pms-backup-*.json
+pms-media-*.zip
+pms-archive-*.zip

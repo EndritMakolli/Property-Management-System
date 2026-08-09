@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 
 from ..models import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto, Property
+from ._expense_ai import _validate_upload
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles
 from ._serializers import serialize_clean_status, serialize_maintenance_issue
 from ._utils import json_payload
@@ -48,6 +49,12 @@ def maintenance_issue_list(request):
         )
 
         for uploaded_file in request.FILES.getlist("photos"):
+            # Cleaning staff can reach this endpoint, so validate: an unchecked
+            # .html/.svg here would be stored XSS aimed at admins.
+            upload_error = _validate_upload(uploaded_file, label="image")
+            if upload_error:
+                issue.delete()
+                return JsonResponse({"error": upload_error}, status=400)
             MaintenancePhoto.objects.create(issue=issue, photo=uploaded_file)
 
         issue.refresh_from_db()

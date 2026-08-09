@@ -4,9 +4,10 @@ auto-create on reservation entry)."""
 
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 
-from ..models import Guest
+from ..models import Guest, GuestDocument
+from ._expense_ai import _validate_upload
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
 from ._utils import json_payload
 
@@ -191,7 +192,118 @@ def guest_detail(request, guest_id):
 
     if request.method == "DELETE":
         # Reservations keep their inline guest name/phone (FK is SET_NULL).
+        # ID documents cascade — remove their files from disk first.
+        for document in guest.documents.all():
+            document.file.delete(save=False)
         guest.delete()
         return JsonResponse({"deleted": True})
 
     return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+# ---------------------------------------------------------------------------
+# ID documents (passport / national ID / driver's license / other)
+# ---------------------------------------------------------------------------
+
+def serialize_guest_document(document, request):
+    # The URL points at the role-checked download view, never at /media/ —
+    # these are passports and national IDs, which must not be world-readable.
+    download_path = f"/api/guests/{document.guest_id}/documents/{document.id}/download/"
+    return {
+        "id": str(document.id),
+        "docType": document.doc_type,
+        "docTypeLabel": document.get_doc_type_display(),
+        "url": request.build_absolute_uri(download_path) if document.file else "",
+        "originalName": document.original_name,
+        "uploadedAt": document.uploaded_at.isoformat(),
+    }
+
+
+def guest_document_list(request, guest_id):
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    try:
+        guest = Guest.objects.get(pk=guest_id)
+    except Guest.DoesNotExist:
+        return JsonResponse({"error": "Client not found."}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({
+            "documents": [
+                serialize_guest_document(document, request)
+                for document in guest.documents.all()
+            ]
+        })
+
+    if request.method == "POST":
+        upload = request.FILES.get("file")
+        error = _validate_upload(upload)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        doc_type = (request.POST.get("docType") or "").strip()
+        if doc_type not in GuestDocument.DocType.values:
+            doc_type = GuestDocument.DocType.OTHER
+        document = GuestDocument.objects.create(
+            guest=guest,
+            doc_type=doc_type,
+            file=upload,
+            original_name=upload.name or "",
+        )
+        return JsonResponse({"document": serialize_guest_document(document, request)}, status=201)
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+def guest_document_detail(request, guest_id, document_id):
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    try:
+        document = GuestDocument.objects.get(pk=document_id, guest_id=guest_id)
+    except GuestDocument.DoesNotExist:
+        return JsonResponse({"error": "Document not found."}, status=404)
+
+    if request.method == "DELETE":
+        document.file.delete(save=False)
+        document.delete()
+        return JsonResponse({"deleted": True})
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+def guest_document_download(request, guest_id, document_id):
+    """Stream an ID document to authorised staff only.
+
+    Identity documents are personal data, so they are deliberately NOT served
+    from the public /media/ path — every read goes through this role check.
+    """
+    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
+    if denied:
+        return denied
+
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    try:
+        document = GuestDocument.objects.get(pk=document_id, guest_id=guest_id)
+    except GuestDocument.DoesNotExist:
+        return JsonResponse({"error": "Document not found."}, status=404)
+
+    if not document.file:
+        return JsonResponse({"error": "Document file is missing."}, status=404)
+
+    try:
+        handle = document.file.open("rb")
+    except (FileNotFoundError, OSError):
+        return JsonResponse({"error": "Document file is missing."}, status=404)
+
+    response = FileResponse(handle, as_attachment=False)
+    # Never let a browser or shared proxy retain someone's passport scan.
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    # Untrusted uploaded content must not run in our origin.
+    response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    return response

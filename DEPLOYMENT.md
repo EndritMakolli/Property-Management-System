@@ -39,22 +39,22 @@ These are created by `render.yaml`; fill or verify the ones marked "you set".
 | `DATABASE_URL` | Auto-filled from `pms-db` by the Blueprint. |
 | `MEDIA_ROOT` | `/var/data/media` when using the persistent disk. |
 | `WEB_CONCURRENCY` | `2` |
-| `COOKIE_SAMESITE` | `None` for separate Render frontend/backend domains. Use `Lax` only when frontend and backend are same-site custom domains, such as `app.example.com` and `api.example.com`. |
+| `COOKIE_SAMESITE` | `Lax` — correct for both supported setups (the `/api/*` proxy, and same-site custom domains). `None` disables the browser's built-in CSRF protection and is only needed if you deliberately serve the SPA cross-site. |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `10485760` |
 | `FILE_UPLOAD_MAX_MEMORY_SIZE` | `10485760` |
 | `ALLOWED_HOSTS` | You set this to backend hostnames only: `pms-backend.onrender.com` or `api.example.com,pms-backend.onrender.com`. |
 | `CSRF_TRUSTED_ORIGINS` | You set this to frontend origins with scheme and no trailing slash: `https://pms-frontend.onrender.com` or `https://app.example.com`. |
 | `CORS_ALLOWED_ORIGINS` | You set this to the same frontend origins as CSRF: `https://pms-frontend.onrender.com` or `https://app.example.com`. |
 | `PUBLIC_BASE_URL` | You set this to the backend public URL, for example `https://pms-backend.onrender.com`. This is used for public iCal links. |
-| `GOOGLE_SHEETS_ID` | Optional. Spreadsheet ID only. Leave blank to disable Sheets sync. |
-| `GOOGLE_SHEETS_CREDENTIALS_JSON` | Optional. Paste the service-account JSON here as a Render secret env var. |
-| `GOOGLE_SHEETS_YEAR` | Optional. Use `0` or blank for current year, or a fixed year like `2026`. |
+| `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | SMTP for two-step login codes. **Required if any account has 2FA enabled** — logins fail closed rather than skipping the second factor. For Gmail use an App Password. |
+| `TRUST_PROXY_HEADERS` | `True` on Render, so per-IP rate limiting uses the real client IP from `X-Forwarded-For`. |
+| `DJANGO_ADMIN_ENABLED` | Leave unset (`False`). The Django admin is a second login form that does **not** enforce this app's 2FA. Manage users in the app's Admin Panel instead. |
 
 ### Frontend Environment Variables
 
 | Key | Value |
 | --- | --- |
-| `VITE_API_BASE_URL` | The backend public URL, for example `https://pms-backend.onrender.com`. |
+| `VITE_API_BASE_URL` | **Leave EMPTY** when using the `/api/*` proxy in `render.yaml` (the recommended setup). The SPA then calls `/api` on its own origin, keeping session and CSRF cookies first-party — which iOS/Safari requires. Only set it to the backend URL if you remove that proxy rule. |
 
 ## Default Render URL Example
 
@@ -70,13 +70,14 @@ ALLOWED_HOSTS=pms-backend.onrender.com
 CSRF_TRUSTED_ORIGINS=https://pms-frontend.onrender.com
 CORS_ALLOWED_ORIGINS=https://pms-frontend.onrender.com
 PUBLIC_BASE_URL=https://pms-backend.onrender.com
-COOKIE_SAMESITE=None
+COOKIE_SAMESITE=Lax
 ```
 
 Set frontend variables:
 
 ```text
-VITE_API_BASE_URL=https://pms-backend.onrender.com
+# Empty on purpose — the /api/* proxy makes the SPA same-origin with the API.
+VITE_API_BASE_URL=
 ```
 
 ## Custom Domain Example
@@ -108,10 +109,13 @@ VITE_API_BASE_URL=https://api.example.com
 2. In Render, create a new Blueprint from this repo. Render will read `render.yaml`.
 3. Fill the `sync: false` environment variables above. If Render has not assigned final URLs yet, use the expected service URLs and update them after the first deploy.
 4. Wait for backend and frontend deploys to finish. The backend build runs dependency install, `collectstatic`, and database migrations.
-5. Open the backend service shell and create the first admin user:
+5. Open the backend service shell and create the first admin user, then turn on
+   two-step verification for it:
 
 ```bash
 python manage.py createsuperuser
+python manage.py setup_2fa --user YOUR_USERNAME --email you@example.com
+python manage.py setup_2fa --list      # confirm which accounts are protected
 ```
 
 6. Optional: load the sanitized property seed data:
@@ -130,11 +134,17 @@ python manage.py loaddata properties_seed
 
 ## Production Notes
 
-- Keep `DEBUG=False` in Render.
+- Keep `DEBUG=False` in Render. The app now refuses to start with `DEBUG=False`
+  and a weak/default `SECRET_KEY`.
 - Keep secrets only in Render environment variables.
+- Turn on two-step verification for every staff account (`setup_2fa`), and set
+  the SMTP variables first — otherwise those accounts cannot log in.
+- Leave `DJANGO_ADMIN_ENABLED` off. If you ever need the Django admin, also set
+  `DJANGO_ADMIN_PATH` to something unguessable.
+- Uploaded ID documents are served only through an authenticated endpoint;
+  never move them under a public static route.
 - Use a paid backend instance if uploaded media must persist on Render's disk.
 - Upgrade the database plan before storing real production data.
-- If you use Google Sheets sync, share the spreadsheet with the service-account email as Editor before enabling the env vars.
 
 ## Troubleshooting
 
@@ -155,7 +165,8 @@ Action: Rewrite
 ```
 
 Also make sure you are opening the frontend URL, not the backend URL. The
-backend has `/admin/`, `/api/`, and `/healthz/`; it does not have `/login`.
+backend has `/api/` and `/healthz/`; it does not have `/login`. (`/admin/` is
+disabled by default — see `DJANGO_ADMIN_ENABLED`.)
 
 ### Login Fails on iPhone / Safari (cross-site cookies)
 

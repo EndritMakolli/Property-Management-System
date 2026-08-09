@@ -11,6 +11,7 @@
 
 import base64
 import json
+from pathlib import Path
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -27,6 +28,9 @@ ALLOWED_TYPES = {
     "image/gif",
     "image/webp",
 }
+
+# Deliberately excludes .svg and .html — both execute script when served.
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 MAX_FILE_BYTES = 10 * 1024 * 1024  # matches Django's upload cap
 
@@ -60,11 +64,22 @@ def _extraction_prompt(category_names):
     )
 
 
-def _validate_upload(upload):
+def _validate_upload(upload, label="invoice file"):
+    """Reject unsafe uploads.
+
+    The extension check is the important one: uploaded files are served back by
+    filename, and the server derives Content-Type from the extension — so an
+    .html or .svg upload would execute as script in our own origin regardless of
+    what the client claimed in the multipart Content-Type header (which is
+    attacker-controlled and only used here as a secondary filter).
+    """
     if not upload:
-        return "Attach an invoice file (image or PDF)."
+        return f"Attach an {label} (image or PDF)."
     if upload.size > MAX_FILE_BYTES:
         return "The file is larger than 10 MB — scan it at a lower resolution."
+    extension = Path(upload.name or "").suffix.lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        return "Upload an image (JPG/PNG/WebP/GIF) or a PDF."
     content_type = (upload.content_type or "").lower()
     if content_type not in ALLOWED_TYPES:
         return "Upload an image (JPG/PNG/WebP/GIF) or a PDF."

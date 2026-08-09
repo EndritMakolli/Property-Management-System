@@ -76,6 +76,12 @@ class Command(BaseCommand):
                     )
                     self.stderr.write(f"{prop.name} [{channel}]: {error}")
 
+        # Piggyback housekeeping on the hourly cron: expired login challenges
+        # would otherwise accumulate forever.
+        from pms.models import LoginChallenge
+
+        LoginChallenge.purge_stale()
+
         self.stdout.write(
-            self.style.SUCCESS(f"Calendar auto-sync done — {ran} run, {skipped} not due.")
+            self.style.SUCCESS(f"Calendar auto-sync done - {ran} run, {skipped} not due.")
         )

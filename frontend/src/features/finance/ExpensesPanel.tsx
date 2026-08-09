@@ -7,7 +7,7 @@ import {
   deleteFinanceExpense,
   extractExpense,
   fetchExtractEnabled,
-  toggleExpensePaid,
+  setExpensePaidForMonth,
   updateExpenseCategory,
   uploadExpenseInvoice,
   type FinanceExpensePayload,
@@ -157,17 +157,19 @@ export function ExpensesPanel({
     }
   }
 
+  // Paid/unpaid is month-specific: this toggles the SELECTED month only, so a
+  // recurring wage paid in July still shows unpaid when August is selected.
   async function togglePaid(expense: FinanceExpenseRecord) {
     try {
-      await toggleExpensePaid(expense.id, !expense.paid)
+      await setExpensePaidForMonth(expense.id, selectedYear, selectedMonth, !expense.paidForMonth)
       await onReload()
     } catch (caughtError) {
       onError(caughtError instanceof Error ? caughtError.message : 'Could not update the payment status.')
     }
   }
 
-  const visibleExpenses = unpaidOnly ? expenses.filter((expense) => !expense.paid) : expenses
-  const unpaidCount = expenses.filter((expense) => !expense.paid).length
+  const visibleExpenses = unpaidOnly ? expenses.filter((expense) => !expense.paidForMonth) : expenses
+  const unpaidCount = expenses.filter((expense) => !expense.paidForMonth).length
 
   return (
     <article className="panel finance-section">
@@ -437,16 +439,20 @@ export function ExpensesPanel({
               {expense.platform === 'airstay' ? 'AirStay' : expense.platform === 'fleet' ? 'Fleet' : 'Shared'}
             </span>
             <button
-              className={`payment-badge ${expense.paid ? 'paid' : 'unpaid'}`}
+              className={`payment-badge ${expense.paidForMonth ? 'paid' : 'unpaid'}`}
               style={{ border: 'none', cursor: 'pointer' }}
-              title={expense.paid ? 'Mark as unpaid' : 'Mark as paid'}
+              title={
+                expense.paidForMonth
+                  ? 'Mark this month as unpaid'
+                  : 'Mark this month as paid'
+              }
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
                 togglePaid(expense)
               }}
             >
-              {expense.paid ? 'Paid' : 'Unpaid'}
+              {expense.paidForMonth ? 'Paid' : 'Unpaid'}
             </button>
             <strong>EUR {money(expense.amountEur)}</strong>
           </>

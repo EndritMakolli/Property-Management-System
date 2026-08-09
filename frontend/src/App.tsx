@@ -30,6 +30,7 @@ const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then((m) => ({ de
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').then((m) => ({ default: m.BookingRequestsPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
+const SecurityPage = lazy(() => import('./pages/SecurityPage').then((m) => ({ default: m.SecurityPage })))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })))
 
 function App() {
@@ -65,6 +66,7 @@ function App() {
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/booking-requests" element={<BookingRequestsPage />} />
                 <Route path="/pricing-rules" element={<PricingRulesPage />} />
+                <Route path="/security" element={<SecurityPage />} />
                 <Route path="*" element={<PlaceholderPage />} />
               </Route>
             </Route>
