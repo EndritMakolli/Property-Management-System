@@ -170,9 +170,13 @@ CACHES = {
 
 # django-ratelimit keys on REMOTE_ADDR by default, which behind a proxy is the
 # load balancer — putting every visitor in one bucket, so a single attacker
-# could rate-limit the whole product. Point it at the forwarded client IP, but
-# only where a trusted proxy sets it (otherwise the header is attacker-supplied).
-RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR' if TRUST_PROXY_HEADERS else None
+# could rate-limit the whole product. Resolve the real client IP instead.
+#
+# This MUST be a dotted path to a callable, not a raw header name: given a bare
+# header, django-ratelimit raises ImproperlyConfigured (a 500) whenever that
+# header is absent, which turned every throttled endpoint — including login —
+# into a server error for any request that did not arrive through the proxy.
+RATELIMIT_IP_META_KEY = 'pms.views._utils.ratelimit_client_ip'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

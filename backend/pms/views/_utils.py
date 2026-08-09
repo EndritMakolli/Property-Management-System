@@ -3,12 +3,32 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
+from django.conf import settings
 from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django_ratelimit.decorators import ratelimit
 
 from ..models import FinanceExpense
+
+
+def ratelimit_client_ip(request):
+    """Client IP for rate limiting, tolerant of a missing proxy header.
+
+    django-ratelimit raises ImproperlyConfigured (a 500) when
+    RATELIMIT_IP_META_KEY names a header that is not present on the request —
+    which turns any unproxied request into a server error on every throttled
+    endpoint. Prefer the forwarded address when the deployment says a trusted
+    proxy sets it, but always fall back to REMOTE_ADDR rather than blowing up.
+    """
+    if getattr(settings, "TRUST_PROXY_HEADERS", False):
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded:
+            # Left-most entry is the original client; the rest are proxies.
+            client = forwarded.split(",")[0].strip()
+            if client:
+                return client
+    return request.META.get("REMOTE_ADDR") or "0.0.0.0"
 
 
 def throttle(rate, key="ip", methods=("POST",)):

@@ -371,3 +371,58 @@ class UploadValidationTests(TestCase):
 
         payload = SimpleUploadedFile("scan.png", b"\x89PNG", content_type="image/png")
         self.assertIsNone(_validate_upload(payload))
+
+
+class RateLimitClientIpTests(TestCase):
+    """The throttle must never 500 because a proxy header is absent.
+
+    django-ratelimit raises ImproperlyConfigured when RATELIMIT_IP_META_KEY
+    names a header that is not on the request, which turned every throttled
+    endpoint - including login - into a 500 for unproxied requests.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+
+    def _login(self, **extra):
+        return self.client.post(
+            "/api/auth/login/",
+            data=json.dumps({"username": "nobody", "password": "nothing"}),
+            content_type="application/json",
+            **extra,
+        )
+
+    def test_login_without_forwarded_header_does_not_500(self):
+        response = self._login()
+        self.assertEqual(response.status_code, 400, response.content)
+
+    def test_login_with_forwarded_header_does_not_500(self):
+        response = self._login(HTTP_X_FORWARDED_FOR="203.0.113.9, 10.0.0.1")
+        self.assertEqual(response.status_code, 400, response.content)
+
+    def test_resolver_prefers_client_ip_when_proxy_is_trusted(self):
+        from django.test import RequestFactory
+
+        from .views._utils import ratelimit_client_ip
+
+        request = RequestFactory().get("/")
+        request.META["REMOTE_ADDR"] = "10.0.0.1"
+        request.META["HTTP_X_FORWARDED_FOR"] = "203.0.113.9, 10.0.0.1"
+
+        with override_settings(TRUST_PROXY_HEADERS=True):
+            # Left-most entry is the real client, not the proxy hop.
+            self.assertEqual(ratelimit_client_ip(request), "203.0.113.9")
+        with override_settings(TRUST_PROXY_HEADERS=False):
+            # Untrusted: the header is attacker-supplied, so ignore it.
+            self.assertEqual(ratelimit_client_ip(request), "10.0.0.1")
+
+    def test_resolver_never_raises_on_a_bare_request(self):
+        from django.test import RequestFactory
+
+        from .views._utils import ratelimit_client_ip
+
+        request = RequestFactory().get("/")
+        request.META.pop("REMOTE_ADDR", None)
+        with override_settings(TRUST_PROXY_HEADERS=True):
+            self.assertTrue(ratelimit_client_ip(request))
