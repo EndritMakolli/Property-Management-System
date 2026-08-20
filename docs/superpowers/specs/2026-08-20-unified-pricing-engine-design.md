@@ -181,6 +181,10 @@ For each night, walk the groups in `sort_order`:
 2. Collect the group's per-night rules eligible for this night, in
    `sort_order`. In an **Exclusive** group, keep only the first; the rest
    are recorded as `overridden`. In a **Stack** group, keep all.
+   Eligibility here means **both** the date window and the rule type's own
+   condition — a per-night `manual` or `promo` rule must still be selected
+   or entered before it applies, exactly as its whole-stay counterpart is.
+   (`seasonal` is the one type whose eligibility *is* its date window.)
 3. Apply each kept rule to the running rate: `FIXED_PRICE` replaces it;
    the other four adjust it, compounding in order; the rate clamps at 0.
 4. **After the whole group is processed**, if any applied rule had
@@ -234,6 +238,9 @@ groups mix freely.
 - `FIXED_PRICE` on a `whole_stay` rule.
 - `code`, `usage_limit`, or `min_subtotal_eur` on a non-promo rule; a promo
   rule without a `code`.
+- `min_subtotal_eur` on a per-night rule. The minimum is measured against the
+  Pass-1 subtotal, which does not exist yet while Pass 1 is running, so only
+  a whole-stay rule can test it.
 - `scope=property` without `property`; `scope=bedroom_group` without
   `bedroom_group`.
 - An enabled rule with `adjustment_value=None` (legacy rows with null are
@@ -370,8 +377,11 @@ today, now bounded at the commit point).
    - Seed the six default long-stay tiers (`_pricing.py:12-19`) as enabled
      scope-all rules in Stay Discounts, `sort_order` ascending from the
      28-night tier — so "first eligible wins" reproduces "highest applicable
-     tier". Skipped only for a tier whose (min_nights, pct) already exists
-     as an enabled scope-all rule. Seeding is unconditional otherwise:
+     tier". A tier is skipped when an enabled scope-all long-stay rule
+     already exists at that `min_nights`, whatever its percentage: a custom
+     7-night rule means the operator has already decided what 7 nights are
+     worth, and adding the default beside it would put two rules in the same
+     Exclusive slot. Seeding is unconditional otherwise:
      today's out-of-box pricing depends on the hidden fallback, and this
      turns it into visible rows the operator can edit or delete.
    - Create one `NON_REFUNDABLE` rule in Booking Discounts from
