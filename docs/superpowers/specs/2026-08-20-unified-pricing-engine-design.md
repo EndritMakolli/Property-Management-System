@@ -59,11 +59,15 @@ To prevent the classic reversal bug, "priority" is banned from code and API.
 The only ordering field is **`sort_order`**, ascending, on both groups and
 rules:
 
-> **Lower `sort_order` = evaluated earlier = wins in an Exclusive group.**
+> **The numerically smallest `sort_order` is evaluated first, and in an
+> Exclusive group the eligible rule with the numerically smallest
+> `sort_order` wins.** The highest number never wins anything. Ties break
+> by `created_at`, oldest first, so evaluation order is always total and
+> deterministic.
 
-The UI shows rules top-to-bottom in `sort_order` and labels the semantics
-("evaluated top to bottom; in an Exclusive group the first eligible rule
-wins").
+The UI shows rules top-to-bottom in ascending `sort_order` and labels the
+semantics ("evaluated top to bottom; in an Exclusive group the first
+eligible rule wins").
 
 ## Data model
 
@@ -182,9 +186,11 @@ For each night, walk the groups in `sort_order`:
 4. **After the whole group is processed**, if any applied rule had
    `is_final`, the night becomes locked.
 
-Step 4's timing is the approved lock semantics: rules *in the same group,
-after the final rule* still apply (fixed 56 with `is_final`, then +50% in
-the same group → 84), and the lock takes effect only at the group boundary.
+Step 4's timing is the approved lock semantics: **locking happens at the
+end of the rule's group, never mid-group**. Rules in the same Stack group
+that come after the final rule still modify the rate (fixed 56 with
+`is_final`, then +50% in the same group → 84); the lock takes effect only
+at the group boundary, against later groups.
 
 > **Lock rule (document everywhere, including the UI help text):** once a
 > night is locked, it is excluded from **all** per-night rules in later
@@ -316,11 +322,40 @@ enforced by `require_roles` as the first lines of every new view.
 (`SET_NULL` preserved) — call sites reading `.promo_code.code` keep working.
 `Reservation` has no promo FK today and gains none.
 
+### Promo usage counting
+
+`usage_count` counts **confirmed bookings only**. It increments — always
+via `F("usage_count") + 1`, inside the same `transaction.atomic()` block
+that creates the reservation — at exactly two points:
+
+| Site | Today | After |
+|---|---|---|
+| `booking_create_direct` (`_booking_public.py:776-777`) | increments (read-then-write) | increments via `F()` — a reservation really is created here |
+| `booking_create_request` (`_booking_public.py:666-667`) | increments when a **pending** request is created | **no increment** — the request may expire or be rejected |
+| `booking_request_approve` (`_booking_pms.py:242-267`) | never increments | increments via `F()` beside `reservation.save()` |
+
+Validating a code, calculating a quote, and creating a booking request all
+leave the count untouched. Rejected and expired requests therefore consume
+nothing, which today they silently did. Cancelling a reservation does not
+return a use (unchanged).
+
+Deferring the count creates one edge case: two pending requests can both
+carry a limit-1 code. **Approval always wins over the limit** — the guest
+already holds a quoted price, and refusing the approval would leave staff
+with no way to honour it except rejecting the booking. So the second
+approval succeeds, `usage_count` is allowed to exceed `usage_limit`, and
+the approval response carries a warning
+(`"Promo SUMMER25 is now over its usage limit (2 of 1)."`) that the
+requests screen surfaces. The rule stays true — the code stops being
+*offered* once the count reaches the limit, because eligibility reads the
+current count — while never blocking a booking a guest was already
+promised.
+
 Preserved quirks (deliberately): booking create paths silently drop an
 invalid promo code while calculate/validate return an error; a promo at its
-usage limit can still slightly overshoot under concurrency (the `F()` fix
-removes lost updates, not the check-then-book window — same exposure as
-today).
+usage limit can still slightly overshoot when two commits race (the `F()`
+fix removes lost updates, not the check-then-book window — same exposure as
+today, now bounded at the commit point).
 
 ## Migrations (one release, three steps)
 
@@ -399,6 +434,7 @@ of the serializer), `averageNightlyRate` on the breakdown; loses
 | Stay longer than 365 nights | Rejected by existing booking-window validation; the nightly loop is bounded by it. |
 | Quote fails for one property during search | That property lists at base price with a warning instead of vanishing. |
 | Promo invalid on booking create | Silently dropped (today's behaviour); calculate/validate endpoints return the error message. |
+| Approving two pending requests that share a limit-1 promo | Both approvals succeed; `usage_count` exceeds `usage_limit`; the second response carries an over-limit warning. The code stops being offered to new guests. |
 
 ## Testing
 
@@ -407,8 +443,11 @@ of the serializer), `averageNightlyRate` on the breakdown; loses
   Any test whose expectation legitimately changes (partial-stay seasonal
   coverage now applies; `first_night_price` becomes the average) is updated
   with a recorded reason, never silently re-pinned.
-- **Engine:** stack compounding is order-sensitive; exclusive picks lowest
-  `sort_order` among eligible; the lock examples (56 → +50% → 84 same
+- **Engine:** stack compounding is order-sensitive; exclusive picks the
+  numerically smallest `sort_order` among eligible rules (asserted with a
+  rule whose `sort_order` is larger *and* whose discount is larger, so a
+  reversed comparison fails the test); ties break by `created_at`; the
+  lock examples (56 → +50% → 84 same
   group; the 356.50 worked example; locked nights immune to promo);
   per-night vs whole-stay application; a rule covering part of a stay
   affects only those nights; every eligibility clause per type, including
@@ -424,7 +463,10 @@ of the serializer), `averageNightlyRate` on the breakdown; loses
 - **API:** role enforcement on every new endpoint; group delete blocked
   when non-empty; reorder persists; `/api/promo-codes/` staff routes are
   gone; the public validate endpoint works against promo rules;
-  `usage_count` increments via `F()`.
+  `usage_count` increments via `F()` only when a reservation is committed
+  (direct booking, request approval) — not on validate, not on a quote,
+  not on request creation — and rejected or expired requests consume
+  nothing.
 - **Frontend:** `npx tsc -b --force && npm run build`; search shows quoted
   prices; the modal prefills the average rate.
 
