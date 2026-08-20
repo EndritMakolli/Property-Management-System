@@ -1,7 +1,12 @@
 # Search & pricing cleanup — design
 
 **Date:** 2026-08-09
-**Status:** Approved
+**Status:** Partially superseded — see
+`2026-08-20-unified-pricing-engine-design.md`, which replaces all of
+"Feature 4 — pricing that actually applies" (and tasks 3–9 of this spec's
+plan) with a fully configurable group/rule engine. Features 2–3 below
+(general location, chart removal) remain valid and are carried into the new
+spec's plan.
 **Scope:** Spec 2 of 2. Build **before**
 `2026-08-09-guest-message-drafts-design.md`, which depends on staff search
 quoting rule-adjusted prices.

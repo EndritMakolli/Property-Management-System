@@ -1,5 +1,10 @@
 # Search & Pricing Cleanup Implementation Plan
 
+> **SUPERSEDED — do not execute.** The unified pricing engine
+> (`docs/superpowers/specs/2026-08-20-unified-pricing-engine-design.md`)
+> replaces tasks 3–9 of this plan, and its own plan re-includes tasks 1–2
+> (chart removal, general location). Kept for the design history only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make pricing rules apply per-night everywhere including staff search, show one building location instead of per-apartment ones, and delete two unused Reports charts.
