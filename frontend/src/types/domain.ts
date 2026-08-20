@@ -255,6 +255,10 @@ export type CleanStatusRecord = {
   propertyName: string
   isCleaned: boolean
   cleanedAt: string
+  /** Local calendar day of the clean, from the server. Compare dates with
+   *  this, never `cleanedAt.slice(0,10)` — that is the UTC day and differs
+   *  from the local one between local midnight and the UTC offset. */
+  cleanedDate: string
   cleanedBy: string
 }
 

@@ -1,4 +1,4 @@
-from django.utils.timezone import localdate
+from django.utils.timezone import localdate, localtime
 from django.conf import settings
 
 from ..models import Reservation
@@ -245,6 +245,15 @@ def serialize_clean_status(clean_status):
         "propertyName": clean_status.property.name,
         "isCleaned": clean_status.is_cleaned,
         "cleanedAt": clean_status.cleaned_at.isoformat() if clean_status.cleaned_at else "",
+        # The calendar day the clean happened on, in the operator's timezone.
+        # The dashboard asks a date question ("cleaned on the day I am looking
+        # at?"); slicing the UTC instant answered it in the wrong timezone and
+        # went wrong between local midnight and 02:00.
+        "cleanedDate": (
+            localtime(clean_status.cleaned_at).date().isoformat()
+            if clean_status.cleaned_at
+            else ""
+        ),
         "cleanedBy": clean_status.cleaned_by or "",
     }
 

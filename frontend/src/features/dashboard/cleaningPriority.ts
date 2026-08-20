@@ -39,7 +39,7 @@ export function buildCleaningTasks(
 
   const cleanedDateByProperty = new Map<string, string>()
   for (const status of cleanStatuses) {
-    cleanedDateByProperty.set(status.propertyId, status.cleanedAt ? status.cleanedAt.slice(0, 10) : '')
+    cleanedDateByProperty.set(status.propertyId, status.cleanedDate || '')
   }
 
   const tasks: CleaningTask[] = []

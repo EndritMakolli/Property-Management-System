@@ -4,6 +4,7 @@ import { fetchProperties, fetchQuotes, fetchReservations } from '../api/pmsApi'
 import { DateInput } from '../components/shared/DateInput'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
+import { GuestReplyPanel } from '../features/availability/GuestReplyPanel'
 import { NewReservationModal } from '../features/reservations/NewReservationModal'
 import type { PropertyListing, QuoteRecord, ReservationRecord } from '../types/domain'
 import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../utils/date'
@@ -207,6 +208,34 @@ export function AvailabilityPage() {
     return buildApartmentInsights({ bedrooms, checkIn, checkOut, properties, reservations })
   }, [availableProperties.length, bedrooms, checkIn, checkOut, nights, properties, reservations])
   const calendarProperties = availableProperties.length > 0 ? availableProperties : recommendedProperties
+
+  // The availability facts the reply draft is built from. Derived here rather
+  // than recomputed server-side so the draft can never contradict what is on
+  // screen — same walk, same numbers.
+  const freeTypes = useMemo(
+    () => [...new Set(availableProperties.map((p) => p.bedrooms))].sort((a, b) => a - b),
+    [availableProperties],
+  )
+  const splitCovers = useMemo(
+    () => recommendation.length > 0 && recommendation.every((s) => s.status === 'available'),
+    [recommendation],
+  )
+  // Every segment after the first starts on the day the guest changes
+  // apartment, so those check-ins ARE the changeover dates.
+  const changeDate = useMemo(
+    () => recommendation.slice(1).map((segment) => segment.checkIn),
+    [recommendation],
+  )
+  // The apartment sizes the split plan uses, so the reply can quote the
+  // cheapest of them.
+  const splitTypes = useMemo(
+    () => [...new Set(recommendation.map((segment) => segment.property.bedrooms))].sort((a, b) => a - b),
+    [recommendation],
+  )
+  const nextFree = useMemo(() => {
+    const starts = insights.map((i) => i.windowStart).filter(Boolean).sort()
+    return starts[0] || ''
+  }, [insights])
   const recommendationReservations = useMemo(
     // Booked segments already exist as real reservations — only ghost the rest.
     () =>
@@ -522,6 +551,18 @@ export function AvailabilityPage() {
             visibleDays={Math.max(nights, 7)}
           />
         </>
+      )}
+
+      {status === 'ready' && checkIn && checkOut && nights > 0 && (
+        <GuestReplyPanel
+          checkIn={checkIn}
+          checkOut={checkOut}
+          freeTypes={freeTypes}
+          splitCovers={splitCovers}
+          nextFree={nextFree}
+          changeDate={changeDate}
+          splitTypes={splitTypes}
+        />
       )}
 
       {(modalState || bookModal) && (

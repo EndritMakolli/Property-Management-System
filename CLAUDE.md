@@ -35,7 +35,7 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 337 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 402 tests
     cd frontend && npx tsc -b --force && npm run build && npm test    # 148 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
@@ -77,6 +77,10 @@ financial records. A pre-hosting audit fixed these; keep them true:
   (narrowest scope). Only `stack` and `exclusive` are order-sensitive.
 - Frontend unit tests run under Vitest (`npm test`); they cover the pure
   pricing helpers in `src/components/pricing/`, not components.
+- Guest replies are templates, not code. Four `MessageTemplate` rows (one per
+  availability scenario) hold Albanian and English bodies, edited at
+  `/message-templates`. `(placeholders)` resolve in `views/_drafts.py`;
+  `[square brackets]` drop when empty. Never hardcode reply wording.
 - Backend returns camelCase JSON; frontend types live in `frontend/src/types/domain.ts`.
 - Never commit secrets. `backend/.env` is real config (gitignored);
   `backend/.env.example` is a tracked template — placeholders only.

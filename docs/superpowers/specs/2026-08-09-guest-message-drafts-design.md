@@ -1,7 +1,7 @@
 # Guest message drafts — design
 
 **Date:** 2026-08-09
-**Status:** Approved
+**Status:** Approved — implementing (see *Decisions confirmed 2026-08-21*)
 **Scope:** Spec 1 of 2. Spec 2 (`search & pricing cleanup`) covers the general
 location, removing the lead-time/stay-length charts, and the pricing rules work.
 
@@ -225,3 +225,51 @@ Sequencing Spec 2 first is preferred.
 Scheduled and automated sending; message history; per-guest personalisation
 beyond `(guest name)`; channel integrations; template variants beyond the four
 scenarios; languages beyond Albanian and English.
+
+---
+
+## Decisions confirmed 2026-08-21
+
+Re-confirmed with the operator before implementation. This spec governs; a
+competing 2026-08-21 draft was discarded in favour of it.
+
+- **One line per bedroom type**, as specified above — not one per apartment.
+  The reason is now stronger than when written: base prices became per bedroom
+  group, so all 17 two-bedroom apartments quote the same €35/night. One line
+  per apartment would emit 17 identical bullets.
+- **Both languages** shipped together, Albanian and English.
+- **Spec 2 has landed.** `/availability` prices through `calculate_price`, so
+  the price-mismatch gap described under *Dependency on Spec 2* is closed.
+- The split-stay and next-free-window logic is reused from the existing
+  `buildSplitStayRecommendation` and `buildApartmentInsights` on
+  `AvailabilityPage`. It is NOT reimplemented in Python.
+
+### Agreed Albanian body — `available`
+
+Supplied by the operator, kept in their own orthography (no `ë`/`ç`):
+
+```
+Pershendetje,
+
+Faleminderit per kerkesen e rezervimit. Per datat qe keni kerkuar, nga
+(check-in) deri me (check-out) (check-out), rezervimi juaj perfshine
+(nights) nate dhe kemi te lire banese me (bedrooms) dhoma gjumi.
+
+- [ ] Banesa me (bedrooms) dhoma gjumi ka kapacitet deri ne (capacity)
+      persona dhe cmimi eshte (nightly price)€ per nate, pra (nights) nate
+      × (nightly price)€ = (subtotal)€[ − (discount)€ zbritje] =
+      (total price)€ cmimi total i qendrimit.
+
+Parkingu eshte i perfshire ne cmim,
+- 2 kat me parkingje ne garazh
+- 2 lifta afer parkingjeve
+
+Nese keni ndonje pyetje shtese ose deshironi te vazhdojme me rezervimin,
+ju lutem na kontaktoni lirisht.
+
+Me respekt,
+```
+
+The bullet repeats per free bedroom type because it contains per-apartment
+placeholders. The discount clause sits in square brackets so it disappears on
+stays with no discount.

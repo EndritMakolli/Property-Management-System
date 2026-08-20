@@ -1,0 +1,95 @@
+.templates-page { display: grid; gap: 16px; }
+.templates-page h2 { margin: 0; font-size: 1.35rem; }
+
+.templates-lede {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.templates-lede code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-table-head);
+  font-size: 0.85em;
+}
+
+.template-card { display: grid; gap: 12px; padding: 16px; }
+
+.template-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.template-head h3 { margin: 0 0 2px; font-size: 1rem; }
+.template-when { color: var(--text-muted); font-size: 0.82rem; }
+.template-actions { display: flex; gap: 8px; flex: none; }
+
+.template-bodies {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.template-bodies label { display: grid; gap: 4px; }
+.template-bodies span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.template-bodies textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.template-tokens { display: grid; gap: 6px; }
+.template-tokens > div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.template-token-group {
+  min-width: 92px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.template-token {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.template-token:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+.template-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-table-head);
+}
+.template-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+}

@@ -9,6 +9,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Lock,
+  MessageSquare,
   Receipt,
   RefreshCw,
   Search,
@@ -40,6 +41,7 @@ export const navItems: { label: string; path: string; icon: typeof Search; roles
   { label: 'Synchronizations', path: '/synchronizations', icon: RefreshCw, roles: ['admin', 'management'] },
   { label: 'Booking Requests', path: '/booking-requests', icon: Globe, roles: ['admin', 'management'] },
   { label: 'Pricing Rules', path: '/pricing-rules', icon: Tag, roles: ['admin', 'management'] },
+  { label: 'Reply Templates', path: '/message-templates', icon: MessageSquare, roles: ['admin', 'management'] },
   { label: 'Admin Panel', path: '/admin-panel', icon: ShieldCheck, roles: ['admin'] },
   { label: 'My Security', path: '/security', icon: Lock, roles: ['admin', 'management', 'cleaning'] },
 ]

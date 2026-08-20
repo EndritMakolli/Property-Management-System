@@ -1,6 +1,6 @@
-from datetime import timezone, datetime
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.http import JsonResponse
 
 from ..models import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto, Property
@@ -158,7 +158,7 @@ def clean_status_mark(request, property_id):
 
     clean_status, _ = ApartmentCleanStatus.objects.get_or_create(property=prop)
     clean_status.is_cleaned = is_cleaned
-    clean_status.cleaned_at = datetime.now(timezone.utc) if is_cleaned else None
+    clean_status.cleaned_at = timezone.now() if is_cleaned else None
     clean_status.cleaned_by = request.user.username if is_cleaned else ""
     clean_status.save()
 

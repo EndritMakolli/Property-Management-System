@@ -98,6 +98,7 @@ from ._pricing_rules_api import (
     stay_constraint_detail,
     stay_constraint_list,
 )
+from ._messaging import message_draft, message_template_detail, message_template_list
 from ._pricing_preview import pricing_preview
 from ._predictions import dashboard_forecast
 from ._reservations import (
@@ -174,6 +175,9 @@ __all__ = [
     "maintenance_photo_delete",
     "obligation_detail",
     "obligation_list",
+    "message_draft",
+    "message_template_detail",
+    "message_template_list",
     "pricing_group_detail",
     "pricing_group_list",
     "pricing_rule_detail",

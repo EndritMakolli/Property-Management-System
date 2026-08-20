@@ -170,7 +170,15 @@ class MapPrivacyTests(TestCase):
             {"check_in": day(10).isoformat(), "check_out": day(12).isoformat(), "guests": 1},
         ).json()
         served = data["available"][0]["property"]
-        self.assertNotEqual(float(served["latitude"]), float(self.prop.latitude))
+        # The point must have MOVED — not specifically its latitude. The offset
+        # is seeded by the property's (random) id, so when the angle lands near
+        # +/-90 degrees the shift is almost entirely longitudinal and the
+        # latitude rounds back to the original at 5dp. Asserting on latitude
+        # alone therefore failed by luck roughly one run in a few hundred.
+        self.assertNotEqual(
+            (float(served["latitude"]), float(served["longitude"])),
+            (float(self.prop.latitude), float(self.prop.longitude)),
+        )
 
 
 class MinNightsSurfacingTests(TestCase):

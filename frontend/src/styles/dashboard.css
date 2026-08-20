@@ -716,3 +716,77 @@
 .payment-status-panel {
   grid-column: 1 / -1;
 }
+
+/* ── Guest reply draft ───────────────────────────────────────────────────── */
+
+.guest-reply { display: grid; gap: 10px; padding: 16px; }
+
+.guest-reply-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.guest-reply-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.guest-reply-controls { display: flex; align-items: center; gap: 8px; }
+.guest-reply-controls select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.guest-reply-lang {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.guest-reply-lang button {
+  padding: 6px 12px;
+  border: none;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.guest-reply-lang button.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+.guest-reply-body {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.guest-reply-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.guest-reply-count { color: var(--text-muted); font-size: 0.8rem; }
+.guest-reply-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
