@@ -1,5 +1,6 @@
 """Tests for the unified pricing model, its migrations, and its endpoints."""
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -7,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 
-from .models import PricingGroup, PricingRule, StayConstraint
+from .models import BookingRequest, PricingGroup, PricingRule, StayConstraint
 from .tests import day, make_admin, make_property
 from .views._pricing_validation import validate_pricing_rule
 
@@ -216,3 +217,91 @@ class RuleValidationTests(TestCase):
     def test_enabled_rule_needs_an_adjustment_value(self):
         with self.assertRaisesMessage(ValidationError, "amount"):
             validate_pricing_rule(self._rule(adjustment_value=None))
+
+
+class PromoUsageCountingTests(TestCase):
+    """A promo is spent when a booking is committed — never before."""
+
+    def setUp(self):
+        self.client = Client()
+        self.prop = make_property()
+        self.promo = PricingRule.objects.create(
+            group=PricingGroup.objects.get(name="Promotions"),
+            rule_type=PricingRule.RuleType.PROMO,
+            code="TEN",
+            scope="all",
+            enabled=True,
+            adjustment_type=PricingRule.AdjustmentType.PCT_DECREASE,
+            adjustment_value=Decimal("10.00"),
+        )
+
+    def _create_request(self, prop=None, start=30):
+        # Callers that approve more than one request must pass distinct dates
+        # or a distinct property: approval refuses to create a reservation
+        # that overlaps an existing one, so two identical requests would make
+        # the second approval a 409 and prove nothing about promo counting.
+        return self.client.post(
+            "/api/booking/requests/",
+            data=json.dumps({
+                "propertyId": str((prop or self.prop).id),
+                "checkIn": day(start).isoformat(),
+                "checkOut": day(start + 3).isoformat(),
+                "guestName": "Test Guest",
+                "guestPhone": "+355000000",
+                "promoCode": "TEN",
+            }),
+            content_type="application/json",
+        )
+
+    def test_validating_a_code_does_not_spend_it(self):
+        self.client.post(
+            "/api/booking/promo-codes/validate/",
+            data=json.dumps({
+                "propertyId": str(self.prop.id),
+                "code": "TEN",
+                "checkIn": day(30).isoformat(),
+                "checkOut": day(33).isoformat(),
+            }),
+            content_type="application/json",
+        )
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.usage_count, 0)
+
+    def test_a_pending_request_does_not_spend_it(self):
+        self.assertEqual(self._create_request().status_code, 201)
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.usage_count, 0)
+
+    def test_approval_spends_it(self):
+        self._create_request()
+        req = BookingRequest.objects.get()
+        make_admin(self.client)
+        response = self.client.post(f"/api/booking-requests/{req.id}/approve/")
+        self.assertEqual(response.status_code, 200)
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.usage_count, 1)
+
+    def test_rejection_spends_nothing(self):
+        self._create_request()
+        req = BookingRequest.objects.get()
+        make_admin(self.client)
+        self.client.post(
+            f"/api/booking-requests/{req.id}/reject/",
+            data=json.dumps({"rejectionMessage": "no"}),
+            content_type="application/json",
+        )
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.usage_count, 0)
+
+    def test_approval_never_blocks_on_the_limit_but_warns(self):
+        self._create_request(start=30)
+        self._create_request(start=60)  # non-overlapping, so neither approval 409s
+        self.promo.usage_limit = 1
+        self.promo.save()
+        make_admin(self.client)
+        for req in BookingRequest.objects.order_by("check_in"):
+            response = self.client.post(f"/api/booking-requests/{req.id}/approve/")
+            self.assertEqual(response.status_code, 200)
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.usage_count, 2)
+        self.assertIn("over its usage limit", response.json()["warning"])

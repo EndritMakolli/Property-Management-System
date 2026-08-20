@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 from django.http import JsonResponse
 from django.http.multipartparser import MultiPartParser
 from django.utils import timezone
@@ -146,7 +147,7 @@ def _serialize_booking_request_pms(req, request):
         "priceBreakdown": req.price_breakdown,
         "expiresAt": req.expires_at.isoformat(),
         "rejectionMessage": req.rejection_message,
-        "promoCode": req.promo_code.code if req.promo_code else None,
+        "promoCode": req.promo_rule.code if req.promo_rule else None,
     }
 
 
@@ -192,7 +193,7 @@ def booking_request_list(request):
 
     pending = BookingRequest.objects.filter(
         status=BookingRequest.Status.PENDING,
-    ).select_related("property", "promo_code").prefetch_related("property__photos").order_by("-created_at")
+    ).select_related("property", "promo_rule").prefetch_related("property__photos").order_by("-created_at")
 
     # Recent confirmed direct bookings (last 10, expandable)
     offset = int(request.GET.get("offset") or "0")
@@ -222,7 +223,7 @@ def booking_request_approve(request, request_id):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
     try:
-        req = BookingRequest.objects.select_related("property", "promo_code").get(pk=request_id)
+        req = BookingRequest.objects.select_related("property", "promo_rule").get(pk=request_id)
     except BookingRequest.DoesNotExist:
         return JsonResponse({"error": "Booking request not found."}, status=404)
 
@@ -266,10 +267,28 @@ def booking_request_approve(request, request_id):
         req.reservation = reservation
         req.save(update_fields=["status", "reservation"])
 
+        if req.promo_rule_id:
+            PricingRule.objects.filter(pk=req.promo_rule_id).update(
+                usage_count=F("usage_count") + 1
+            )
+
+    # Approval must never be blocked by a promo's usage limit — the guest
+    # already holds a quoted price — so it can overshoot; surface a warning
+    # instead of refusing.
+    warning = ""
+    if req.promo_rule_id:
+        promo = PricingRule.objects.get(pk=req.promo_rule_id)
+        if promo.usage_limit is not None and promo.usage_count > promo.usage_limit:
+            warning = (
+                f"Promo {promo.code} is now over its usage limit "
+                f"({promo.usage_count} of {promo.usage_limit})."
+            )
+
     return JsonResponse({
         "message": "Request approved and reservation created.",
         "reservationId": str(reservation.id),
         "request": _serialize_booking_request_pms(req, request),
+        "warning": warning,
     })
 
 

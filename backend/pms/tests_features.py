@@ -18,8 +18,10 @@ from .models import (
     ExpenseCategory,
     FinanceExpense,
     GuestDocument,
+    PricingGroup,
     PricingRule,
     Property,
+    StayConstraint,
 )
 from .tests import day, make_admin, make_property
 
@@ -177,10 +179,10 @@ class MinNightsSurfacingTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.prop = make_property()
-        PricingRule.objects.create(
-            rule_type=PricingRule.RuleType.MINIMUM_NIGHTS,
-            scope=PricingRule.Scope.ALL,
-            min_nights=3,
+        StayConstraint.objects.create(
+            kind=StayConstraint.Kind.MIN_NIGHTS,
+            value=3,
+            scope=StayConstraint.Scope.ALL,
             enabled=True,
         )
 
@@ -217,6 +219,8 @@ class PublicListingPricingTests(TestCase):
         self.client = Client()
         self.prop = make_property(base_price_eur=Decimal("50.00"))
         PricingRule.objects.create(
+            group=PricingGroup.objects.get(name="Seasonal Pricing"),
+            application="per_night",
             rule_type=PricingRule.RuleType.SEASONAL,
             scope=PricingRule.Scope.ALL,
             start_date=day(0),

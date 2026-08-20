@@ -8,6 +8,7 @@ from itertools import combinations
 from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -19,13 +20,12 @@ from ..models import (
     CompanyProfile,
     HouseRule,
     PricingRule,
-    PromoCode,
     Property,
     PropertyAmenity,
     PropertyPhoto,
     Reservation,
 )
-from ._pricing import calculate_price, _match_scope, _min_nights_required
+from ._pricing import calculate_price, _min_nights_required, resolve_promo_rule
 from ._utils import json_payload, throttle
 
 # The split-stay search pairs every candidate with every other, so it grows
@@ -541,25 +541,13 @@ def booking_calculate(request):
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
-    promo_obj = None
-    promo_error = None
-    if promo_code_str:
-        try:
-            promo_obj = PromoCode.objects.get(code=promo_code_str, active=True)
-            if promo_obj.usage_limit is not None and promo_obj.usage_count >= promo_obj.usage_limit:
-                promo_obj = None
-                promo_error = "This promo code has reached its usage limit."
-            elif not _match_scope(promo_obj, prop):
-                promo_obj = None
-                promo_error = "This promo code does not apply to this apartment."
-        except PromoCode.DoesNotExist:
-            promo_error = "Invalid promo code."
+    promo_rule, promo_error = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_code_obj=promo_obj)
+    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_rule=promo_rule)
     return JsonResponse({
         "priceBreakdown": breakdown,
-        "promoError": promo_error,
-        "promoApplied": promo_obj is not None,
+        "promoError": promo_error or None,
+        "promoApplied": promo_rule is not None,
     })
 
 
@@ -583,23 +571,23 @@ def booking_validate_promo(request):
     except Property.DoesNotExist:
         return JsonResponse({"error": "Property not found."}, status=404)
 
-    try:
-        promo = PromoCode.objects.get(code=code, active=True)
-    except PromoCode.DoesNotExist:
-        return JsonResponse({"valid": False, "error": "Invalid promo code."})
+    promo_rule, promo_error = resolve_promo_rule(code, prop, check_in, check_out)
+    if promo_rule is None:
+        # An empty code resolves to (None, "") — resolve_promo_rule treats
+        # "no code entered" as a non-error for the pricing path, but this
+        # endpoint exists solely to validate a code the guest typed in.
+        return JsonResponse({"valid": False, "error": promo_error or "That promo code is not valid."})
 
-    if promo.usage_limit is not None and promo.usage_count >= promo.usage_limit:
-        return JsonResponse({"valid": False, "error": "This promo code has reached its usage limit."})
-
-    if not _match_scope(promo, prop):
-        return JsonResponse({"valid": False, "error": "This promo code does not apply to this apartment."})
-
-    breakdown = calculate_price(prop, check_in, check_out, promo_code_obj=promo)
+    is_pct = promo_rule.adjustment_type in (
+        PricingRule.AdjustmentType.PCT_INCREASE,
+        PricingRule.AdjustmentType.PCT_DECREASE,
+    )
+    breakdown = calculate_price(prop, check_in, check_out, promo_rule=promo_rule)
     return JsonResponse({
         "valid": True,
-        "promoCode": promo.code,
-        "discountType": promo.discount_type,
-        "discountValue": str(promo.discount_value),
+        "promoCode": promo_rule.code,
+        "discountType": "percentage" if is_pct else "fixed_amount",
+        "discountValue": str(promo_rule.adjustment_value),
         "promoAmount": breakdown["promo_amount"],
         "newTotal": breakdown["total"],
     })
@@ -647,25 +635,17 @@ def booking_create_request(request):
     if not _is_property_available(prop.id, check_in, check_out):
         return JsonResponse({"error": "This apartment is no longer available for the selected dates."}, status=409)
 
-    promo_obj = None
-    if promo_code_str:
-        try:
-            promo_obj = PromoCode.objects.get(code=promo_code_str, active=True)
-            if promo_obj.usage_limit is not None and promo_obj.usage_count >= promo_obj.usage_limit:
-                promo_obj = None
-            elif not _match_scope(promo_obj, prop):
-                promo_obj = None
-        except PromoCode.DoesNotExist:
-            promo_obj = None
+    # The two CREATE paths only: an invalid code is silently dropped, exactly
+    # as today.
+    promo_rule, _ = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=False, promo_code_obj=promo_obj)
+    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=False, promo_rule=promo_rule)
     if breakdown["errors"]:
         return JsonResponse({"error": breakdown["errors"][0]}, status=400)
 
     with transaction.atomic():
-        if promo_obj:
-            PromoCode.objects.filter(pk=promo_obj.pk).update(usage_count=promo_obj.usage_count + 1)
-
+        # No usage-count increment here: a pending request must consume
+        # nothing. Usage is counted at approval, in booking_request_approve.
         req = BookingRequest.objects.create(
             property=prop,
             guest_name=guest_name,
@@ -677,7 +657,7 @@ def booking_create_request(request):
             total_price_eur=Decimal(breakdown["total"]),
             price_breakdown=breakdown,
             status=BookingRequest.Status.PENDING,
-            promo_code=promo_obj,
+            promo_rule=promo_rule,
         )
 
     return JsonResponse({
@@ -741,23 +721,16 @@ def booking_create_direct(request):
             status=409,
         )
 
-    promo_obj = None
-    if promo_code_str:
-        try:
-            promo_obj = PromoCode.objects.get(code=promo_code_str, active=True)
-            if promo_obj.usage_limit is not None and promo_obj.usage_count >= promo_obj.usage_limit:
-                promo_obj = None
-            elif not _match_scope(promo_obj, prop):
-                promo_obj = None
-        except PromoCode.DoesNotExist:
-            promo_obj = None
+    # The two CREATE paths only: an invalid code is silently dropped, exactly
+    # as today.
+    promo_rule, _ = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_code_obj=promo_obj)
+    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_rule=promo_rule)
     if breakdown["errors"]:
         return JsonResponse({"error": breakdown["errors"][0]}, status=400)
 
     total = Decimal(breakdown["total"])
-    first_night = Decimal(breakdown["first_night_price"])
+    first_night = Decimal(breakdown["average_nightly_rate"])
     paid_amount = first_night if payment_type == "first_night" else total
     payment_status = (
         Reservation.OnlinePaymentStatus.FIRST_NIGHT
@@ -773,8 +746,10 @@ def booking_create_direct(request):
                 status=409,
             )
 
-        if promo_obj:
-            PromoCode.objects.filter(pk=promo_obj.pk).update(usage_count=promo_obj.usage_count + 1)
+        if promo_rule:
+            PricingRule.objects.filter(pk=promo_rule.pk).update(
+                usage_count=F("usage_count") + 1
+            )
 
         reservation = Reservation(
             property=prop,
