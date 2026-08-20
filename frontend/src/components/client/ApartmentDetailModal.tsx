@@ -21,6 +21,10 @@ interface Props {
   guests: number
   onClose: () => void
   onReserve: (checkIn: string, checkOut: string, guests: number, total: number) => void
+  // The one shared building location (name, falling back to address) — every
+  // apartment sits in the same building, so guests never see a per-apartment
+  // label. Comes from BookingSiteSettingsRecord via whichever page loaded it.
+  generalLocation?: string
 }
 
 const HOST_NAME = 'AirStay'
@@ -32,7 +36,7 @@ const HIGHLIGHTS = [
 ]
 
 export default function ApartmentDetailModal({
-  property, checkIn, checkOut, guests, onClose, onReserve,
+  property, checkIn, checkOut, guests, onClose, onReserve, generalLocation,
 }: Props) {
   const [detail, setDetail] = useState<PublicPropertyDetail | null>(null)
   const [showAllPhotos, setShowAllPhotos] = useState(false)
@@ -103,7 +107,10 @@ export default function ApartmentDetailModal({
   const reviews = detail?.reviews ?? []
   const description = property.description?.trim() ||
     'A bright, modern apartment finished to a hotel standard, close to everything you need for a comfortable stay.'
-  const location = property.locationLabel?.trim() || 'Prishtina, Kosovo'
+  // One shared building location for every apartment — never the per-property
+  // locationLabel. Empty when the building name/address aren't set, in which
+  // case nothing is rendered (no placeholder text).
+  const location = generalLocation?.trim() || ''
   const beds = property.beds || 1
   const baths = property.bathrooms || 1
   const maxGuests = property.maxGuests || 8
@@ -140,8 +147,12 @@ export default function ApartmentDetailModal({
               </>
             )}
             <span className={styles.superhost}>◆ Superhost</span>
-            <span className={styles.dot}>·</span>
-            <span className={styles.subUnderline}>{location}</span>
+            {location && (
+              <>
+                <span className={styles.dot}>·</span>
+                <span className={styles.subUnderline}>{location}</span>
+              </>
+            )}
           </div>
 
           {/* Gallery */}
@@ -325,7 +336,7 @@ export default function ApartmentDetailModal({
             <Suspense
               fallback={
                 <div className={styles.mapBox}>
-                  <span>📍 {location}</span>
+                  {location && <span>📍 {location}</span>}
                 </div>
               }
             >
@@ -337,7 +348,7 @@ export default function ApartmentDetailModal({
             </Suspense>
           ) : (
             <div className={styles.mapBox}>
-              <span>📍 {location}</span>
+              {location && <span>📍 {location}</span>}
             </div>
           )}
         </div>

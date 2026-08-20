@@ -18,6 +18,9 @@ export default function MapPage() {
   const [detail, setDetail] = useState<PublicProperty | null>(null)
   const [draft, setDraft] = useState<BookingDraft | null>(null)
   const [home, setHome] = useState<HomeMarker | null>(null)
+  // One shared building location for every apartment (name, falling back to
+  // address) — guests never see a per-apartment locationLabel.
+  const [generalLocation, setGeneralLocation] = useState('')
   // Same remembered range as the home page search form.
   const { checkIn, checkOut, guests } = useMemo(readClientSearch, [])
 
@@ -34,7 +37,13 @@ export default function MapPage() {
         if (!ignore) setStatus('error')
       })
     // The company/building marker, when a location is pinned in the Admin panel.
-    apiGet<{ companyName?: string; companyLatitude?: string; companyLongitude?: string }>('/api/booking/settings/')
+    apiGet<{
+      companyName?: string
+      companyLatitude?: string
+      companyLongitude?: string
+      buildingName?: string
+      buildingAddress?: string
+    }>('/api/booking/settings/')
       .then((settings) => {
         if (ignore) return
         const lat = Number(settings.companyLatitude)
@@ -42,6 +51,7 @@ export default function MapPage() {
         if (Number.isFinite(lat) && Number.isFinite(lng) && settings.companyLatitude && settings.companyLongitude) {
           setHome({ lat, lng, name: settings.companyName || 'Our building' })
         }
+        setGeneralLocation(settings.buildingName || settings.buildingAddress || '')
       })
       .catch(() => {})
     return () => {
@@ -92,7 +102,7 @@ export default function MapPage() {
               <span className={styles.cardBody}>
                 <span className={styles.cardName}>{property.name}</span>
                 <span className={styles.cardMeta}>
-                  {property.locationLabel || 'Prishtina, Kosovo'} · {property.apartmentType}
+                  {generalLocation ? `${generalLocation} · ` : ''}{property.apartmentType}
                 </span>
                 <span className={styles.cardMeta}>
                   {property.maxGuests} guests · {property.beds} bed{property.beds !== 1 ? 's' : ''} ·{' '}
@@ -123,6 +133,7 @@ export default function MapPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           guests={guests}
+          generalLocation={generalLocation}
           onClose={() => setDetail(null)}
           onReserve={(ci, co, g, total) => {
             setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })
