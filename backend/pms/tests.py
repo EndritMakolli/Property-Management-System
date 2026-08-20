@@ -21,17 +21,39 @@ from .views._pricing import calculate_price
 
 
 def make_property(**overrides):
+    """Build a property that has a nightly rate.
+
+    `base_price_eur` is no longer a column — a rate comes from a Base Prices
+    rule. The keyword is still accepted and still means "this apartment costs
+    this much a night", so every test that set it keeps saying what it meant;
+    it now creates the rule that makes it true. Pass None for a deliberately
+    unpriced property.
+    """
+    price = overrides.pop("base_price_eur", Decimal("50.00"))
     defaults = {
         "name": "Test Apartment",
         "bedrooms": 1,
         "max_guests": 2,
-        "base_price_eur": Decimal("50.00"),
         "platform": Property.Platform.AIRSTAY,
         "active": True,
         "listing_active": True,
     }
     defaults.update(overrides)
-    return Property.objects.create(**defaults)
+    prop = Property.objects.create(**defaults)
+
+    if price is not None:
+        PricingRule.objects.create(
+            group=PricingGroup.objects.get(platform="airstay", name="Base Prices"),
+            name=f"{prop.name} base rate",
+            rule_type=PricingRule.RuleType.BASE_PRICE,
+            scope=PricingRule.Scope.PROPERTY,
+            property=prop,
+            enabled=True,
+            application=PricingRule.Application.PER_NIGHT,
+            adjustment_type=PricingRule.AdjustmentType.FIXED_PRICE,
+            adjustment_value=Decimal(price),
+        )
+    return prop
 
 
 def day(offset):
@@ -43,7 +65,7 @@ class PricingEngineTests(TestCase):
         self.prop = make_property()
 
     def _rule(self, group_name, **kwargs):
-        group = PricingGroup.objects.get(name=group_name)
+        group = PricingGroup.objects.get(platform="airstay", name=group_name)
         defaults = {"scope": "all", "enabled": True, "application": "whole_stay"}
         defaults.update(kwargs)
         return PricingRule.objects.create(group=group, **defaults)
@@ -67,7 +89,7 @@ class PricingEngineTests(TestCase):
         # Renamed from test_custom_long_stay_rule_overrides_default: a custom
         # rule no longer wins by being bigger, it wins by being ordered first.
         self._rule(
-            "Stay Discounts", rule_type=PricingRule.RuleType.LONG_STAY,
+            "Length of Stay Discounts", rule_type=PricingRule.RuleType.LONG_STAY,
             sort_order=0, min_nights=7,
             adjustment_type=PricingRule.AdjustmentType.PCT_DECREASE,
             adjustment_value=Decimal("20"),
@@ -78,7 +100,7 @@ class PricingEngineTests(TestCase):
 
     def test_disabled_rule_is_ignored(self):
         self._rule(
-            "Stay Discounts", rule_type=PricingRule.RuleType.LONG_STAY,
+            "Length of Stay Discounts", rule_type=PricingRule.RuleType.LONG_STAY,
             enabled=False, sort_order=0, min_nights=2,
             adjustment_type=PricingRule.AdjustmentType.PCT_DECREASE,
             adjustment_value=Decimal("90"),

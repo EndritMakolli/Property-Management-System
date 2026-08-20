@@ -384,35 +384,122 @@ export type HouseRuleRecord = {
   active: boolean
 }
 
+export type PricingGroupRecord = {
+  id: string
+  platform: 'airstay' | 'fleet'
+  name: string
+  sortOrder: number
+  behaviour: 'stack' | 'exclusive' | 'best' | 'specific'
+  ruleCount: number
+}
+
 export type PricingRuleRecord = {
   id: string
-  ruleType: 'long_stay' | 'seasonal' | 'last_minute' | 'minimum_nights'
+  name: string
+  groupId: string
+  ruleType:
+    | 'base_price'
+    | 'block_discounts'
+    | 'date_adjust'
+    | 'long_stay'
+    | 'seasonal'
+    | 'last_minute'
+    | 'non_refundable'
+    | 'promo'
+    | 'manual'
   scope: 'all' | 'property' | 'bedroom_group'
   propertyId: string | null
   bedroomGroup: number | null
   enabled: boolean
+  sortOrder: number
+  application: 'per_night' | 'whole_stay'
+  isFinal: boolean
+  stacks: boolean
+  blocksGroupId: string | null
+  blocksRuleId: string | null
   minNights: number | null
-  discountPct: string | null
   daysBeforeCheckin: number | null
   startDate: string | null
   endDate: string | null
-  adjustmentType: string
+  adjustmentType: '' | 'fixed_price' | 'pct_increase' | 'pct_decrease' | 'fixed_increase' | 'fixed_decrease'
   adjustmentValue: string | null
+  code: string | null
+  usageLimit: number | null
+  usageCount: number
+  minSubtotalEur: string | null
   createdAt: string
 }
 
-export type PromoCodeRecord = {
+export type StayConstraintRecord = {
   id: string
-  code: string
-  discountType: 'percentage' | 'fixed_amount'
-  discountValue: string
+  platform: 'airstay' | 'fleet'
+  kind: 'min_nights' | 'max_advance'
+  value: number | null
   scope: 'all' | 'property' | 'bedroom_group'
   propertyId: string | null
   bedroomGroup: number | null
-  usageLimit: number | null
-  usageCount: number
-  active: boolean
+  startDate: string | null
+  endDate: string | null
+  enabled: boolean
   createdAt: string
+}
+
+// The engine's verdict on one rule for one stay. `reason` is written in plain
+// English by the engine itself (_pricing_engine.py `_report`) and is meant to
+// be shown to staff verbatim.
+export type RuleReport = {
+  id: string
+  name: string
+  type: string
+  group: string
+  application: string
+  status: 'applied' | 'not_eligible' | 'overridden' | 'locked_out' | 'skipped_invalid'
+  reason: string
+  amount: string
+}
+
+// Matches `_serialize_quote` in `backend/pms/views/_pricing_rules_api.py`.
+// A successful staff-mode breakdown. Staff-only: `rules` includes rules that
+// did NOT apply, and `nightlyBreakdown` carries the lock/rule-id detail that
+// calculate_price(public=True) strips.
+export type PricingQuote = {
+  baseNightly: string
+  effectiveNightly: string
+  hasSeasonal: boolean
+  subtotal: string
+  longStayPct: string
+  longStayAmount: string
+  lastMinutePct: string
+  lastMinuteAmount: string
+  nonRefundablePct: string
+  nonRefundableAmount: string
+  promoAmount: string
+  total: string
+  firstNightPrice: string
+  averageNightlyRate: string
+  protectedTotal: string
+  nights: number
+  minNightsRequired: number
+  errors: string[]
+  nightlyBreakdown: { date: string; rate: string; locked: boolean; ruleIds: string[] }[]
+  rules: RuleReport[]
+}
+
+// A quote for a given property is either a full breakdown, or — if pricing
+// that property raised — the error fallback `{ error, total }` with none of
+// the other fields, since `property_quotes` never lets one failure take the
+// whole response down.
+export type QuoteRecord =
+  | PricingQuote
+  | {
+      error: string
+      total: string
+    }
+
+// Response of POST /api/pricing/preview/ — one stay, priced and explained.
+export type PricingPreview = {
+  preview: PricingQuote
+  promoError: string
 }
 
 export type CancellationPolicyRecord = {
@@ -434,7 +521,6 @@ export type BookingSiteSettingsRecord = {
   sameDayBookingEnabled: boolean
   sameDayBookingCutoffHour: number
   advanceBookingLimitMonths: number
-  nonRefundableDiscountPct: string
   mapRadiusM: number
 }
 

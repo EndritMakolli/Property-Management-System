@@ -5,10 +5,12 @@ import type {
 } from '../types/domain'
 import { activePlatform, apiDelete, apiForm, apiGet, apiSend } from './client'
 
+// No price here: a nightly rate is set by a Base Prices rule on the pricing
+// page, not on the property. `PropertyListing.basePriceEur` is still returned
+// for display, but it is derived from those rules and is read-only.
 export type PropertyPayload = {
   name: string
   bedrooms: number
-  basePriceEur: string
   address: string
   floor?: string
   wifiName?: string
@@ -40,7 +42,6 @@ export type PropertySyncPayload = {
 function appendPropertyFields(formData: FormData, payload: PropertyPayload | PropertyEditPayload) {
   formData.append('name', payload.name)
   formData.append('bedrooms', String(payload.bedrooms))
-  formData.append('basePriceEur', payload.basePriceEur)
   formData.append('address', payload.address)
   formData.append('floor', payload.floor || '')
   formData.append('wifiName', payload.wifiName || '')
@@ -88,7 +89,6 @@ export async function updateProperty(id: string, payload: PropertyEditPayload) {
   const data = await apiSend<{ property: PropertyListing }>(`/api/properties/${id}/`, 'PATCH', {
     name: payload.name,
     bedrooms: payload.bedrooms,
-    basePriceEur: payload.basePriceEur,
     address: payload.address,
     floor: payload.floor || '',
     wifiName: payload.wifiName || '',

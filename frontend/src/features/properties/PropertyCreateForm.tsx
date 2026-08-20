@@ -199,7 +199,6 @@ export function PropertyCreateForm({
     const base = {
       name: String(form.get('name') || ''),
       bedrooms: Number(form.get('bedrooms') || 0),
-      basePriceEur: String(form.get('basePriceEur') || '0'),
       address: String(form.get('address') || ''),
       floor: String(form.get('floor') || ''),
       wifiName: String(form.get('wifiName') || ''),
@@ -315,10 +314,6 @@ export function PropertyCreateForm({
               <label className="form-field">
                 Floor
                 <input name="floor" placeholder="3rd floor" type="text" defaultValue={property?.floor || ''} />
-              </label>
-              <label className="form-field">
-                Price per night (EUR)
-                <input min="0" name="basePriceEur" placeholder="62" required step="0.01" type="number" defaultValue={property?.basePriceEur || ''} />
               </label>
             </div>
           </div>

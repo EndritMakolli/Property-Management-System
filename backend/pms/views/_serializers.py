@@ -2,6 +2,7 @@ from django.utils.timezone import localdate
 from django.conf import settings
 
 from ..models import Reservation
+from ._pricing_engine import base_rate_for
 from ._roles import user_role
 
 
@@ -56,7 +57,7 @@ def serialize_property(prop, request):
         "wifiName": prop.wifi_name or "",
         "wifiPassword": prop.wifi_password or "",
         "apartmentType": property_apartment_type(prop),
-        "basePriceEur": str(prop.base_price_eur),
+        "basePriceEur": str(base_rate_for(prop)),
         "photoUrl": photo_url,
         "address": prop.address or "Home in Prishtina, Kosovo",
         "airbnbIcalUrl": prop.airbnb_ical_url or "",

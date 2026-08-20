@@ -7,6 +7,19 @@ export interface PublicPriceBreakdown {
   nights: number
   effective_nightly: string
   errors: string[]
+  average_nightly_rate?: string
+  protected_total?: string
+  nightly_breakdown?: { date: string; rate: string; locked: boolean; ruleIds: string[] }[]
+  rules?: {
+    id: string
+    name: string
+    type: string
+    group: string
+    application: string
+    status: 'applied' | 'not_eligible' | 'overridden' | 'locked_out' | 'skipped_invalid'
+    reason: string
+    amount: string
+  }[]
   [key: string]: unknown
 }
 
@@ -85,13 +98,19 @@ export async function fetchBookingPropertyDetail(id: string) {
   return data.property
 }
 
-export async function fetchBookingProperties(checkIn?: string, checkOut?: string) {
+export async function fetchBookingProperties(checkIn?: string, checkOut?: string, guests?: number) {
   // With dates, each property carries a priceBreakdown for that stay so
   // listings show rule-adjusted prices instead of the base rate.
+  // `guests` filters to apartments that hold the party, matching the search —
+  // without it the map offered apartments too small for the party it was
+  // showing prices for.
   const params = new URLSearchParams()
   if (checkIn && checkOut) {
     params.set('check_in', checkIn)
     params.set('check_out', checkOut)
+  }
+  if (guests && guests > 1) {
+    params.set('guests', String(guests))
   }
   const query = params.toString()
   const data = await apiGet<{ properties: PublicProperty[] }>(

@@ -75,10 +75,31 @@ def seed(apps, schema_editor):
 
     # 2. Default long-stay tiers, biggest first so the lowest sort_order is
     #    the tier that used to win.
+    #
+    #    Seeded at 900+index, NOT 0-5: step 1 above assigns every migrated
+    #    rule a sort_order that is just its index over ALL rules ordered by
+    #    created_at, so an operator's own rule can land anywhere, including
+    #    above 5 — a custom rule could then lose to a built-in default, and a
+    #    brand-new rule created later through the UI defaults sort_order to 0
+    #    and ties the 28-night tier, where the created_at tiebreak hands
+    #    victory to the older seeded row. Sitting the defaults in a high band
+    #    instead means any operator rule at the ordinary 0-and-up range wins
+    #    automatically, with no need to know about this band at all.
     stay = groups["Stay Discounts"]
     for index, (min_nights, pct) in enumerate(DEFAULT_TIERS):
+        # A rule with no adjustment_value can never discount anything — the
+        # pricing engine reports it skipped_invalid, "no amount set" — so it
+        # must not count as a stand-in for this default tier.
+        #
+        # This guard only ever matches scope="all" rules, so a property- or
+        # bedroom-scoped custom rule at the same min_nights never suppresses
+        # a default — that's intentional now that defaults sit in the 900
+        # band: a scoped custom rule simply coexists with (and, being at the
+        # ordinary sort_order range, outranks) the default rather than
+        # needing to replace it.
         exists = PricingRule.objects.filter(
-            rule_type="long_stay", scope="all", enabled=True, min_nights=min_nights
+            rule_type="long_stay", scope="all", enabled=True, min_nights=min_nights,
+            adjustment_value__isnull=False,
         ).exists()
         if exists:
             continue
@@ -92,7 +113,7 @@ def seed(apps, schema_editor):
             adjustment_type="pct_decrease",
             adjustment_value=pct,
             application="whole_stay",
-            sort_order=index,
+            sort_order=900 + index,
         )
 
     # 3. The non-refundable discount, previously a settings field with no UI.

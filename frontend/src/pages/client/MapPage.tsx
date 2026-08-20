@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { fetchBookingProperties, type PublicProperty } from '../../api/bookingApi'
-import { apiGet } from '../../api/client'
+import { useBuildingLocation } from '../../components/client/useBuildingLocation'
 import ApartmentDetailModal from '../../components/client/ApartmentDetailModal'
 import ClientBookingModal, { type BookingDraft } from '../../components/client/ClientBookingModal'
 import type { HomeMarker, MapProperty } from '../../components/client/maps/PropertiesMap'
@@ -17,16 +17,19 @@ export default function MapPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<PublicProperty | null>(null)
   const [draft, setDraft] = useState<BookingDraft | null>(null)
-  const [home, setHome] = useState<HomeMarker | null>(null)
-  // One shared building location for every apartment (name, falling back to
-  // address) — guests never see a per-apartment locationLabel.
-  const [generalLocation, setGeneralLocation] = useState('')
   // Same remembered range as the home page search form.
   const { checkIn, checkOut, guests } = useMemo(readClientSearch, [])
+  // One shared building location for every apartment — guests never see a
+  // per-apartment locationLabel, and the detail panel maps the same point.
+  const building = useBuildingLocation()
+  const home: HomeMarker | null =
+    building.latitude !== null && building.longitude !== null
+      ? { lat: building.latitude, lng: building.longitude, name: building.name }
+      : null
 
   useEffect(() => {
     let ignore = false
-    fetchBookingProperties(checkIn, checkOut)
+    fetchBookingProperties(checkIn, checkOut, guests)
       .then((rows) => {
         if (!ignore) {
           setProperties(rows)
@@ -37,27 +40,10 @@ export default function MapPage() {
         if (!ignore) setStatus('error')
       })
     // The company/building marker, when a location is pinned in the Admin panel.
-    apiGet<{
-      companyName?: string
-      companyLatitude?: string
-      companyLongitude?: string
-      buildingName?: string
-      buildingAddress?: string
-    }>('/api/booking/settings/')
-      .then((settings) => {
-        if (ignore) return
-        const lat = Number(settings.companyLatitude)
-        const lng = Number(settings.companyLongitude)
-        if (Number.isFinite(lat) && Number.isFinite(lng) && settings.companyLatitude && settings.companyLongitude) {
-          setHome({ lat, lng, name: settings.companyName || 'Our building' })
-        }
-        setGeneralLocation(settings.buildingName || settings.buildingAddress || '')
-      })
-      .catch(() => {})
     return () => {
       ignore = true
     }
-  }, [checkIn, checkOut])
+  }, [checkIn, checkOut, guests])
 
   const pinnable = useMemo<MapProperty[]>(
     () =>
@@ -102,7 +88,7 @@ export default function MapPage() {
               <span className={styles.cardBody}>
                 <span className={styles.cardName}>{property.name}</span>
                 <span className={styles.cardMeta}>
-                  {generalLocation ? `${generalLocation} · ` : ''}{property.apartmentType}
+                  {building.label ? `${building.label} · ` : ''}{property.apartmentType}
                 </span>
                 <span className={styles.cardMeta}>
                   {property.maxGuests} guests · {property.beds} bed{property.beds !== 1 ? 's' : ''} ·{' '}
@@ -133,7 +119,9 @@ export default function MapPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           guests={guests}
-          generalLocation={generalLocation}
+          generalLocation={building.label}
+          buildingLatitude={building.latitude}
+          buildingLongitude={building.longitude}
           onClose={() => setDetail(null)}
           onReserve={(ci, co, g, total) => {
             setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })

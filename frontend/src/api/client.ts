@@ -97,6 +97,17 @@ export async function apiForm<T>(url: string, method: 'POST' | 'PATCH', form: Fo
 export async function apiDelete(url: string, errorMessage: string): Promise<void> {
   const response = await apiFetch(url, { method: 'DELETE' })
   if (!response.ok) {
-    throw new Error(errorMessage)
+    // Prefer the server's specific message (e.g. "This group still holds 3
+    // rule(s)...") over the generic fallback, when the body actually has one.
+    const rawBody = await response.text()
+    let serverError: unknown
+    if (rawBody) {
+      try {
+        serverError = (JSON.parse(rawBody) as { error?: unknown }).error
+      } catch {
+        // Not JSON — fall back to the generic message below.
+      }
+    }
+    throw new Error(serverError ? formatApiError(serverError) : errorMessage)
   }
 }

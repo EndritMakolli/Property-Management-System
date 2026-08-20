@@ -1,11 +1,11 @@
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchProperties, fetchReservations } from '../api/pmsApi'
+import { fetchProperties, fetchQuotes, fetchReservations } from '../api/pmsApi'
 import { DateInput } from '../components/shared/DateInput'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
 import { NewReservationModal } from '../features/reservations/NewReservationModal'
-import type { PropertyListing, ReservationRecord } from '../types/domain'
+import type { PropertyListing, QuoteRecord, ReservationRecord } from '../types/domain'
 import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../utils/date'
 
 const availabilitySearchStorageKey = 'pms.availability.search'
@@ -80,6 +80,12 @@ export function AvailabilityPage() {
     checkOut: string
     nightlyPrice: string
   } | null>(null)
+
+  // Rule-adjusted quotes for the properties currently on screen, keyed by
+  // property id. Fetched after a search resolves; while a fetch is in
+  // flight (or before any search has run) this stays whatever it was —
+  // callers fall back to `basePriceEur` rather than showing a spinner.
+  const [quotes, setQuotes] = useState<Record<string, QuoteRecord>>({})
 
   useEffect(() => {
     let ignore = false
@@ -203,13 +209,51 @@ export function AvailabilityPage() {
   const calendarProperties = availableProperties.length > 0 ? availableProperties : recommendedProperties
   const recommendationReservations = useMemo(
     // Booked segments already exist as real reservations — only ghost the rest.
-    () => buildRecommendationReservations(recommendation.filter((segment) => segment.status === 'available')),
-    [recommendation],
+    () =>
+      buildRecommendationReservations(
+        recommendation.filter((segment) => segment.status === 'available'),
+        quotes,
+      ),
+    [quotes, recommendation],
   )
   const calendarReservations = useMemo(
     () => [...reservations, ...recommendationReservations],
     [recommendationReservations, reservations],
   )
+
+  // Every property shown anywhere on the page right now (full-stay results,
+  // insight rows, split-stay segments) — quoted together in one request.
+  const listedPropertyIdsKey = useMemo(() => {
+    const ids = new Set<string>()
+    for (const property of availableProperties) ids.add(property.id)
+    for (const property of recommendedProperties) ids.add(property.id)
+    for (const insight of insights) ids.add(insight.property.id)
+    return [...ids].sort().join(',')
+  }, [availableProperties, insights, recommendedProperties])
+
+  useEffect(() => {
+    let ignore = false
+    const propertyIds = listedPropertyIdsKey ? listedPropertyIdsKey.split(',') : []
+
+    if (status !== 'ready' || nights < 1 || propertyIds.length === 0) {
+      setQuotes({})
+      return
+    }
+
+    fetchQuotes(checkIn, checkOut, propertyIds)
+      .then((data) => {
+        if (!ignore) setQuotes(data)
+      })
+      .catch(() => {
+        // Leave quotes as-is (or empty) — every call site falls back to
+        // basePriceEur, so a failed quote fetch never blanks the page.
+        if (!ignore) setQuotes({})
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [checkIn, checkOut, listedPropertyIdsKey, nights, status])
 
   useEffect(() => {
     if (checkIn) {
@@ -235,7 +279,7 @@ export function AvailabilityPage() {
       propertyId: property.id,
       checkIn,
       checkOut,
-      nightlyPrice: '0.00',
+      nightlyPrice: quotedNightlyRate(quotes[property.id], property.basePriceEur),
     })
   }
 
@@ -304,23 +348,29 @@ export function AvailabilityPage() {
             </span>
           </div>
           <div className="availability-results">
-            {availableProperties.map((property) => (
-              <article className="availability-card" key={property.id}>
-                {property.photoUrl ? <img alt="" src={property.photoUrl} /> : <span />}
-                <div>
-                  <strong>{property.name}</strong>
-                  <p>{property.apartmentType}</p>
-                  <small>{Number(property.basePriceEur || 0).toFixed(0)} EUR per night</small>
-                </div>
-                <button
-                  className="primary-button availability-book-btn"
-                  type="button"
-                  onClick={() => openBookModal(property)}
-                >
-                  Book
-                </button>
-              </article>
-            ))}
+            {availableProperties.map((property) => {
+              const quote = quotes[property.id]
+              const nightlyRate = quotedNightlyRate(quote, property.basePriceEur)
+              const totalNote = quotedTotalNote(quote, nights)
+              return (
+                <article className="availability-card" key={property.id}>
+                  {property.photoUrl ? <img alt="" src={property.photoUrl} /> : <span />}
+                  <div>
+                    <strong>{property.name}</strong>
+                    <p>{property.apartmentType}</p>
+                    <small>{Number(nightlyRate || 0).toFixed(0)} EUR per night</small>
+                    {totalNote && <small>{totalNote}</small>}
+                  </div>
+                  <button
+                    className="primary-button availability-book-btn"
+                    type="button"
+                    onClick={() => openBookModal(property)}
+                  >
+                    Book
+                  </button>
+                </article>
+              )
+            })}
           </div>
           {availableProperties.length === 0 && insights.length > 0 && (
             <section className="availability-insights">
@@ -378,7 +428,10 @@ export function AvailabilityPage() {
                             propertyId: insight.property.id,
                             checkIn: insight.windowStart,
                             checkOut: bookCheckOut,
-                            nightlyPrice: '0.00',
+                            nightlyPrice: quotedNightlyRate(
+                              quotes[insight.property.id],
+                              insight.property.basePriceEur,
+                            ),
                           })
                         }
                       >
@@ -425,7 +478,7 @@ export function AvailabilityPage() {
                           propertyId: segment.property.id,
                           checkIn: segment.checkIn,
                           checkOut: segment.checkOut,
-                          nightlyPrice: '0.00',
+                          nightlyPrice: quotedNightlyRate(quotes[segment.property.id], segment.property.basePriceEur),
                         })}
                       >
                         Book segment
@@ -573,7 +626,10 @@ function longestFreeCheckout(
   return cursor
 }
 
-function buildRecommendationReservations(segments: StaySegment[]): ReservationRecord[] {
+function buildRecommendationReservations(
+  segments: StaySegment[],
+  quotes: Record<string, QuoteRecord>,
+): ReservationRecord[] {
   return segments.map((segment, index) => ({
     id: `recommendation-${index}-${segment.property.id}-${segment.checkIn}`,
     guestName: 'Recommended stay',
@@ -588,11 +644,33 @@ function buildRecommendationReservations(segments: StaySegment[]): ReservationRe
     checkIn: segment.checkIn,
     checkOut: segment.checkOut,
     totalNights: segment.nights,
-    nightlyPrice: '0.00',
+    nightlyPrice: quotedNightlyRate(quotes[segment.property.id], segment.property.basePriceEur),
     totalPaid: '0',
     isArchived: false,
     archivedAt: '',
   }))
+}
+
+// A quote is either the full rule-adjusted breakdown or `{ error, total }`
+// when pricing raised for that property (see QuoteRecord in types/domain.ts).
+// Both here and at every prefill site, an error — or no quote yet, e.g. still
+// loading or no search has run — falls back to the property's flat base
+// price rather than showing a spinner or blanking the price out.
+function quotedNightlyRate(quote: QuoteRecord | undefined, basePriceEur: string): string {
+  if (!quote || 'error' in quote) return basePriceEur
+  return quote.averageNightlyRate
+}
+
+// Rule-adjusted totals aren't always nightly rate × nights (e.g. a locked
+// first-night rate, or a whole-stay promo) — surface the real total when it
+// diverges so staff aren't misled by the per-night figure alone.
+function quotedTotalNote(quote: QuoteRecord | undefined, nights: number): string | null {
+  if (!quote || 'error' in quote) return null
+  const rate = Number(quote.averageNightlyRate)
+  const total = Number(quote.total)
+  if (!Number.isFinite(rate) || !Number.isFinite(total)) return null
+  if (Math.abs(total - rate * nights) < 0.01) return null
+  return `Total €${total.toFixed(2)} for ${nights} night${nights === 1 ? '' : 's'}`
 }
 
 // For every apartment matching the bedroom filter, walk its bookings from the

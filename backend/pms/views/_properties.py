@@ -69,7 +69,6 @@ def property_list(request):
                 floor=request.POST.get("floor") or "",
                 wifi_name=request.POST.get("wifiName") or "",
                 wifi_password=request.POST.get("wifiPassword") or "",
-                base_price_eur=decimal_value(request.POST.get("basePriceEur"), "basePriceEur"),
                 platform=platform,
                 active=True,
                 description=request.POST.get("description") or "",
@@ -136,8 +135,6 @@ def property_detail(request, property_id):
             if "reviewCount" in payload:
                 rc = payload.get("reviewCount")
                 prop.review_count = int(rc) if rc not in (None, "") else 0
-            if "basePriceEur" in payload:
-                prop.base_price_eur = decimal_value(payload.get("basePriceEur"), "basePriceEur")
             if "address" in payload:
                 prop.address = payload.get("address") or ""
             if "floor" in payload:

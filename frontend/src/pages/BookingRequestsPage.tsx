@@ -68,12 +68,11 @@ export function BookingRequestsPage() {
     setApprovingId(id)
     setActionError('')
     try {
-      await approveBookingRequest(id)
-      showSuccess(
-        req
-          ? `Request approved — reservation created for ${req.guestName} (${req.checkIn} → ${req.checkOut}).`
-          : 'Request approved and reservation created.',
-      )
+      const response = await approveBookingRequest(id)
+      const base = req
+        ? `Request approved — reservation created for ${req.guestName} (${req.checkIn} → ${req.checkOut}).`
+        : 'Request approved and reservation created.'
+      showSuccess(response.warning ? `${base} ${response.warning}` : base)
       await load(0)
       setConfirmedOffset(0)
     } catch (e: unknown) {

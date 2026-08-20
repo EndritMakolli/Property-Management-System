@@ -7,9 +7,9 @@ import {
   type AvailabilityResponse,
   type PublicProperty,
 } from '../../api/bookingApi'
-import { apiGet } from '../../api/client'
 import ClientBookingModal, { type BookingDraft } from '../../components/client/ClientBookingModal'
 import ApartmentDetailModal from '../../components/client/ApartmentDetailModal'
+import { useBuildingLocation } from '../../components/client/useBuildingLocation'
 import styles from './ClientHomePage.module.css'
 
 const FEATURES = [
@@ -37,7 +37,7 @@ export default function ClientHomePage() {
   const [detail, setDetail] = useState<PublicProperty | null>(null)
   // One shared building location for every apartment (name, falling back to
   // address) — guests never see a per-apartment locationLabel.
-  const [generalLocation, setGeneralLocation] = useState('')
+  const building = useBuildingLocation()
 
   const resultsRef = useRef<HTMLDivElement>(null)
 
@@ -56,20 +56,6 @@ export default function ClientHomePage() {
   useEffect(() => {
     runSearch(stored.checkIn, stored.checkOut, stored.guests)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // The shared building location, for the apartment detail modal.
-  useEffect(() => {
-    let ignore = false
-    apiGet<{ buildingName?: string; buildingAddress?: string }>('/api/booking/settings/')
-      .then((settings) => {
-        if (ignore) return
-        setGeneralLocation(settings.buildingName || settings.buildingAddress || '')
-      })
-      .catch(() => {})
-    return () => {
-      ignore = true
-    }
   }, [])
 
   // Remember the selection across navigation.
@@ -382,7 +368,9 @@ export default function ClientHomePage() {
           checkIn={checkIn}
           checkOut={checkOut}
           guests={guests}
-          generalLocation={generalLocation}
+          generalLocation={building.label}
+          buildingLatitude={building.latitude}
+          buildingLongitude={building.longitude}
           onClose={() => setDetail(null)}
           onReserve={(ci, co, g, total) => {
             setDraft({ title: detail.name, checkIn: ci, checkOut: co, nights: calculateNights(ci, co), price: total, propertyId: detail.id, guests: g })

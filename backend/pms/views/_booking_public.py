@@ -26,6 +26,7 @@ from ..models import (
     Reservation,
 )
 from ._pricing import calculate_price, _min_nights_required, resolve_promo_rule
+from ._pricing_engine import base_rate_for
 from ._utils import json_payload, throttle
 
 # The split-stay search pairs every candidate with every other, so it grows
@@ -90,7 +91,7 @@ def _serialize_public_property(prop, request, price_breakdown=None, site_setting
         "bathrooms": prop.bathrooms,
         "maxGuests": prop.max_guests,
         "apartmentType": f"{prop.bedrooms} {'bedroom' if prop.bedrooms == 1 else 'bedrooms'}",
-        "basePriceEur": str(prop.base_price_eur),
+        "basePriceEur": str(base_rate_for(prop)),
         "description": prop.description or "",
         "locationLabel": prop.location_label or "",
         "latitude": approx_lat,
@@ -291,6 +292,17 @@ def booking_properties(request):
         platform=Property.Platform.AIRSTAY,
     ).prefetch_related("photos", "property_amenities").order_by("bedrooms", "name")
 
+    # Same rule as /booking/availability/: an apartment must hold at least the
+    # party, and may hold more. Without this the map page — which prints each
+    # apartment's capacity on its card — offered two-person studios to a party
+    # of five. A missing or unparseable value means "no preference".
+    try:
+        guests = int(request.GET.get("guests") or "1")
+    except (TypeError, ValueError):
+        guests = 1
+    if guests > 1:
+        props = props.filter(max_guests__gte=guests)
+
     # Optional stay dates let listings (e.g. the map page) show the real
     # rule-adjusted price for the guest's dates instead of the base rate.
     check_in = check_out = None
@@ -309,7 +321,7 @@ def booking_properties(request):
     for prop in props:
         breakdown = None
         if check_in and check_out:
-            breakdown = calculate_price(prop, check_in, check_out)
+            breakdown = calculate_price(prop, check_in, check_out, public=True)
             min_nights = breakdown.get("min_nights_required") or 0
         else:
             min_nights = _min_nights_required(prop, today, today + timedelta(days=1))
@@ -441,7 +453,7 @@ def booking_availability(request):
             continue
         if prop.max_guests < guests:
             continue
-        breakdown = calculate_price(prop, check_in, check_out)
+        breakdown = calculate_price(prop, check_in, check_out, public=True)
         if breakdown["errors"]:
             # Free but the requested stay is too short — surface it with its
             # minimum instead of hiding the apartment without explanation.
@@ -481,7 +493,7 @@ def booking_availability(request):
         # same ~5 queries per property for every pair it appeared in.
         priced = {}
         for prop in candidate_props:
-            bd = calculate_price(prop, check_in, check_out)
+            bd = calculate_price(prop, check_in, check_out, public=True)
             if not bd["errors"]:
                 priced[prop.id] = bd
 
@@ -543,7 +555,10 @@ def booking_calculate(request):
 
     promo_rule, promo_error = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_rule=promo_rule)
+    breakdown = calculate_price(
+        prop, check_in, check_out,
+        is_non_refundable=is_non_refundable, promo_rule=promo_rule, public=True,
+    )
     return JsonResponse({
         "priceBreakdown": breakdown,
         "promoError": promo_error or None,
@@ -582,7 +597,23 @@ def booking_validate_promo(request):
         PricingRule.AdjustmentType.PCT_INCREASE,
         PricingRule.AdjustmentType.PCT_DECREASE,
     )
+    # Full (non-public) breakdown on purpose: resolve_promo_rule deliberately
+    # leaves the minimum-subtotal check to the engine (it needs pass-1's
+    # subtotal, which isn't known until pricing runs), so a code below its
+    # minimum spend resolves here as a real rule that simply earns 0.00 in
+    # pass 2. That must not read as "valid" to the guest — surface the
+    # engine's own reason for the zero instead of returning a discount of
+    # nothing under valid: true.
     breakdown = calculate_price(prop, check_in, check_out, promo_rule=promo_rule)
+    if Decimal(breakdown["promo_amount"]) <= Decimal("0"):
+        reason = next(
+            (r["reason"] for r in breakdown["rules"] if r["id"] == str(promo_rule.pk)),
+            "",
+        )
+        return JsonResponse({
+            "valid": False,
+            "error": reason or "That promo code does not apply to this stay.",
+        })
     return JsonResponse({
         "valid": True,
         "promoCode": promo_rule.code,
@@ -639,7 +670,12 @@ def booking_create_request(request):
     # as today.
     promo_rule, _ = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=False, promo_rule=promo_rule)
+    # public=True: this breakdown is PERSISTED (BookingRequest.price_breakdown)
+    # and re-served later via booking_reservation_detail and the PMS staff
+    # view — it must never carry staff diagnostics or non-applied rule names.
+    breakdown = calculate_price(
+        prop, check_in, check_out, is_non_refundable=False, promo_rule=promo_rule, public=True,
+    )
     if breakdown["errors"]:
         return JsonResponse({"error": breakdown["errors"][0]}, status=400)
 
@@ -657,7 +693,7 @@ def booking_create_request(request):
             total_price_eur=Decimal(breakdown["total"]),
             price_breakdown=breakdown,
             status=BookingRequest.Status.PENDING,
-            promo_rule=promo_rule,
+            promo_code=promo_rule,
         )
 
     return JsonResponse({
@@ -725,7 +761,13 @@ def booking_create_direct(request):
     # as today.
     promo_rule, _ = resolve_promo_rule(promo_code_str, prop, check_in, check_out)
 
-    breakdown = calculate_price(prop, check_in, check_out, is_non_refundable=is_non_refundable, promo_rule=promo_rule)
+    # public=True: this breakdown is PERSISTED (Reservation.price_breakdown_json)
+    # and re-served later via booking_reservation_detail — see the note on the
+    # booking-request path above.
+    breakdown = calculate_price(
+        prop, check_in, check_out,
+        is_non_refundable=is_non_refundable, promo_rule=promo_rule, public=True,
+    )
     if breakdown["errors"]:
         return JsonResponse({"error": breakdown["errors"][0]}, status=400)
 

@@ -8,35 +8,63 @@ import type {
   CancellationPolicyRecord,
   ConfirmedBookingRecord,
   HouseRuleRecord,
+  PricingGroupRecord,
+  PricingPreview,
   PricingRuleRecord,
-  PromoCodeRecord,
+  QuoteRecord,
+  StayConstraintRecord,
 } from '../types/domain'
-import { apiDelete, apiGet, apiSend } from './client'
+import { activePlatform, apiDelete, apiGet, apiSend } from './client'
+
+export type PricingGroupPayload = {
+  name: string
+  sortOrder: number
+  behaviour: 'stack' | 'exclusive' | 'best' | 'specific'
+}
 
 export type PricingRulePayload = {
-  ruleType: 'long_stay' | 'seasonal' | 'last_minute' | 'minimum_nights'
+  name: string
+  groupId: string
+  ruleType:
+    | 'base_price'
+    | 'block_discounts'
+    | 'date_adjust'
+    | 'long_stay'
+    | 'seasonal'
+    | 'last_minute'
+    | 'non_refundable'
+    | 'promo'
+    | 'manual'
   scope: 'all' | 'property' | 'bedroom_group'
   propertyId: string | null
   bedroomGroup: number | null
   enabled: boolean
+  sortOrder: number
+  application: 'per_night' | 'whole_stay'
+  isFinal: boolean
+  stacks: boolean
+  blocksGroupId: string | null
+  blocksRuleId: string | null
   minNights: number | null
-  discountPct: string | null
   daysBeforeCheckin: number | null
   startDate: string | null
   endDate: string | null
-  adjustmentType: string
+  adjustmentType: '' | 'fixed_price' | 'pct_increase' | 'pct_decrease' | 'fixed_increase' | 'fixed_decrease'
   adjustmentValue: string | null
+  code: string | null
+  usageLimit: number | null
+  minSubtotalEur: string | null
 }
 
-export type PromoCodePayload = {
-  code: string
-  discountType: 'percentage' | 'fixed_amount'
-  discountValue: string
+export type StayConstraintPayload = {
+  kind: 'min_nights' | 'max_advance'
+  value: number | null
   scope: 'all' | 'property' | 'bedroom_group'
   propertyId: string | null
   bedroomGroup: number | null
-  usageLimit: number | null
-  active: boolean
+  startDate: string | null
+  endDate: string | null
+  enabled: boolean
 }
 
 export type CancellationPolicyPayload = {
@@ -61,13 +89,34 @@ export async function fetchBookingRequests(offset = 0, limit = 10) {
 }
 
 export async function approveBookingRequest(id: string) {
-  return apiSend<{ request: BookingRequestRecord }>(`/api/booking-requests/${id}/approve/`, 'POST')
+  return apiSend<{ request: BookingRequestRecord; warning?: string }>(`/api/booking-requests/${id}/approve/`, 'POST')
 }
 
 export async function rejectBookingRequest(id: string, rejectionMessage: string) {
   return apiSend<{ request: BookingRequestRecord }>(`/api/booking-requests/${id}/reject/`, 'POST', {
     rejectionMessage,
   })
+}
+
+// ── Pricing groups ─────────────────────────────────────────────────────────────
+
+// AirStay and Fleet keep separate rule sets, so every read and every create
+// carries the platform the page is showing. Without it the pricing page would
+// edit apartment rules while displaying vehicles.
+export async function fetchPricingGroups() {
+  const data = await apiGet<{ pricingGroups: PricingGroupRecord[] }>(
+    `/api/pricing-groups/?platform=${activePlatform()}`,
+  )
+  return data.pricingGroups
+}
+
+export async function updatePricingGroup(id: string, payload: Partial<PricingGroupPayload>) {
+  const data = await apiSend<{ pricingGroup: PricingGroupRecord }>(`/api/pricing-groups/${id}/`, 'PATCH', payload)
+  return data.pricingGroup
+}
+
+export async function deletePricingGroup(id: string) {
+  await apiDelete(`/api/pricing-groups/${id}/`, 'Could not delete pricing group.')
 }
 
 // ── Pricing rules ─────────────────────────────────────────────────────────────
@@ -91,25 +140,67 @@ export async function deletePricingRule(id: string) {
   await apiDelete(`/api/pricing-rules/${id}/`, 'Could not delete pricing rule.')
 }
 
-// ── Promo codes ───────────────────────────────────────────────────────────────
-
-export async function fetchPromoCodes() {
-  const data = await apiGet<{ promoCodes: PromoCodeRecord[] }>('/api/promo-codes/')
-  return data.promoCodes
+export async function reorderPricingRules(groupId: string, order: string[]) {
+  const data = await apiSend<{ pricingRules: PricingRuleRecord[] }>('/api/pricing-rules/reorder/', 'PATCH', {
+    groupId,
+    order,
+  })
+  return data.pricingRules
 }
 
-export async function createPromoCode(payload: PromoCodePayload) {
-  const data = await apiSend<{ promoCode: PromoCodeRecord }>('/api/promo-codes/', 'POST', payload)
-  return data.promoCode
+// ── Stay constraints ───────────────────────────────────────────────────────────
+
+export async function fetchStayConstraints() {
+  const data = await apiGet<{ stayConstraints: StayConstraintRecord[] }>(
+    `/api/stay-constraints/?platform=${activePlatform()}`,
+  )
+  return data.stayConstraints
 }
 
-export async function updatePromoCode(id: string, payload: Partial<PromoCodePayload>) {
-  const data = await apiSend<{ promoCode: PromoCodeRecord }>(`/api/promo-codes/${id}/`, 'PATCH', payload)
-  return data.promoCode
+export async function createStayConstraint(payload: StayConstraintPayload) {
+  const data = await apiSend<{ stayConstraint: StayConstraintRecord }>(
+    `/api/stay-constraints/?platform=${activePlatform()}`, 'POST', payload,
+  )
+  return data.stayConstraint
 }
 
-export async function deletePromoCode(id: string) {
-  await apiDelete(`/api/promo-codes/${id}/`, 'Could not delete promo code.')
+export async function updateStayConstraint(id: string, payload: Partial<StayConstraintPayload>) {
+  const data = await apiSend<{ stayConstraint: StayConstraintRecord }>(
+    `/api/stay-constraints/${id}/`,
+    'PATCH',
+    payload,
+  )
+  return data.stayConstraint
+}
+
+export async function deleteStayConstraint(id: string) {
+  await apiDelete(`/api/stay-constraints/${id}/`, 'Could not delete stay constraint.')
+}
+
+// ── Quotes ──────────────────────────────────────────────────────────────────────
+
+export async function fetchQuotes(checkIn: string, checkOut: string, propertyIds?: string[]) {
+  const data = await apiSend<{ quotes: Record<string, QuoteRecord> }>('/api/properties/quotes/', 'POST', {
+    checkIn,
+    checkOut,
+    ...(propertyIds ? { propertyIds } : {}),
+  })
+  return data.quotes
+}
+
+// ── Pricing preview ─────────────────────────────────────────────────────────────
+
+export type PricingPreviewRequest = {
+  propertyId: string
+  checkIn: string
+  checkOut: string
+  promoCode?: string
+}
+
+/** Price one stay against the live rules and get the engine's verdict on each
+ *  one. Staff-only: the response names rules that did NOT apply and says why. */
+export async function fetchPricingPreview(request: PricingPreviewRequest) {
+  return apiSend<PricingPreview>('/api/pricing/preview/', 'POST', request)
 }
 
 // ── Cancellation policies ─────────────────────────────────────────────────────

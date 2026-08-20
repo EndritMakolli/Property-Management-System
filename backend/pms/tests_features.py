@@ -219,7 +219,7 @@ class PublicListingPricingTests(TestCase):
         self.client = Client()
         self.prop = make_property(base_price_eur=Decimal("50.00"))
         PricingRule.objects.create(
-            group=PricingGroup.objects.get(name="Seasonal Pricing"),
+            group=PricingGroup.objects.get(platform="airstay", name="Seasonal Pricing"),
             application="per_night",
             rule_type=PricingRule.RuleType.SEASONAL,
             scope=PricingRule.Scope.ALL,

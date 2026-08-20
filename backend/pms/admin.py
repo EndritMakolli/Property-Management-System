@@ -21,14 +21,12 @@ class PropertyAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "bedrooms",
-        "base_price_eur",
         "photo",
         "active",
     )
     fields = (
         "name",
         "bedrooms",
-        "base_price_eur",
         "photo",
         "active",
     )

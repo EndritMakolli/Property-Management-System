@@ -25,6 +25,11 @@ interface Props {
   // apartment sits in the same building, so guests never see a per-apartment
   // label. Comes from BookingSiteSettingsRecord via whichever page loaded it.
   generalLocation?: string
+  // Where that building is. Apartments hold no coordinates of their own, so
+  // without this the "Where you'll be" map had nothing to draw and fell back
+  // to a bare text box. See useBuildingLocation.
+  buildingLatitude?: number | null
+  buildingLongitude?: number | null
 }
 
 const HOST_NAME = 'AirStay'
@@ -37,6 +42,7 @@ const HIGHLIGHTS = [
 
 export default function ApartmentDetailModal({
   property, checkIn, checkOut, guests, onClose, onReserve, generalLocation,
+  buildingLatitude = null, buildingLongitude = null,
 }: Props) {
   const [detail, setDetail] = useState<PublicPropertyDetail | null>(null)
   const [showAllPhotos, setShowAllPhotos] = useState(false)
@@ -86,6 +92,14 @@ export default function ApartmentDetailModal({
   const lastMinute = Math.round(Number(bd?.last_minute_amount ?? 0))
   const promo = Math.round(Number(bd?.promo_amount ?? 0))
   const minNightsRequired = Number(bd?.min_nights_required ?? property.minNights ?? 0)
+  // Per-night rates and the rules that actually moved money, for the "How this
+  // price was calculated" explainer below. Old stored breakdowns (created
+  // before this refactor) have neither field, so both default to empty and the
+  // explainer guard (appliedRules.length > 0) simply doesn't render anything —
+  // no empty box, no placeholder. Skipped/ineligible rules are never shown to
+  // guests, only ones with status 'applied' and a non-zero amount.
+  const nightlyBreakdown = bd?.nightly_breakdown ?? []
+  const appliedRules = (bd?.rules ?? []).filter((r) => r.status === 'applied' && Number(r.amount) !== 0)
   // Backend validation errors for the chosen dates (e.g. minimum stay). When no
   // breakdown has loaded yet (the property came from the min-stay-blocked list,
   // or a re-quote failed) fall back to the property's own minimum so Reserve is
@@ -111,6 +125,25 @@ export default function ApartmentDetailModal({
   // locationLabel. Empty when the building name/address aren't set, in which
   // case nothing is rendered (no placeholder text).
   const location = generalLocation?.trim() || ''
+
+  // An apartment's own coordinates win when it has them — none currently do,
+  // since publishing them would pin a guest's exact door. Otherwise the map
+  // shows the building every apartment shares, exactly as the map page pins
+  // it: a plain marker, no privacy circle, because the building IS the
+  // general location rather than an approximation of a private one.
+  const ownLatitude = Number(property.latitude)
+  const ownLongitude = Number(property.longitude)
+  const hasOwnPoint =
+    property.latitude !== '' &&
+    property.longitude !== '' &&
+    Number.isFinite(ownLatitude) &&
+    Number.isFinite(ownLongitude)
+
+  const mapPoint = hasOwnPoint
+    ? { latitude: ownLatitude, longitude: ownLongitude, radiusM: property.mapRadiusM }
+    : buildingLatitude !== null && buildingLongitude !== null
+      ? { latitude: buildingLatitude, longitude: buildingLongitude, radiusM: 0 }
+      : null
   const beds = property.beds || 1
   const baths = property.bathrooms || 1
   const maxGuests = property.maxGuests || 8
@@ -294,6 +327,23 @@ export default function ApartmentDetailModal({
                       <span>Total</span>
                       <span>€{total}</span>
                     </div>
+                    {appliedRules.length > 0 && (
+                      <details className={styles.priceExplainer}>
+                        <summary>How this price was calculated</summary>
+                        {nightlyBreakdown.map((night) => (
+                          <div key={night.date} className={styles.bdRow}>
+                            <span className={styles.bdLabel}>{formatDisplayDate(night.date)}</span>
+                            <span>€{Math.round(Number(night.rate))}</span>
+                          </div>
+                        ))}
+                        {appliedRules.map((rule) => (
+                          <div key={rule.id} className={styles.bdRow}>
+                            <span className={styles.bdLabel}>{rule.name}</span>
+                            <span>{Number(rule.amount) < 0 ? '−' : ''}€{Math.abs(Math.round(Number(rule.amount)))}</span>
+                          </div>
+                        ))}
+                      </details>
+                    )}
                   </div>
                 )}
               </div>
@@ -329,10 +379,7 @@ export default function ApartmentDetailModal({
 
           {/* Location */}
           <h2 className={styles.h2}>Where you'll be</h2>
-          {Number.isFinite(Number(property.latitude)) &&
-          Number.isFinite(Number(property.longitude)) &&
-          property.latitude !== '' &&
-          property.longitude !== '' ? (
+          {mapPoint ? (
             <Suspense
               fallback={
                 <div className={styles.mapBox}>
@@ -341,9 +388,9 @@ export default function ApartmentDetailModal({
               }
             >
               <MiniMap
-                latitude={Number(property.latitude)}
-                longitude={Number(property.longitude)}
-                radiusM={property.mapRadiusM}
+                latitude={mapPoint.latitude}
+                longitude={mapPoint.longitude}
+                radiusM={mapPoint.radiusM}
               />
             </Suspense>
           ) : (

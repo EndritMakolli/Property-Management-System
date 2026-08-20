@@ -11,7 +11,7 @@ from .views._pricing_engine import APPLIED, LOCKED_OUT, OVERRIDDEN, evaluate_sta
 
 
 def make_rule(group_name, **kwargs):
-    group = PricingGroup.objects.get(name=group_name)
+    group = PricingGroup.objects.get(platform="airstay", name=group_name)
     defaults = {"scope": "all", "enabled": True, "application": "whole_stay"}
     defaults.update(kwargs)
     return PricingRule.objects.create(group=group, **defaults)
@@ -79,17 +79,27 @@ class NightlyPassTests(TestCase):
 
 
 class ExclusiveGroupTests(TestCase):
+    """Exclusive picks the FIRST eligible rule, so sort_order decides.
+
+    These build their own group rather than borrowing a seeded one: the
+    seeded ladder is now a "best" group, which deliberately ignores order.
+    See tests_group_behaviour for that.
+    """
+
     def setUp(self):
         self.prop = make_property(base_price_eur=Decimal("50.00"))
         PricingRule.objects.filter(rule_type="long_stay").delete()
+        PricingGroup.objects.create(
+            name="Test Exclusive", sort_order=60, behaviour=PricingGroup.Behaviour.EXCLUSIVE
+        )
 
     def test_lowest_sort_order_wins_even_when_another_rule_discounts_more(self):
         winner = make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=1, min_nights=5,
+            "Test Exclusive", rule_type="long_stay", sort_order=1, min_nights=5,
             adjustment_type="pct_decrease", adjustment_value=Decimal("10.00"),
         )
         loser = make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=9, min_nights=5,
+            "Test Exclusive", rule_type="long_stay", sort_order=9, min_nights=5,
             adjustment_type="pct_decrease", adjustment_value=Decimal("40.00"),
         )
         result = evaluate_stay(self.prop, day(30), day(37))  # 7 nights × 50 = 350
@@ -101,11 +111,11 @@ class ExclusiveGroupTests(TestCase):
         # Two rules at the same sort_order must still resolve deterministically,
         # or the winner flips between runs.
         older = make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=0, min_nights=5,
+            "Test Exclusive", rule_type="long_stay", sort_order=0, min_nights=5,
             adjustment_type="pct_decrease", adjustment_value=Decimal("10.00"),
         )
         newer = make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=0, min_nights=5,
+            "Test Exclusive", rule_type="long_stay", sort_order=0, min_nights=5,
             adjustment_type="pct_decrease", adjustment_value=Decimal("40.00"),
         )
         # created_at is auto_now_add, so set it explicitly: two rules created
@@ -127,11 +137,11 @@ class ExclusiveGroupTests(TestCase):
 
     def test_an_ineligible_first_rule_yields_to_the_next_one(self):
         make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=0, min_nights=28,
+            "Test Exclusive", rule_type="long_stay", sort_order=0, min_nights=28,
             adjustment_type="pct_decrease", adjustment_value=Decimal("50.00"),
         )
         make_rule(
-            "Stay Discounts", rule_type="long_stay", sort_order=1, min_nights=7,
+            "Test Exclusive", rule_type="long_stay", sort_order=1, min_nights=7,
             adjustment_type="pct_decrease", adjustment_value=Decimal("15.00"),
         )
         result = evaluate_stay(self.prop, day(30), day(37))
@@ -256,6 +266,54 @@ class EligibilityTests(TestCase):
         )
         result = evaluate_stay(self.prop, day(30), day(32))
         self.assertEqual(result["total"], Decimal("100.00"))
+
+
+class GroupOrderingTests(TestCase):
+    """PricingGroup.sort_order has no unique constraint and the create
+    endpoint defaults it to 0, so two groups can tie. _load_rules() used to
+    order by (group__sort_order, sort_order, ...) with no group tiebreak, and
+    evaluate_stay built its group list by adjacency — so a rule from an
+    unrelated group landing between two same-group rules (by sort_order)
+    split that group into fragments, each treated as an independent Exclusive
+    group with its own winner."""
+
+    def test_shared_group_sort_order_does_not_fragment_an_exclusive_group(self):
+        prop = make_property(base_price_eur=Decimal("100.00"))
+        # Same sort_order (0) as each other AND as every seeded group.
+        interloper = PricingGroup.objects.create(
+            name="Interloper", sort_order=0, behaviour="stack",
+        )
+        split_risk = PricingGroup.objects.create(
+            name="Split Risk", sort_order=0, behaviour="exclusive",
+        )
+
+        # Always-eligible (no min_nights) long_stay rules so eligibility
+        # never confounds the ordering assertion.
+        winner = PricingRule.objects.create(
+            group=split_risk, rule_type="long_stay", application="whole_stay",
+            sort_order=0, scope="all", enabled=True,
+            adjustment_type="pct_decrease", adjustment_value=Decimal("10.00"),
+        )
+        # This rule's own sort_order (1) sits BETWEEN the exclusive group's
+        # two rules (0 and 2) — exactly the interleave that used to fragment
+        # "Split Risk" into two single-rule groups.
+        PricingRule.objects.create(
+            group=interloper, rule_type="manual", application="whole_stay",
+            sort_order=1, scope="all", enabled=True,
+            adjustment_type="fixed_decrease", adjustment_value=Decimal("1.00"),
+        )
+        loser = PricingRule.objects.create(
+            group=split_risk, rule_type="long_stay", application="whole_stay",
+            sort_order=2, scope="all", enabled=True,
+            adjustment_type="pct_decrease", adjustment_value=Decimal("40.00"),
+        )
+
+        result = evaluate_stay(prop, day(30), day(32))  # 2 nights x 100 = 200
+        self.assertEqual(report_for(result, winner)["status"], APPLIED)
+        self.assertEqual(report_for(result, loser)["status"], OVERRIDDEN)
+        # Fragmented, "loser" would win its own one-rule fragment on top of
+        # "winner" winning its fragment: 200 * 0.9 * 0.6 = 108.00 instead.
+        self.assertEqual(result["total"], Decimal("180.00"))  # 200 - 10%, one winner only
 
 
 class ClampTests(TestCase):

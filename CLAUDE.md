@@ -35,8 +35,8 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 80 tests
-    cd frontend && npx tsc -b --force && npm run build
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 337 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 148 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -68,6 +68,15 @@ financial records. A pre-hosting audit fixed these; keep them true:
 - Paid status is per month (`ExpensePayment` rows), not a flag on the expense.
 - All pricing goes through `calculate_price` in `views/_pricing.py`. Do not add
   a second price calculation.
+- A property has no price of its own. Nightly rates come from the **Base
+  Prices** group; `Property.base_price_eur` was removed in migration 0034.
+- Pricing groups and stay constraints belong to one **platform** (AirStay or
+  Fleet) and never apply across platforms.
+- A group's `behaviour` decides which of its rules apply: `stack` (all, in
+  order), `exclusive` (first match), `best` (biggest discount) and `specific`
+  (narrowest scope). Only `stack` and `exclusive` are order-sensitive.
+- Frontend unit tests run under Vitest (`npm test`); they cover the pure
+  pricing helpers in `src/components/pricing/`, not components.
 - Backend returns camelCase JSON; frontend types live in `frontend/src/types/domain.ts`.
 - Never commit secrets. `backend/.env` is real config (gitignored);
   `backend/.env.example` is a tracked template — placeholders only.

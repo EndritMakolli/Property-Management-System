@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -15,7 +14,6 @@ from ..models import (
     CancellationPolicy,
     HouseRule,
     PricingRule,
-    PromoCode,
     Property,
     PropertyAmenity,
     PropertyPhoto,
@@ -49,41 +47,6 @@ def _serialize_house_rule(rule):
     }
 
 
-def _serialize_pricing_rule(rule):
-    return {
-        "id": str(rule.id),
-        "ruleType": rule.rule_type,
-        "scope": rule.scope,
-        "propertyId": str(rule.property_id) if rule.property_id else None,
-        "bedroomGroup": rule.bedroom_group,
-        "enabled": rule.enabled,
-        "minNights": rule.min_nights,
-        "discountPct": str(rule.discount_pct) if rule.discount_pct is not None else None,
-        "daysBeforeCheckin": rule.days_before_checkin,
-        "startDate": rule.start_date.isoformat() if rule.start_date else None,
-        "endDate": rule.end_date.isoformat() if rule.end_date else None,
-        "adjustmentType": rule.adjustment_type or "",
-        "adjustmentValue": str(rule.adjustment_value) if rule.adjustment_value is not None else None,
-        "createdAt": rule.created_at.isoformat(),
-    }
-
-
-def _serialize_promo_code(promo):
-    return {
-        "id": str(promo.id),
-        "code": promo.code,
-        "discountType": promo.discount_type,
-        "discountValue": str(promo.discount_value),
-        "scope": promo.scope,
-        "propertyId": str(promo.property_id) if promo.property_id else None,
-        "bedroomGroup": promo.bedroom_group,
-        "usageLimit": promo.usage_limit,
-        "usageCount": promo.usage_count,
-        "active": promo.active,
-        "createdAt": promo.created_at.isoformat(),
-    }
-
-
 def _serialize_cancellation_policy(policy):
     return {
         "id": str(policy.id),
@@ -106,7 +69,6 @@ def _serialize_booking_settings(settings):
         "sameDayBookingEnabled": settings.same_day_booking_enabled,
         "sameDayBookingCutoffHour": settings.same_day_booking_cutoff_hour,
         "advanceBookingLimitMonths": settings.advance_booking_limit_months,
-        "nonRefundableDiscountPct": str(settings.non_refundable_discount_pct),
         "mapRadiusM": settings.map_privacy_radius_m,
     }
 
@@ -147,7 +109,7 @@ def _serialize_booking_request_pms(req, request):
         "priceBreakdown": req.price_breakdown,
         "expiresAt": req.expires_at.isoformat(),
         "rejectionMessage": req.rejection_message,
-        "promoCode": req.promo_rule.code if req.promo_rule else None,
+        "promoCode": req.promo_code.code if req.promo_code else None,
     }
 
 
@@ -193,7 +155,7 @@ def booking_request_list(request):
 
     pending = BookingRequest.objects.filter(
         status=BookingRequest.Status.PENDING,
-    ).select_related("property", "promo_rule").prefetch_related("property__photos").order_by("-created_at")
+    ).select_related("property", "promo_code").prefetch_related("property__photos").order_by("-created_at")
 
     # Recent confirmed direct bookings (last 10, expandable)
     offset = int(request.GET.get("offset") or "0")
@@ -223,7 +185,7 @@ def booking_request_approve(request, request_id):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
     try:
-        req = BookingRequest.objects.select_related("property", "promo_rule").get(pk=request_id)
+        req = BookingRequest.objects.select_related("property", "promo_code").get(pk=request_id)
     except BookingRequest.DoesNotExist:
         return JsonResponse({"error": "Booking request not found."}, status=404)
 
@@ -243,7 +205,7 @@ def booking_request_approve(request, request_id):
     with transaction.atomic():
         nights = req.nights
         total = req.total_price_eur
-        nightly = (total / nights).quantize(Decimal("0.01")) if nights else req.property.base_price_eur
+        nightly = (total / nights).quantize(Decimal("0.01")) if nights else Decimal("0.00")
 
         reservation = Reservation(
             property=req.property,
@@ -267,8 +229,8 @@ def booking_request_approve(request, request_id):
         req.reservation = reservation
         req.save(update_fields=["status", "reservation"])
 
-        if req.promo_rule_id:
-            PricingRule.objects.filter(pk=req.promo_rule_id).update(
+        if req.promo_code_id:
+            PricingRule.objects.filter(pk=req.promo_code_id).update(
                 usage_count=F("usage_count") + 1
             )
 
@@ -276,8 +238,8 @@ def booking_request_approve(request, request_id):
     # already holds a quoted price — so it can overshoot; surface a warning
     # instead of refusing.
     warning = ""
-    if req.promo_rule_id:
-        promo = PricingRule.objects.get(pk=req.promo_rule_id)
+    if req.promo_code_id:
+        promo = PricingRule.objects.get(pk=req.promo_code_id)
         if promo.usage_limit is not None and promo.usage_count > promo.usage_limit:
             warning = (
                 f"Promo {promo.code} is now over its usage limit "
@@ -319,167 +281,6 @@ def booking_request_reject(request, request_id):
         "message": "Request rejected.",
         "request": _serialize_booking_request_pms(req, request),
     })
-
-
-# ---------------------------------------------------------------------------
-# Pricing Rules
-# ---------------------------------------------------------------------------
-
-def pricing_rule_list(request):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
-    if denied:
-        return denied
-
-    if request.method == "GET":
-        rules = PricingRule.objects.select_related("property").order_by("rule_type", "scope")
-        return JsonResponse({"pricingRules": [_serialize_pricing_rule(r) for r in rules]})
-
-    if request.method == "POST":
-        try:
-            payload = json_payload(request)
-            rule = _apply_pricing_rule_payload(PricingRule(), payload)
-            rule.save()
-        except (ValidationError, ValueError) as e:
-            return JsonResponse({"error": str(e)}, status=400)
-        return JsonResponse({"pricingRule": _serialize_pricing_rule(rule)}, status=201)
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-def pricing_rule_detail(request, rule_id):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
-    if denied:
-        return denied
-
-    try:
-        rule = PricingRule.objects.get(pk=rule_id)
-    except PricingRule.DoesNotExist:
-        return JsonResponse({"error": "Pricing rule not found."}, status=404)
-
-    if request.method == "PATCH":
-        try:
-            payload = json_payload(request)
-            rule = _apply_pricing_rule_payload(rule, payload)
-            rule.save()
-        except (ValidationError, ValueError) as e:
-            return JsonResponse({"error": str(e)}, status=400)
-        return JsonResponse({"pricingRule": _serialize_pricing_rule(rule)})
-
-    if request.method == "DELETE":
-        rule.delete()
-        return JsonResponse({}, status=204)
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-def _apply_pricing_rule_payload(rule, payload):
-    if "ruleType" in payload:
-        rule.rule_type = payload["ruleType"]
-    if "scope" in payload:
-        rule.scope = payload["scope"]
-    if "propertyId" in payload:
-        pid = payload.get("propertyId")
-        rule.property_id = pid if pid else None
-    if "bedroomGroup" in payload:
-        bg = payload.get("bedroomGroup")
-        rule.bedroom_group = int(bg) if bg else None
-    if "enabled" in payload:
-        rule.enabled = bool(payload["enabled"])
-    if "minNights" in payload:
-        mn = payload.get("minNights")
-        rule.min_nights = int(mn) if mn else None
-    if "discountPct" in payload:
-        dp = payload.get("discountPct")
-        rule.discount_pct = Decimal(str(dp)) if dp else None
-    if "daysBeforeCheckin" in payload:
-        db = payload.get("daysBeforeCheckin")
-        rule.days_before_checkin = int(db) if db else None
-    if "startDate" in payload:
-        sd = payload.get("startDate")
-        rule.start_date = date.fromisoformat(sd) if sd else None
-    if "endDate" in payload:
-        ed = payload.get("endDate")
-        rule.end_date = date.fromisoformat(ed) if ed else None
-    if "adjustmentType" in payload:
-        rule.adjustment_type = payload.get("adjustmentType") or None
-    if "adjustmentValue" in payload:
-        av = payload.get("adjustmentValue")
-        rule.adjustment_value = Decimal(str(av)) if av else None
-    return rule
-
-
-# ---------------------------------------------------------------------------
-# Promo Codes
-# ---------------------------------------------------------------------------
-
-def promo_code_list(request):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
-    if denied:
-        return denied
-
-    if request.method == "GET":
-        codes = PromoCode.objects.select_related("property").order_by("code")
-        return JsonResponse({"promoCodes": [_serialize_promo_code(c) for c in codes]})
-
-    if request.method == "POST":
-        try:
-            payload = json_payload(request)
-            promo = _apply_promo_payload(PromoCode(), payload)
-            promo.save()
-        except (ValidationError, ValueError) as e:
-            return JsonResponse({"error": str(e)}, status=400)
-        return JsonResponse({"promoCode": _serialize_promo_code(promo)}, status=201)
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-def promo_code_detail(request, code_id):
-    denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
-    if denied:
-        return denied
-
-    try:
-        promo = PromoCode.objects.get(pk=code_id)
-    except PromoCode.DoesNotExist:
-        return JsonResponse({"error": "Promo code not found."}, status=404)
-
-    if request.method == "PATCH":
-        try:
-            payload = json_payload(request)
-            promo = _apply_promo_payload(promo, payload)
-            promo.save()
-        except (ValidationError, ValueError) as e:
-            return JsonResponse({"error": str(e)}, status=400)
-        return JsonResponse({"promoCode": _serialize_promo_code(promo)})
-
-    if request.method == "DELETE":
-        promo.delete()
-        return JsonResponse({}, status=204)
-
-    return JsonResponse({"error": "Method not allowed."}, status=405)
-
-
-def _apply_promo_payload(promo, payload):
-    if "code" in payload:
-        promo.code = (payload.get("code") or "").strip().upper()
-    if "discountType" in payload:
-        promo.discount_type = payload["discountType"]
-    if "discountValue" in payload:
-        promo.discount_value = Decimal(str(payload["discountValue"]))
-    if "scope" in payload:
-        promo.scope = payload["scope"]
-    if "propertyId" in payload:
-        pid = payload.get("propertyId")
-        promo.property_id = pid if pid else None
-    if "bedroomGroup" in payload:
-        bg = payload.get("bedroomGroup")
-        promo.bedroom_group = int(bg) if bg else None
-    if "usageLimit" in payload:
-        ul = payload.get("usageLimit")
-        promo.usage_limit = int(ul) if ul else None
-    if "active" in payload:
-        promo.active = bool(payload["active"])
-    return promo
 
 
 # ---------------------------------------------------------------------------
@@ -713,8 +514,6 @@ def booking_settings_pms(request):
                 settings.same_day_booking_cutoff_hour = h
             if "advanceBookingLimitMonths" in payload:
                 settings.advance_booking_limit_months = int(payload.get("advanceBookingLimitMonths") or 12)
-            if "nonRefundableDiscountPct" in payload:
-                settings.non_refundable_discount_pct = Decimal(str(payload["nonRefundableDiscountPct"]))
             if "mapRadiusM" in payload:
                 radius = int(payload.get("mapRadiusM") or 0)
                 if radius < 0 or radius > 5000:
