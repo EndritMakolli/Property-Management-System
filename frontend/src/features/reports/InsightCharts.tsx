@@ -14,10 +14,8 @@ import {
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
 import {
   adrByMonth,
-  leadTimeDistribution,
   occupancyByMonth,
   platformRevenue,
-  stayLengthDistribution,
 } from './insightCalculations'
 import { monthNames, type PropertyReportStat } from './reportCalculations'
 
@@ -199,39 +197,3 @@ export function AdrTrendChart({
   )
 }
 
-/* (c) Stay length + booking lead time */
-
-export function StayLengthChart({ reservations }: { reservations: ReservationRecord[] }) {
-  const data = stayLengthDistribution(reservations)
-  return (
-    <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={data} margin={{ top: 16, right: 8, left: -24, bottom: 0 }}>
-        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-        <Tooltip formatter={(value) => [`${Number(value)} stays`, 'Count']} />
-        <Bar dataKey="count" fill={GREEN} label={{ position: 'top', fontSize: 11 }} radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
-  )
-}
-
-export function LeadTimeChart({ reservations }: { reservations: ReservationRecord[] }) {
-  const { buckets, skipped } = leadTimeDistribution(reservations)
-  return (
-    <>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={buckets} margin={{ top: 16, right: 8, left: -24, bottom: 0 }}>
-          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(value) => [`${Number(value)} bookings`, 'Count']} />
-          <Bar dataKey="count" fill={GREEN} label={{ position: 'top', fontSize: 11 }} radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-      {skipped > 0 && (
-        <p className="insight-footnote">
-          {skipped} older reservation{skipped !== 1 ? 's' : ''} without a recorded booking date not shown.
-        </p>
-      )}
-    </>
-  )
-}

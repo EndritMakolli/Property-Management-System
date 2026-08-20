@@ -1,7 +1,6 @@
 import type { ReservationRecord } from '../../types/domain'
-import { calculateNights } from '../../utils/date'
 import { buildDueRows } from '../payments/paymentPeriods'
-import { nightsInsideMonth, revenueInsideMonth, stayBuckets } from './reportCalculations'
+import { nightsInsideMonth, revenueInsideMonth } from './reportCalculations'
 
 // Platform identity colors — the same hues used across the app (calendar,
 // chips). Validated CVD-safe with the dataviz palette checker.
@@ -80,35 +79,6 @@ export function adrByMonth(reservations: ReservationRecord[], year: number) {
   return rows
 }
 
-export function stayLengthDistribution(reservations: ReservationRecord[]) {
-  return stayBuckets.map((bucket) => ({
-    label: bucket.label,
-    count: reservations.filter(
-      (r) => isRealStay(r) && r.totalNights >= bucket.min && r.totalNights <= bucket.max,
-    ).length,
-  }))
-}
-
-const LEAD_BUCKETS = [
-  { label: 'Same day', min: 0, max: 0 },
-  { label: '1-3 days', min: 1, max: 3 },
-  { label: '4-7 days', min: 4, max: 7 },
-  { label: '8-30 days', min: 8, max: 30 },
-  { label: '31+ days', min: 31, max: Infinity },
-]
-
-// How far in advance bookings are made (creation date → check-in).
-export function leadTimeDistribution(reservations: ReservationRecord[]) {
-  const withCreated = reservations.filter((r) => isRealStay(r) && r.createdAt)
-  const counts = LEAD_BUCKETS.map((bucket) => ({ label: bucket.label, count: 0 }))
-  for (const reservation of withCreated) {
-    const created = reservation.createdAt!.slice(0, 10)
-    const lead = Math.max(calculateNights(created, reservation.checkIn), 0)
-    const index = LEAD_BUCKETS.findIndex((bucket) => lead >= bucket.min && lead <= bucket.max)
-    if (index >= 0) counts[index].count += 1
-  }
-  return { buckets: counts, skipped: reservations.filter(isRealStay).length - withCreated.length }
-}
 
 export type PaymentSplit = {
   paidCount: number
