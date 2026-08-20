@@ -3,11 +3,13 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 
 from .models import PricingGroup, PricingRule, StayConstraint
 from .tests import day, make_admin, make_property
+from .views._pricing_validation import validate_pricing_rule
 
 
 class PricingModelTests(TestCase):
@@ -136,3 +138,81 @@ class PromoMigrationTests(TestCase):
         self.assertEqual(rule.usage_count, 2)
         req.refresh_from_db()
         self.assertEqual(req.promo_rule_id, rule.pk)
+
+
+class RuleValidationTests(TestCase):
+    def setUp(self):
+        self.stack = PricingGroup.objects.get(name="Seasonal Pricing")
+        self.exclusive = PricingGroup.objects.get(name="Stay Discounts")
+
+    def _rule(self, **kwargs):
+        defaults = {
+            "group": self.stack,
+            "rule_type": PricingRule.RuleType.SEASONAL,
+            "scope": "all",
+            "application": PricingRule.Application.PER_NIGHT,
+            "adjustment_type": PricingRule.AdjustmentType.PCT_INCREASE,
+            "adjustment_value": Decimal("10.00"),
+        }
+        defaults.update(kwargs)
+        return PricingRule(**defaults)
+
+    def test_valid_rule_passes(self):
+        validate_pricing_rule(self._rule())  # must not raise
+
+    def test_is_final_requires_per_night(self):
+        rule = self._rule(application=PricingRule.Application.WHOLE_STAY, is_final=True)
+        with self.assertRaisesMessage(ValidationError, "per-night"):
+            validate_pricing_rule(rule)
+
+    def test_fixed_price_requires_per_night(self):
+        rule = self._rule(
+            application=PricingRule.Application.WHOLE_STAY,
+            adjustment_type=PricingRule.AdjustmentType.FIXED_PRICE,
+            adjustment_value=Decimal("56.00"),
+        )
+        with self.assertRaisesMessage(ValidationError, "whole stay"):
+            validate_pricing_rule(rule)
+
+    def test_exclusive_group_cannot_mix_applications(self):
+        PricingRule.objects.create(
+            group=self.exclusive,
+            rule_type=PricingRule.RuleType.LONG_STAY,
+            application=PricingRule.Application.WHOLE_STAY,
+            min_nights=7,
+            adjustment_type=PricingRule.AdjustmentType.PCT_DECREASE,
+            adjustment_value=Decimal("15.00"),
+        )
+        rule = self._rule(group=self.exclusive, application=PricingRule.Application.PER_NIGHT)
+        with self.assertRaisesMessage(ValidationError, "Exclusive"):
+            validate_pricing_rule(rule)
+
+    def test_promo_needs_a_code_and_others_may_not_have_one(self):
+        with self.assertRaisesMessage(ValidationError, "code"):
+            validate_pricing_rule(self._rule(rule_type=PricingRule.RuleType.PROMO, code=None))
+        with self.assertRaisesMessage(ValidationError, "code"):
+            validate_pricing_rule(self._rule(code="NOTAPROMO"))
+
+    def test_promo_only_fields_are_rejected_elsewhere(self):
+        with self.assertRaisesMessage(ValidationError, "promo rules only"):
+            validate_pricing_rule(self._rule(usage_limit=5))
+
+    def test_minimum_spend_requires_whole_stay(self):
+        rule = self._rule(
+            rule_type=PricingRule.RuleType.PROMO,
+            code="BIG",
+            application=PricingRule.Application.PER_NIGHT,
+            min_subtotal_eur=Decimal("200.00"),
+        )
+        with self.assertRaisesMessage(ValidationError, "whole-stay"):
+            validate_pricing_rule(rule)
+
+    def test_scoped_rule_needs_its_target(self):
+        with self.assertRaisesMessage(ValidationError, "property"):
+            validate_pricing_rule(self._rule(scope="property", property=None))
+        with self.assertRaisesMessage(ValidationError, "bedroom"):
+            validate_pricing_rule(self._rule(scope="bedroom_group", bedroom_group=None))
+
+    def test_enabled_rule_needs_an_adjustment_value(self):
+        with self.assertRaisesMessage(ValidationError, "amount"):
+            validate_pricing_rule(self._rule(adjustment_value=None))
