@@ -26,6 +26,7 @@ from .model_defs import (
     MaintenanceIssue,
     MaintenancePhoto,
     MonthlyTax,
+    PricingGroup,
     PricingRule,
     PromoCode,
     Property,
@@ -38,6 +39,7 @@ from .model_defs import (
     Reservation,
     ReservationAttachment,
     ReservationAuditLog,
+    StayConstraint,
     SyncConflict,
     SyncLog,
 )
@@ -70,6 +72,7 @@ __all__ = [
     "MaintenanceIssue",
     "MaintenancePhoto",
     "MonthlyTax",
+    "PricingGroup",
     "PricingRule",
     "PromoCode",
     "Property",
@@ -82,6 +85,7 @@ __all__ = [
     "Reservation",
     "ReservationAttachment",
     "ReservationAuditLog",
+    "StayConstraint",
     "SyncConflict",
     "SyncLog",
 ]

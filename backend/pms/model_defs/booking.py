@@ -87,12 +87,35 @@ class BookingSiteSettings(models.Model):
         return obj
 
 
+class PricingGroup(TimeStampedModel):
+    """An ordered bucket of pricing rules sharing one interaction behaviour."""
+
+    class Behaviour(models.TextChoices):
+        STACK = "stack", "Stack — every eligible rule applies, in order"
+        EXCLUSIVE = "exclusive", "Exclusive — the first eligible rule applies"
+
+    name = models.CharField(max_length=80, unique=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    behaviour = models.CharField(
+        max_length=10, choices=Behaviour.choices, default=Behaviour.STACK
+    )
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return self.name
+
+
 class PricingRule(TimeStampedModel):
     class RuleType(models.TextChoices):
         LONG_STAY = "long_stay", "Long Stay Discount"
         SEASONAL = "seasonal", "Seasonal / Date-Range Pricing"
         LAST_MINUTE = "last_minute", "Last-Minute Discount"
         MINIMUM_NIGHTS = "minimum_nights", "Minimum Nights"
+        NON_REFUNDABLE = "non_refundable", "Non-Refundable Discount"
+        PROMO = "promo", "Promo Code"
+        MANUAL = "manual", "Manual Discount"
 
     class Scope(models.TextChoices):
         ALL = "all", "All Properties"
@@ -105,6 +128,29 @@ class PricingRule(TimeStampedModel):
         PCT_DECREASE = "pct_decrease", "Percentage Decrease"
         FIXED_INCREASE = "fixed_increase", "Fixed Amount Increase"
         FIXED_DECREASE = "fixed_decrease", "Fixed Amount Decrease"
+
+    class Application(models.TextChoices):
+        PER_NIGHT = "per_night", "Per night"
+        WHOLE_STAY = "whole_stay", "Whole stay"
+
+    name = models.CharField(max_length=120, blank=True)
+    group = models.ForeignKey(
+        PricingGroup, on_delete=models.PROTECT, related_name="rules",
+        null=True, blank=True,
+    )
+    sort_order = models.PositiveIntegerField(default=0)
+    application = models.CharField(
+        max_length=12, choices=Application.choices, default=Application.WHOLE_STAY
+    )
+    # Per-night rules only: locks the night at the end of this rule's group, so
+    # later groups and every whole-stay adjustment skip it entirely.
+    is_final = models.BooleanField(default=False)
+
+    # Promo rules only.
+    code = models.CharField(max_length=50, null=True, blank=True)
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, help_text="Null means unlimited")
+    usage_count = models.PositiveIntegerField(default=0)
+    min_subtotal_eur = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     rule_type = models.CharField(max_length=20, choices=RuleType.choices)
     scope = models.CharField(max_length=20, choices=Scope.choices, default=Scope.ALL)
@@ -130,10 +176,47 @@ class PricingRule(TimeStampedModel):
     adjustment_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        ordering = ["rule_type", "scope"]
+        ordering = ["sort_order", "created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["code"],
+                condition=models.Q(code__isnull=False),
+                name="pricingrule_code_unique_when_set",
+            )
+        ]
 
     def __str__(self):
         return f"{self.get_rule_type_display()} ({self.scope})"
+
+
+class StayConstraint(TimeStampedModel):
+    """Non-price booking limits. These gate whether a stay is bookable; they
+    never change its price, which is why they are not PricingRules."""
+
+    class Kind(models.TextChoices):
+        MIN_NIGHTS = "min_nights", "Minimum nights"
+
+    class Scope(models.TextChoices):
+        ALL = "all", "All Properties"
+        PROPERTY = "property", "Specific Property"
+        BEDROOM_GROUP = "bedroom_group", "Bedroom Group"
+
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.MIN_NIGHTS)
+    value = models.PositiveIntegerField()
+    scope = models.CharField(max_length=20, choices=Scope.choices, default=Scope.ALL)
+    property = models.ForeignKey(
+        Property, on_delete=models.CASCADE, null=True, blank=True, related_name="stay_constraints"
+    )
+    bedroom_group = models.PositiveIntegerField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["kind", "scope"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.value} ({self.scope})"
 
 
 class PromoCode(TimeStampedModel):
@@ -219,6 +302,11 @@ class BookingRequest(TimeStampedModel):
     expires_at = models.DateTimeField()
     rejection_message = models.TextField(blank=True)
     promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True)
+    # Temporary during the promo migration; renamed to promo_code in 0029.
+    promo_rule = models.ForeignKey(
+        PricingRule, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="booking_requests",
+    )
     reservation = models.ForeignKey(
         Reservation, on_delete=models.SET_NULL, null=True, blank=True, related_name="booking_request"
     )

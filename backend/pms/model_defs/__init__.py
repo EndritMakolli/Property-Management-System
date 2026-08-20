@@ -8,10 +8,12 @@ from .booking import (
     BookingSiteSettings,
     CancellationPolicy,
     HouseRule,
+    PricingGroup,
     PricingRule,
     PromoCode,
     PropertyAmenity,
     PropertyPhoto,
+    StayConstraint,
 )
 from .communication import Inquiry
 from .company import CompanyProfile
@@ -63,6 +65,7 @@ __all__ = [
     "MaintenancePhoto",
     "MonthlyTax",
     "DailyEntry",
+    "PricingGroup",
     "PricingRule",
     "PromoCode",
     "Property",
@@ -75,6 +78,7 @@ __all__ = [
     "Reservation",
     "ReservationAttachment",
     "ReservationAuditLog",
+    "StayConstraint",
     "SyncConflict",
     "SyncLog",
 ]
