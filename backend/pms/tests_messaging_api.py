@@ -1,6 +1,7 @@
 """The template and draft endpoints."""
 
 import json
+from decimal import Decimal
 
 from django.test import Client, TestCase
 
@@ -13,11 +14,19 @@ class TemplateEndpointTests(TestCase):
         self.client = Client()
         make_admin(self.client)
 
-    def test_the_four_seeded_templates_are_listed(self):
+    def test_every_seeded_template_is_listed(self):
+        """Four availability replies, plus the two booking outcomes."""
         rows = self.client.get("/api/message-templates/").json()["messageTemplates"]
         self.assertEqual(
             sorted(r["scenario"] for r in rows),
-            ["alternative_dates", "available", "no_availability", "split_stay"],
+            [
+                "alternative_dates",
+                "available",
+                "booking_approved",
+                "booking_rejected",
+                "no_availability",
+                "split_stay",
+            ],
         )
 
     def test_each_template_ships_in_both_languages(self):
@@ -287,3 +296,77 @@ class MessagingIsStaffOnlyTests(TestCase):
             ).status_code,
             (401, 403),
         )
+
+
+class DiscountAsPercentageTests(TestCase):
+    """A guest reads "− 15% zbritje" more easily than "− 52.5€ zbritje".
+
+    `(discount %)` was already listed as a known placeholder but nothing ever
+    computed it, so it rendered as a visible unfilled gap.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        make_admin(self.client)
+        self.prop = make_property(name="Apartment A", bedrooms=2, max_guests=4)
+
+    def draft(self, body_sq, nights=7, **overrides):
+        MessageTemplate.objects.filter(scenario="available").update(body_sq=body_sq)
+        payload = {
+            "checkIn": day(30).isoformat(),
+            "checkOut": day(30 + nights).isoformat(),
+            "guests": 2,
+            "language": "sq",
+            "freeTypes": [2],
+            "splitCovers": False,
+            "nextFree": "",
+        }
+        payload.update(overrides)
+        return self.client.post(
+            "/api/message-drafts/", data=json.dumps(payload), content_type="application/json"
+        ).json()["body"]
+
+    def test_the_discount_renders_as_a_percentage(self):
+        # 7 nights at 50 = 350, less the seeded 15% tier = 297.50.
+        body = self.draft("- zbritje (discount %)%")
+        self.assertIn("zbritje 15%", body)
+
+    def test_the_percentage_placeholder_is_actually_filled(self):
+        body = self.draft("- zbritje (discount %)%")
+        self.assertNotIn("(discount %)", body)
+
+    def test_the_euro_amount_still_works_alongside_it(self):
+        body = self.draft("- (discount)€ eshte (discount %)%")
+        self.assertIn("52.5€ eshte 15%", body)
+
+    def test_a_stay_with_no_discount_drops_the_whole_clause(self):
+        """Two nights earn no tier, so the optional segment must vanish rather
+        than print "− 0% zbritje"."""
+        body = self.draft("- gjithsej (total price)€[ − (discount %)% zbritje]", nights=2)
+        self.assertNotIn("zbritje", body)
+        self.assertNotIn("(discount %)", body)
+
+    def test_a_whole_number_percentage_has_no_trailing_zero(self):
+        body = self.draft("- (discount %)")
+        self.assertNotIn("15.0", body)
+
+    def test_a_price_increase_never_prints_a_negative_discount(self):
+        """A whole-stay increase makes total exceed subtotal. That is a
+        surcharge, not a discount — the clause must disappear, not read
+        "− -10% zbritje"."""
+        from .models import PricingGroup, PricingRule
+
+        PricingRule.objects.create(
+            group=PricingGroup.objects.get(platform="airstay", name="Seasonal Pricing"),
+            name="Peak surcharge",
+            rule_type=PricingRule.RuleType.DATE_ADJUST,
+            scope="all",
+            enabled=True,
+            application=PricingRule.Application.WHOLE_STAY,
+            adjustment_type=PricingRule.AdjustmentType.PCT_INCREASE,
+            adjustment_value=Decimal("10.00"),
+            start_date=day(30),
+            end_date=day(40),
+        )
+        body = self.draft("- x[ − (discount %)% zbritje]y", nights=2)
+        self.assertEqual(body.strip(), "- xy")

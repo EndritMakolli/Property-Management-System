@@ -130,6 +130,8 @@ export interface BookingRequestInput {
   checkOut: string
   guestName: string
   guestPhone: string
+  /** Where the approval or decline is sent. Without it we cannot reply at all. */
+  guestEmail: string
   guestsCount: number
 }
 
@@ -139,8 +141,7 @@ export interface BookingRequestResult {
   message: string
 }
 
-// Submit a guest booking request (Pay-at-Property path). Email is not collected;
-// the backend only requires name + phone.
+// Submit a guest booking request (Pay-at-Property path).
 export async function createBookingRequest(input: BookingRequestInput) {
   return apiSend<BookingRequestResult>('/api/booking/requests/', 'POST', input)
 }

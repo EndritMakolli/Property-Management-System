@@ -1,0 +1,72 @@
+/* The trigger reads as one control, because check-in and check-out are one
+   decision. The popover floats above whatever it sits in. */
+.stay-range {
+  position: relative;
+  display: inline-block;
+}
+
+.stay-range-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.stay-range-trigger:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.stay-range-trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.stay-range-part {
+  display: grid;
+  line-height: 1.15;
+}
+
+.stay-range-part small {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stay-range-part strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stay-range-arrow {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.stay-range-pop {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 560px;
+}
+
+/* Near the right-hand edge of a narrow screen, hang it from the right instead
+   so it cannot push the page sideways. */
+@media (max-width: 700px) {
+  .stay-range-pop {
+    left: auto;
+    right: 0;
+    min-width: min(92vw, 340px);
+  }
+}

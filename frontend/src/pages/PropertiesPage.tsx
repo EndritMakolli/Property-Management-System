@@ -55,7 +55,6 @@ export function PropertiesPage() {
         photo: 'photo' in payload ? (payload.photo ?? null) : null,
       })
       setProperties((current) => [...current, property].sort((a, b) => a.name.localeCompare(b.name)))
-      setCreateOpen(false)
       return property
     } catch (caughtError) {
       setCreateError(
@@ -80,7 +79,6 @@ export function PropertiesPage() {
           .map((item) => (item.id === property.id ? property : item))
           .sort((a, b) => a.name.localeCompare(b.name)),
       )
-      setEditingProperty(null)
       return property
     } catch (caughtError) {
       setCreateError(
@@ -109,6 +107,7 @@ export function PropertiesPage() {
           error={createError}
           saving={saving}
           onCancel={() => setCreateOpen(false)}
+          onDone={() => setCreateOpen(false)}
           onSubmit={handleCreateProperty}
         />
       )}
@@ -118,6 +117,7 @@ export function PropertiesPage() {
           property={editingProperty}
           saving={saving}
           onCancel={() => setEditingProperty(null)}
+          onDone={() => setEditingProperty(null)}
           onSubmit={handleUpdateProperty}
         />
       )}

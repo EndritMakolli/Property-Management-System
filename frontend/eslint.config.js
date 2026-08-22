@@ -33,7 +33,11 @@ export default tseslint.config(
   },
   {
     // Context modules co-locate a provider component with its hook by design.
-    files: ['src/context/**/*.tsx', 'src/auth/AuthContext.tsx'],
+    files: [
+      'src/context/**/*.tsx',
+      'src/auth/AuthContext.tsx',
+      'src/auth/GuestAuthContext.tsx',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },

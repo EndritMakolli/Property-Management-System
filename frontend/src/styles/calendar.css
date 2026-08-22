@@ -274,46 +274,12 @@
   white-space: nowrap;
 }
 
-.calendar-reservation-pill.platform-private,
-.timeline-reservation-bar.platform-private {
-  background: #202020;
-}
-
-.calendar-reservation-pill.platform-airbnb,
-.timeline-reservation-bar.platform-airbnb {
-  background: #e51b3f;
-}
-
-.calendar-reservation-pill.platform-airbnb.price-zero,
-.timeline-reservation-bar.platform-airbnb.price-zero {
-  background: #e51b3f;
-}
-
-.calendar-reservation-pill.platform-booking,
-.timeline-reservation-bar.platform-booking {
-  background: #6ec8ff;
-  color: #0f2735;
-}
-
-.calendar-reservation-pill.platform-monthly,
-.timeline-reservation-bar.platform-monthly {
-  background: #f5c518;
-  color: #3d3104;
-}
-
+/* Per-type colours are generated at runtime from the reservation-type table
+   (see utils/reservationTypeColors.ts) — an admin can add a type, so they
+   cannot live here. `recommendation` is synthetic, not a type, so it does. */
 .calendar-reservation-pill.platform-recommendation,
 .timeline-reservation-bar.platform-recommendation {
   background: #1f6f5b;
-}
-
-.calendar-reservation-pill.platform-maintenance,
-.timeline-reservation-bar.platform-maintenance {
-  background: #16a34a;
-}
-
-.calendar-reservation-pill.platform-direct,
-.timeline-reservation-bar.platform-direct {
-  background: #0d9488;
 }
 
 .calendar-overview {

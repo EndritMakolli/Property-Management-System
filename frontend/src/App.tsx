@@ -1,7 +1,10 @@
+import { GuestAuthLayout } from './auth/GuestAuthLayout'
+import { RequireGuest } from './auth/RequireGuest'
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { PlatformProvider } from './context/PlatformContext'
+import { ReservationTypesProvider } from './context/ReservationTypesContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './components/layout/AppLayout'
 import ClientLayout from './pages/client/ClientLayout'
@@ -32,21 +35,33 @@ const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').the
 const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((m) => ({ default: m.MessageTemplatesPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
 const SecurityPage = lazy(() => import('./pages/SecurityPage').then((m) => ({ default: m.SecurityPage })))
+const GuestLoginPage = lazy(() => import('./pages/client/GuestLoginPage').then((m) => ({ default: m.GuestLoginPage })))
+const GuestAccountPage = lazy(() => import('./pages/client/GuestAccountPage').then((m) => ({ default: m.GuestAccountPage })))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })))
 
 function App() {
   return (
     <PlatformProvider>
       <AuthProvider>
+        <ReservationTypesProvider>
         <Suspense fallback={<p className="auth-loading">Loading…</p>}>
           <Routes>
-            {/* Public guest-facing site */}
-            <Route element={<ClientLayout />}>
-              <Route path="/" element={<ClientHomePage />} />
-              <Route path="/map" element={<MapPage />} />
+            {/* Public guest-facing site. Everything here sits inside the guest
+                session, and is declared ABOVE the RequireAuth block — the "*"
+                catch-all lives inside that block, so a mistyped guest URL would
+                otherwise bounce to the staff sign-in. */}
+            <Route element={<GuestAuthLayout />}>
+              <Route element={<ClientLayout />}>
+                <Route path="/" element={<ClientHomePage />} />
+                <Route path="/map" element={<MapPage />} />
+                <Route element={<RequireGuest />}>
+                  <Route path="/account" element={<GuestAccountPage />} />
+                </Route>
+              </Route>
+              <Route path="/login" element={<GuestLoginPage />} />
             </Route>
 
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/staff-login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/invoice" element={<InvoicePage />} />
               <Route element={<AppLayout />}>
@@ -74,6 +89,7 @@ function App() {
             </Route>
           </Routes>
         </Suspense>
+        </ReservationTypesProvider>
       </AuthProvider>
     </PlatformProvider>
   )

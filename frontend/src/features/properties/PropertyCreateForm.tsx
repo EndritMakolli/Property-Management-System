@@ -23,6 +23,10 @@ type PropertyCreateFormProps = {
   error: string
   onCancel: () => void
   onSubmit: (payload: PropertyPayload | PropertyEditPayload) => Promise<PropertyListing>
+  /** Called once the property AND its gallery photos are saved. The parent
+   *  closes the modal here, not inside onSubmit — closing there unmounted
+   *  this form before the uploads ran, so failures were invisible. */
+  onDone: () => void
   property?: PropertyListing | null
   saving: boolean
 }
@@ -30,6 +34,7 @@ type PropertyCreateFormProps = {
 export function PropertyCreateForm({
   error,
   onCancel,
+  onDone,
   onSubmit,
   property,
   saving,
@@ -228,21 +233,44 @@ export function PropertyCreateForm({
       /* non-critical */
     }
 
-    if (pendingPhotos.length > 0) {
-      setUploadingPhotos(true)
-      let sortBase = galleryPhotos.length
+    if (pendingPhotos.length === 0) {
+      onDone()
+      return
+    }
+
+    // Upload one at a time and keep whatever succeeded. Aborting the whole
+    // batch on the first bad file used to lose the good ones with it.
+    setUploadingPhotos(true)
+    let sortBase = galleryPhotos.length
+    const uploaded: PropertyPhotoRecord[] = []
+    const failed: File[] = []
+
+    for (const file of pendingPhotos) {
       try {
-        for (const file of pendingPhotos) {
-          await uploadPropertyPhoto(savedProperty.id, file, sortBase++)
-        }
+        uploaded.push(await uploadPropertyPhoto(savedProperty.id, file, sortBase++))
       } catch {
-        setPhotoError('Some photos could not be uploaded.')
-      } finally {
-        setUploadingPhotos(false)
-        setPendingPhotos([])
-        setPendingPreviews([])
+        failed.push(file)
       }
     }
+
+    setUploadingPhotos(false)
+    setGalleryPhotos((current) => [...current, ...uploaded])
+    setPendingPhotos(failed)
+    setPendingPreviews((current) =>
+      current.filter((_, index) => failed.includes(pendingPhotos[index])),
+    )
+
+    if (failed.length > 0) {
+      // Stay open so the message is actually readable and the files can be retried.
+      setPhotoError(
+        failed.length === 1
+          ? `“${failed[0].name}” could not be uploaded.`
+          : `${failed.length} photos could not be uploaded.`,
+      )
+      return
+    }
+
+    onDone()
   }
 
   const currentPhotoUrl = previewUrl ?? property?.photoUrl ?? null
@@ -305,7 +333,7 @@ export function PropertyCreateForm({
               </label>
               <label className="form-field">
                 Bathrooms
-                <input min="1" name="bathrooms" placeholder="1" type="number" defaultValue={property?.bathrooms ?? ''} />
+                <input min="0" name="bathrooms" placeholder="1" step="0.5" type="number" defaultValue={property?.bathrooms ?? ''} />
               </label>
               <label className="form-field">
                 Max guests

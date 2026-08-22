@@ -1,0 +1,155 @@
+/* Two palettes, one calendar.
+   Every colour is indirected through a local custom property, so the PMS can
+   wear its own without a second copy of the layout. The defaults on `.cal` are
+   the guest site's warm palette; `.pms` redefines them and nothing else. */
+
+.cal {
+  --cal-surface: var(--c-paper);
+  --cal-border: var(--c-border-strong);
+  --cal-ink: var(--c-ink);
+  --cal-divider: var(--c-divider);
+  --cal-range: var(--c-cream-2);
+  --cal-edge: var(--c-dark);
+  --cal-edge-ink: #fff;
+  --cal-muted: var(--c-muted);
+  --cal-muted-soft: var(--c-muted-3);
+  --cal-past: #cdc4b5;
+  --cal-blocked: #c4b8a6;
+  --cal-shadow: 0 14px 40px rgba(20, 14, 9, 0.18);
+  --cal-months: 2;
+
+  position: relative;
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--cal-shadow);
+}
+
+/* Inside the PMS: the same calendar, the app's own surface and accent. */
+.pms {
+  --cal-surface: var(--bg-panel);
+  --cal-border: var(--border);
+  --cal-ink: var(--text-primary);
+  --cal-divider: var(--border);
+  --cal-range: var(--bg-table-head);
+  --cal-edge: var(--accent);
+  --cal-edge-ink: #fff;
+  --cal-muted: var(--text-secondary);
+  --cal-muted-soft: var(--text-muted);
+  --cal-past: var(--text-muted);
+  --cal-blocked: var(--text-muted);
+  --cal-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.single {
+  --cal-months: 1;
+}
+
+.nav {
+  position: absolute;
+  top: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--cal-border);
+  background: var(--cal-surface);
+  color: var(--cal-ink);
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 2;
+}
+.nav:hover:not(:disabled) { background: var(--cal-divider); }
+.nav:disabled { opacity: 0.35; cursor: default; }
+.prev { left: 14px; }
+.next { right: 14px; }
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(var(--cal-months), 1fr);
+  gap: 26px;
+}
+
+.monthLabel {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--cal-ink);
+  margin-bottom: 12px;
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.weekdays {
+  margin-bottom: 6px;
+}
+.weekdays span {
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--cal-muted-soft);
+}
+
+.grid {
+  gap: 2px 0;
+}
+
+.day {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cal-ink);
+  cursor: pointer;
+  border-radius: 50%;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.day.open:hover { background: var(--cal-range); }
+
+.past {
+  color: var(--cal-past);
+  cursor: default;
+  text-decoration: none;
+}
+
+.blocked {
+  color: var(--cal-blocked);
+  cursor: default;
+  text-decoration: line-through;
+}
+
+.sel {
+  background: var(--cal-range);
+  border-radius: 0;
+}
+.edge {
+  background: var(--cal-edge) !important;
+  color: var(--cal-edge-ink) !important;
+  border-radius: 50%;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--cal-divider);
+  font-size: 0.76rem;
+  color: var(--cal-muted);
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legOpen { background: var(--cal-range); border: 1px solid var(--cal-border); }
+.legBlocked { background: repeating-linear-gradient(45deg, var(--cal-range), var(--cal-range) 3px, var(--cal-blocked) 3px, var(--cal-blocked) 5px); }
+
+@media (max-width: 560px) {
+  .cal { --cal-months: 1; }
+  .months { gap: 18px; }
+}

@@ -2,8 +2,6 @@ import {
   Bar,
   BarChart,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -11,16 +9,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { PropertyListing, ReservationRecord } from '../../types/domain'
+import type { ReservationRecord } from '../../types/domain'
 import {
-  adrByMonth,
-  occupancyByMonth,
+  newVsReturning,
   platformRevenue,
+  type ApartmentRevenue,
+  type SeriesType,
 } from './insightCalculations'
-import { monthNames, type PropertyReportStat } from './reportCalculations'
+import type { PropertyReportStat } from './reportCalculations'
 
 const GREEN = '#1f6f5b'
-const GREY = '#9bb8ad'
 
 function euro(value: number) {
   return `EUR ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -32,12 +30,14 @@ export function PlatformRevenueDonut({
   reservations,
   year,
   month,
+  types,
 }: {
   reservations: ReservationRecord[]
   year: number
   month: number
+  types: SeriesType[]
 }) {
-  const data = platformRevenue(reservations, year, month)
+  const data = platformRevenue(reservations, year, month, types)
   const total = data.reduce((sum, row) => sum + row.value, 0)
 
   if (data.length === 0) {
@@ -118,82 +118,109 @@ export function TopApartmentsBar({ stats }: { stats: PropertyReportStat[] }) {
   )
 }
 
-/* (b) Occupancy % + nightly-rate trends (two charts, one axis each) */
+/* (b) Top apartments by revenue, over a rolling window */
 
-function buildTrendRows(current: number[], previous: number[]) {
-  return monthNames.map((name, index) => ({
-    month: name,
-    current: current[index],
-    previous: previous[index],
-  }))
-}
-
-export function OccupancyTrendChart({
-  properties,
-  reservations,
-  year,
+export function TopApartmentsByRevenue({
+  rows,
+  monthsLabel,
 }: {
-  properties: PropertyListing[]
-  reservations: ReservationRecord[]
-  year: number
+  rows: ApartmentRevenue[]
+  monthsLabel: string
 }) {
-  const rows = buildTrendRows(
-    occupancyByMonth(properties.length, reservations, year),
-    occupancyByMonth(properties.length, reservations, year - 1),
-  )
+  if (rows.length === 0) {
+    return <p className="list-empty">No revenue in {monthsLabel} yet.</p>
+  }
+
   return (
-    <>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={rows} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} unit="%" />
-          <Tooltip
-            formatter={(value, name) => [
-              `${Number(value)}%`,
-              name === 'current' ? String(year) : String(year - 1),
-            ]}
-          />
-          <Line dataKey="previous" dot={false} name="previous" stroke={GREY} strokeWidth={2} />
-          <Line dataKey="current" dot={{ r: 3 }} name="current" stroke={GREEN} strokeWidth={2} />
-        </LineChart>
-      </ResponsiveContainer>
-      <div className="chart-legend">
-        <span><i style={{ background: GREEN }} /> {year}</span>
-        <span><i style={{ background: GREY }} /> {year - 1}</span>
-      </div>
-    </>
+    <ResponsiveContainer width="100%" height={Math.max(180, rows.length * 34)}>
+      <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 66, left: 8, bottom: 4 }}>
+        <XAxis hide type="number" />
+        <YAxis dataKey="name" tick={{ fontSize: 11 }} type="category" width={110} />
+        <Tooltip formatter={(value) => [euro(Number(value)), 'Revenue']} />
+        <Bar
+          dataKey="revenue"
+          fill={GREEN}
+          label={{ position: 'right', fontSize: 11, formatter: (value: unknown) => euro(Number(value)) }}
+          radius={[0, 4, 4, 0]}
+        />
+      </BarChart>
+    </ResponsiveContainer>
   )
 }
 
-export function AdrTrendChart({
+/* (c) New versus returning guests */
+
+const NEW_GUEST = '#1f6f5b'
+const RETURNING_GUEST = '#d9a441'
+
+export function GuestMixDonut({
   reservations,
   year,
+  month,
 }: {
   reservations: ReservationRecord[]
   year: number
+  month: number
 }) {
-  const rows = buildTrendRows(adrByMonth(reservations, year), adrByMonth(reservations, year - 1))
+  const { newCount, returningCount, unlinked } = newVsReturning(reservations, year, month)
+  const total = newCount + returningCount
+
+  if (total === 0) {
+    return <p className="list-empty">No arrivals in this period yet.</p>
+  }
+
+  const data = [
+    { key: 'new', label: 'New', value: newCount, color: NEW_GUEST },
+    { key: 'returning', label: 'Returning', value: returningCount, color: RETURNING_GUEST },
+  ].filter((slice) => slice.value > 0)
+
   return (
-    <>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={rows} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <Tooltip
-            formatter={(value, name) => [
-              `EUR ${Number(value)} / night`,
-              name === 'current' ? String(year) : String(year - 1),
-            ]}
-          />
-          <Line dataKey="previous" dot={false} name="previous" stroke={GREY} strokeWidth={2} />
-          <Line dataKey="current" dot={{ r: 3 }} name="current" stroke={GREEN} strokeWidth={2} />
-        </LineChart>
-      </ResponsiveContainer>
-      <div className="chart-legend">
-        <span><i style={{ background: GREEN }} /> {year}</span>
-        <span><i style={{ background: GREY }} /> {year - 1}</span>
+    <div className="insight-donut-wrap">
+      <div className="insight-donut">
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie
+              cx="50%"
+              cy="50%"
+              data={data}
+              dataKey="value"
+              innerRadius={60}
+              outerRadius={90}
+              paddingAngle={2}
+              stroke="var(--bg-panel)"
+              strokeWidth={2}
+            >
+              {data.map((entry) => (
+                <Cell fill={entry.color} key={entry.key} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value, name) => [
+                `${Number(value)} (${Math.round((Number(value) / total) * 100)}%)`,
+                name,
+              ]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="insight-donut-center">
+          <strong>{total}</strong>
+          <span>{total === 1 ? 'guest' : 'guests'}</span>
+        </div>
       </div>
-    </>
+      <div className="chart-legend">
+        {data.map((entry) => (
+          <span key={entry.key}>
+            <i style={{ background: entry.color }} /> {entry.label} — {entry.value}
+          </span>
+        ))}
+      </div>
+      {unlinked > 0 && (
+        // Said plainly rather than folded into "new": these arrivals have no
+        // client record, so there is no way to know whether they had been before.
+        <p className="insight-footnote">
+          {unlinked} arrival{unlinked === 1 ? '' : 's'} not linked to a client, so not counted.
+        </p>
+      )}
+    </div>
   )
 }
-

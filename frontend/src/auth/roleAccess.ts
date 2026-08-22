@@ -57,5 +57,5 @@ export function defaultPathForRole(role: UserRole) {
   if (role === 'admin' || role === 'management' || role === 'cleaning') {
     return '/dashboard'
   }
-  return '/login'
+  return '/staff-login'
 }

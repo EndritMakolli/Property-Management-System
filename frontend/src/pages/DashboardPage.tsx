@@ -16,6 +16,7 @@ import { Metric } from '../components/shared/Metric'
 import { PanelHeader } from '../components/shared/PanelHeader'
 import { DateInput } from '../components/shared/DateInput'
 import { ReservationList } from '../features/dashboard/ReservationList'
+import { CheckInPanel } from '../features/dashboard/CheckInPanel'
 import { CleaningPanel } from '../features/dashboard/CleaningPanel'
 import { PaymentsDuePanel } from '../features/dashboard/PaymentsDuePanel'
 import { PaymentStatusDonuts } from '../features/dashboard/PaymentStatusDonuts'
@@ -28,14 +29,7 @@ import type {
   ReservationRecord,
 } from '../types/domain'
 import { calculateNights, formatDisplayDate, toDateInputValue } from '../utils/date'
-
-const platformLabels: Record<string, string> = {
-  airbnb: 'Airbnb',
-  booking: 'Booking',
-  private: 'Private',
-  monthly: 'Monthly',
-  maintenance: 'Maintenance',
-}
+import { useReservationTypes } from '../context/ReservationTypesContext'
 
 function shortDate(iso: string) {
   const d = new Date(`${iso}T00:00:00`)
@@ -45,6 +39,7 @@ function shortDate(iso: string) {
 export function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { labelFor } = useReservationTypes()
   const [reportDate, setReportDate] = useState(toDateInputValue(new Date()))
   const [properties, setProperties] = useState<PropertyListing[]>([])
   const [reservations, setReservations] = useState<ReservationRecord[]>([])
@@ -136,16 +131,16 @@ export function DashboardPage() {
     () =>
       guestReservations
         .filter((r) => r.checkIn === reportDate)
-        .map((r) => toDashboardStay(r, `${r.totalNights} nights`)),
-    [reportDate, guestReservations],
+        .map((r) => toDashboardStay(r, `${r.totalNights} nights`, labelFor)),
+    [reportDate, guestReservations, labelFor],
   )
 
   const checkOuts = useMemo(
     () =>
       guestReservations
         .filter((r) => r.checkOut === reportDate)
-        .map((r) => toDashboardStay(r, `${r.totalNights} nights`)),
-    [reportDate, guestReservations],
+        .map((r) => toDashboardStay(r, `${r.totalNights} nights`, labelFor)),
+    [reportDate, guestReservations, labelFor],
   )
 
   const currentlyStaying = useMemo(
@@ -156,9 +151,10 @@ export function DashboardPage() {
           toDashboardStay(
             r,
             `${formatDisplayDate(r.checkIn)} to ${formatDisplayDate(r.checkOut)}`,
+            labelFor,
           ),
         ),
-    [reportDate, guestReservations],
+    [reportDate, guestReservations, labelFor],
   )
 
   const freeToday = useMemo(() => {
@@ -318,6 +314,8 @@ export function DashboardPage() {
             onToggleCleaned={handleMarkCleaned}
           />
 
+          <CheckInPanel reservations={allReservations} reportDate={reportDate} />
+
           <PaymentsDuePanel
             reservations={allReservations}
             onReservationUpdated={(saved) =>
@@ -442,7 +440,7 @@ export function DashboardPage() {
                         </td>
                         <td>
                           <span className="select-pill muted">
-                            {platformLabels[r.reservationType] || r.reservationType}
+                            {labelFor(r.reservationType)}
                           </span>
                         </td>
                         <td>
@@ -614,12 +612,17 @@ function withoutAmount(stay: DashboardStay): DashboardStay {
   return { ...stay, amount: undefined }
 }
 
-function toDashboardStay(reservation: ReservationRecord, detail: string): DashboardStay {
+function toDashboardStay(
+  reservation: ReservationRecord,
+  detail: string,
+  labelFor: (code: string) => string,
+): DashboardStay {
   return {
     detail,
     guestName: reservation.guestName || reservation.guestPhone || 'Guest',
     id: reservation.id,
-    platform: platformLabels[reservation.reservationType] || reservation.reservationType,
+    platform: labelFor(reservation.reservationType),
+    platformCode: reservation.reservationType,
     propertyName: reservation.apartment,
     amount: Number(reservation.totalPaid) || 0,
   }

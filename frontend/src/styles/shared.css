@@ -147,21 +147,6 @@
   text-transform: capitalize;
 }
 
-.attention-platform.platform-airbnb {
-  background: #ffe6e6;
-  color: #c2182f;
-}
-
-.attention-platform.platform-booking {
-  background: #dceeff;
-  color: #0f3460;
-}
-
-.attention-platform.platform-monthly {
-  background: #fdf3d0;
-  color: #8a6d0b;
-}
-
 .attention-missing {
   color: var(--badge-danger-text);
 }
@@ -838,11 +823,6 @@
   white-space: nowrap;
 }
 
-.search-res-platform-airbnb  { background: #ffe6e6; color: #c2182f; }
-.search-res-platform-booking { background: #dceeff; color: #0f3460; }
-.search-res-platform-monthly { background: #fdf3d0; color: #8a6d0b; }
-.search-res-platform-private { background: #e8f7ef; color: #1a6845; }
-.search-res-platform-maintenance { background: #fdf2ee; color: #7a3320; }
 
 .search-res-card-total {
   display: grid;

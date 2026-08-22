@@ -666,3 +666,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Type picker on the top-apartments chart, and the honesty note under the
+   guest-mix donut when some arrivals have no client record to group by. */
+.insight-series-picker {
+  margin-bottom: 8px;
+  min-height: 28px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  padding: 0 8px;
+}
+
+.insight-footnote {
+  margin: 8px 0 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-align: center;
+}

@@ -1,4 +1,25 @@
-export type ReservationPlatform = 'private' | 'airbnb' | 'booking' | 'monthly' | 'maintenance' | 'direct'
+// The built-in codes the app reasons about by name. An admin can add more, so
+// any other string is valid too — `(string & {})` keeps autocomplete for these
+// while still accepting a type someone created in the Admin Panel.
+export type ReservationPlatform =
+  | 'private'
+  | 'airbnb'
+  | 'booking'
+  | 'monthly'
+  | 'maintenance'
+  | 'direct'
+  | (string & {})
+
+/** A row of the reservation-type table: what a type is called and its colour. */
+export type ReservationTypeRecord = {
+  id: string
+  code: string
+  label: string
+  color: string
+  sortOrder: number
+  isBuiltin: boolean
+  active: boolean
+}
 
 export type PropertyListing = {
   id: string
@@ -38,6 +59,8 @@ export type ReservationRecord = {
   guestPhone: string
   guestEmail?: string
   guestId?: string
+  /** Whether this guest has stayed before — Guest.is_returning, from the server. */
+  guestIsReturning?: boolean
   paymentDue: string
   paid: boolean
   paidMonths?: string[]
@@ -100,7 +123,10 @@ export type DashboardStay = {
   id: string
   guestName: string
   propertyName: string
+  /** Display label, which an admin can rename. */
   platform: string
+  /** The stored code — what the colour class is built from. */
+  platformCode: string
   detail: string
   amount?: number
 }
@@ -565,4 +591,51 @@ export type ManagedUser = {
   twoFactorEnabled: boolean
   /** Enabled AND an address is set — i.e. actually enforced at sign-in. */
   twoFactorActive: boolean
+}
+
+
+/* ── Guest account portal ──────────────────────────────────────────────────
+   A guest is not a staff user and this shape is deliberately different from
+   AuthUser: no `role`, so the two can never be passed to the same code by
+   accident. Guests pay at the property, so nothing here describes a payment. */
+
+export type GuestAccountUser = {
+  isAuthenticated: boolean
+  email: string
+}
+
+export type GuestBookingStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'declined'
+  | 'expired'
+  | 'cancelled'
+
+export type GuestBooking = {
+  id: string
+  status: GuestBookingStatus
+  checkIn: string
+  checkOut: string
+  nights: number
+  guestsCount: number
+  totalPriceEur: string
+  /** Only ever set when the status is `declined`. */
+  declineReason: string
+  canCancel: boolean
+  property: {
+    name: string
+    bedrooms: number
+    photoUrl: string
+    /** Empty until the booking is confirmed. Never a coordinate, ever. */
+    address: string
+    floor: string
+  }
+}
+
+export type GuestStats = {
+  stays: number
+  nights: number
+  totalSpentEur: string
+  /** ISO date of the most recent finished stay, or "" for a new guest. */
+  lastVisit: string
 }

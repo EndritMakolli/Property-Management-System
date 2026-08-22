@@ -141,3 +141,90 @@
     flex-wrap: wrap;
   }
 }
+
+/* ── Telling the guest the outcome ─────────────────────────────────────────
+   Opens over the list after a decision. Nothing is sent until Send is pressed;
+   closing without sending is a normal thing to do. */
+.notify-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px 16px;
+  background: rgba(10, 12, 16, 0.5);
+  overflow-y: auto;
+}
+
+.notify-panel {
+  width: min(720px, 100%);
+  display: grid;
+  gap: 12px;
+}
+
+.notify-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notify-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.notify-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.notify-to {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.notify-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.notify-subject {
+  flex: 1;
+  min-width: 220px;
+  min-height: 34px;
+}
+
+.notify-body {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.notify-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}

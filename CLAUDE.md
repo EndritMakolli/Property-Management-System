@@ -35,8 +35,8 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 402 tests
-    cd frontend && npx tsc -b --force && npm run build && npm test    # 148 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 608 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 260 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -60,6 +60,20 @@ financial records. A pre-hosting audit fixed these; keep them true:
   and its session is trusted by the whole API.
 - **Public booking endpoints never leak** exact coordinates, door codes, wifi
   passwords, or financials.
+- **A guest is never a Django user.** `GuestAccount` has its own session key and
+  its own `require_guest`. `request.user` stays anonymous for a guest, which is
+  why every `require_roles` endpoint already rejects them. Never put a guest in
+  a Group; `tests_guest_isolation` asserts 401 across the staff surface.
+- **`user_role()` denies by default.** A user with no group resolves to `""`,
+  not `ROLE_CLEANING` — cleaning can read every door code in the building.
+- **`views/_guest_ownership.py` is the entire ownership rule.** Never filter a
+  guest's bookings anywhere else. Only website bookings, matched on a lowercased
+  email, and only a `Reservation` a `BookingRequest` points at — so nothing
+  staff typed in and nothing a channel imported can surface in a portal.
+- **Only `guest/auth/request-link/` and `guest/auth/verify/` are `@csrf_exempt`.**
+  Everything reading or mutating guest data keeps Django's protection. The guest
+  serializer is an allow-list: no address until the booking is confirmed, and
+  never a door code, lockbox code, wifi password, coordinate or `GuestDocument`.
 
 ## Conventions
 
@@ -77,10 +91,37 @@ financial records. A pre-hosting audit fixed these; keep them true:
   (narrowest scope). Only `stack` and `exclusive` are order-sensitive.
 - Frontend unit tests run under Vitest (`npm test`); they cover the pure
   pricing helpers in `src/components/pricing/`, not components.
-- Guest replies are templates, not code. Four `MessageTemplate` rows (one per
-  availability scenario) hold Albanian and English bodies, edited at
-  `/message-templates`. `(placeholders)` resolve in `views/_drafts.py`;
-  `[square brackets]` drop when empty. Never hardcode reply wording.
+- Guest replies are templates, not code. Six `MessageTemplate` rows — four
+  availability scenarios plus `booking_approved` / `booking_rejected` — hold
+  Albanian and English bodies, edited at `/message-templates`. `(placeholders)`
+  resolve in `views/_drafts.py`; `[square brackets]` drop when empty. Never
+  hardcode reply wording.
+- The four availability replies are **copied** by staff, so an unfillable
+  placeholder stays visible. The two booking outcomes are **emailed**, so
+  `views/_guest_mail.py` refuses to send one with a placeholder left in it, and
+  fails **open** — a failed send never rolls back the booking. 2FA mail is the
+  opposite on both counts; don't copy its policy here.
+- `ReservationType` is the single source of truth for what a booking type is
+  called and its colour. `Reservation.platform` stays a plain string keyed to
+  `ReservationType.code` — never convert it to a foreign key (two unique
+  constraints, sync dedupe, and billing behaviour hang off the literal values).
+  Built-in types can be renamed and recoloured but not deleted.
+- Per-type colours are **generated at runtime** into a `<style>` tag by
+  `context/ReservationTypesContext.tsx`. Do not hardcode `.platform-airbnb`
+  colours in a stylesheet again — an admin can add a type no `.css` file knows.
+- `Property.bathrooms` is a decimal (1.5 = one full bath, one without a shower).
+  Serializers must cast it to `float`: `JsonResponse` renders a `Decimal` as a
+  JSON *string*, which silently breaks the frontend's `number` type.
+- The stay date picker is `components/shared/StayRangePicker` — one component,
+  two palettes via `tone`. The guest site and the PMS share it.
 - Backend returns camelCase JSON; frontend types live in `frontend/src/types/domain.ts`.
+- The guest sign-in email is hardcoded security mail (following
+  `views/_two_factor.py`), **not** a `MessageTemplate`. The "never hardcode
+  reply wording" rule governs the six booking-reply scenarios only.
+- `GUEST_PORTAL_URL` must point at the **public site**, not the API. It is where
+  sign-in links land; unset, no guest can sign in.
+- Reservation-type colours are generated into a `<style>` tag at runtime by
+  `context/ReservationTypesContext.tsx`. Never hardcode `.platform-*` colours in
+  a stylesheet again — an admin can add a type no `.css` file knows about.
 - Never commit secrets. `backend/.env` is real config (gitignored);
   `backend/.env.example` is a tracked template — placeholders only.

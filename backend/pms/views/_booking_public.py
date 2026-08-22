@@ -88,7 +88,8 @@ def _serialize_public_property(prop, request, price_breakdown=None, site_setting
         "name": prop.name,
         "bedrooms": prop.bedrooms,
         "beds": prop.beds,
-        "bathrooms": prop.bathrooms,
+        # float(), not the Decimal: JsonResponse would render it as a string.
+        "bathrooms": float(prop.bathrooms),
         "maxGuests": prop.max_guests,
         "apartmentType": f"{prop.bedrooms} {'bedroom' if prop.bedrooms == 1 else 'bedrooms'}",
         "basePriceEur": str(base_rate_for(prop)),
@@ -856,6 +857,45 @@ def booking_reservation_detail(request, token):
     return JsonResponse({"error": "Booking not found."}, status=404)
 
 
+def cancellation_outcome(reservation, today=None):
+    """Whether this reservation can cancel itself, and for how much back.
+
+    Extracted so the guest portal cancels under exactly the same rules as the
+    token link in a confirmation email. Two implementations of "the
+    cancellation policy" is one more than this application can have.
+
+    Returns `(can_auto_cancel, refund_amount)`. False means the guest is asked
+    to get in touch — never that the booking silently stays put.
+    """
+    policy = _find_cancellation_policy(reservation.property)
+    today = today or localdate()
+    days_until_checkin = (reservation.check_in - today).days
+    paid = reservation.online_payment_amount
+
+    if policy is None:
+        # No policy configured anywhere: free cancellation, as documented.
+        return True, paid
+
+    if policy.policy_type == CancellationPolicy.PolicyType.FREE:
+        if policy.days_before_checkin is None or days_until_checkin >= policy.days_before_checkin:
+            return True, paid
+        return False, Decimal("0")
+
+    if policy.policy_type == CancellationPolicy.PolicyType.PARTIAL and policy.auto_process:
+        # A partial policy with no percentage set is a misconfiguration, not a
+        # 100% cancellation fee. Refusing surfaces it to staff; the previous
+        # behaviour cancelled the booking and quietly refunded nothing.
+        if not policy.refund_pct:
+            return False, Decimal("0")
+        return True, (paid * policy.refund_pct / 100).quantize(Decimal("0.01"))
+
+    if policy.policy_type == CancellationPolicy.PolicyType.NON_REFUNDABLE and policy.auto_process:
+        if not reservation.is_non_refundable:
+            return True, Decimal("0")
+
+    return False, Decimal("0")
+
+
 @csrf_exempt
 def booking_cancel(request, token):
     """POST — guest cancels their booking via secure token."""
@@ -881,31 +921,7 @@ def booking_cancel(request, token):
     if reservation.is_archived:
         return JsonResponse({"error": "This reservation is already cancelled."}, status=400)
 
-    # Check cancellation policy
-    policy = _find_cancellation_policy(reservation.property)
-    today = localdate()
-    days_until_checkin = (reservation.check_in - today).days
-
-    can_auto_cancel = False
-    refund_amount = Decimal("0")
-
-    if policy:
-        if policy.policy_type == CancellationPolicy.PolicyType.FREE:
-            if policy.days_before_checkin is None or days_until_checkin >= policy.days_before_checkin:
-                can_auto_cancel = True
-                refund_amount = reservation.online_payment_amount
-        elif policy.policy_type == CancellationPolicy.PolicyType.PARTIAL and policy.auto_process:
-            can_auto_cancel = True
-            if policy.refund_pct:
-                refund_amount = (reservation.online_payment_amount * policy.refund_pct / 100).quantize(Decimal("0.01"))
-        elif policy.policy_type == CancellationPolicy.PolicyType.NON_REFUNDABLE and policy.auto_process:
-            if not reservation.is_non_refundable:
-                can_auto_cancel = True
-                refund_amount = Decimal("0")
-    else:
-        # Default: free cancellation
-        can_auto_cancel = True
-        refund_amount = reservation.online_payment_amount
+    can_auto_cancel, refund_amount = cancellation_outcome(reservation)
 
     if not can_auto_cancel:
         return JsonResponse({

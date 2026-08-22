@@ -1,3 +1,4 @@
+import { NotifyGuestPanel } from '../features/booking/NotifyGuestPanel'
 import { CheckCircle, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -24,6 +25,12 @@ export function BookingRequestsPage() {
   const [error, setError] = useState('')
 
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  // Set after a decision so the guest can be told. Never sends by itself.
+  const [notify, setNotify] = useState<{
+    requestId: string
+    scenario: 'booking_approved' | 'booking_rejected'
+    guestName: string
+  } | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectMessage, setRejectMessage] = useState('')
   const [actionError, setActionError] = useState('')
@@ -73,6 +80,7 @@ export function BookingRequestsPage() {
         ? `Request approved — reservation created for ${req.guestName} (${req.checkIn} → ${req.checkOut}).`
         : 'Request approved and reservation created.'
       showSuccess(response.warning ? `${base} ${response.warning}` : base)
+      setNotify({ requestId: id, scenario: 'booking_approved', guestName: req?.guestName ?? 'the guest' })
       await load(0)
       setConfirmedOffset(0)
     } catch (e: unknown) {
@@ -85,10 +93,16 @@ export function BookingRequestsPage() {
   async function handleReject(id: string) {
     setActionError('')
     try {
+      const rejected = pending.find((r) => r.id === id)
       await rejectBookingRequest(id, rejectMessage)
       setRejectingId(null)
       setRejectMessage('')
       showSuccess('Request rejected.')
+      setNotify({
+        requestId: id,
+        scenario: 'booking_rejected',
+        guestName: rejected?.guestName ?? 'the guest',
+      })
       await load(0)
       setConfirmedOffset(0)
     } catch (e: unknown) {
@@ -104,6 +118,14 @@ export function BookingRequestsPage() {
 
   return (
     <div className="booking-requests-page">
+      {notify && (
+        <NotifyGuestPanel
+          guestName={notify.guestName}
+          requestId={notify.requestId}
+          scenario={notify.scenario}
+          onClose={() => setNotify(null)}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <h2>Booking Requests</h2>
         {pending.length > 0 && <span className="br-badge">{pending.length}</span>}

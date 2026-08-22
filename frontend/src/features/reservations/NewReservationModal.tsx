@@ -1,3 +1,4 @@
+import { StayDateRangeField } from '../../components/shared/StayDateRangeField'
 import { ArrowRight, FileText, Repeat, RotateCcw, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -15,7 +16,7 @@ import { DateInput } from '../../components/shared/DateInput'
 import type { GuestRecord, MaintenanceIssueRecord, PropertyListing, ReservationPlatform, ReservationRecord } from '../../types/domain'
 import { calculateNights, toDateInputValue } from '../../utils/date'
 import { stayPeriods } from '../payments/paymentPeriods'
-import { reservationTypeOptions } from './reservationOptions'
+import { useReservationTypeOptions } from './reservationOptions'
 import { useSmartChange } from './useSmartChange'
 
 type NewReservationModalProps = {
@@ -35,6 +36,7 @@ export function NewReservationModal({
   open,
   reservation,
 }: NewReservationModalProps) {
+  const reservationTypeOptions = useReservationTypeOptions()
   const navigate = useNavigate()
   const today = toDateInputValue(new Date())
   const tomorrowDate = new Date()
@@ -493,14 +495,17 @@ export function NewReservationModal({
                   ))}
                 </select>
               </label>
-              <label className="form-field">
-                Check-in
-                <DateInput required ariaLabel="Check-in" value={form.checkIn} onChange={(value) => updateForm({ checkIn: value })} />
-              </label>
-              <label className="form-field">
-                Check-out
-                <DateInput required ariaLabel="Check-out" min={form.checkIn} value={form.checkOut} onChange={(value) => updateForm({ checkOut: value })} />
-              </label>
+              <div className="form-field form-field-wide">
+                {/* No `blocked` here: the modal does not hold the other
+                    reservations, and fetching them only to grey out nights
+                    would add a request for something the server already
+                    refuses with a clear message. */}
+                <StayDateRangeField
+                  checkIn={form.checkIn}
+                  checkOut={form.checkOut}
+                  onChange={(checkIn, checkOut) => updateForm({ checkIn, checkOut })}
+                />
+              </div>
             </div>
           </div>
 

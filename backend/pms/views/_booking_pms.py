@@ -1,10 +1,10 @@
+import uuid
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
 from django.http import JsonResponse
-from django.http.multipartparser import MultiPartParser
 from django.utils import timezone
 
 from ..models import (
@@ -221,6 +221,10 @@ def booking_request_approve(request, request_id):
             online_payment_status=Reservation.OnlinePaymentStatus.NONE,
             is_non_refundable=False,
             price_breakdown_json=req.price_breakdown,
+            # The guest needs a handle on the booking they just had confirmed.
+            # booking_create_direct always minted one; this path never did, so
+            # an approved request produced a reservation nothing could look up.
+            booking_token=uuid.uuid4(),
             notes=f"Direct booking via website (Pay at Property). Approved from request {req.id}.",
         )
         reservation.save()
@@ -546,13 +550,22 @@ def property_photo_list(request, property_id):
         return JsonResponse({"photos": [_serialize_property_photo(p, request) for p in photos]})
 
     if request.method == "POST":
-        parser = MultiPartParser(request.META, request, request.upload_handlers)
-        post_data, files = parser.parse()
-        upload_error = _validate_upload(files.get("photo"), label="image")
+        # Django's native parsing, not a hand-rolled MultiPartParser. On a POST
+        # the CSRF middleware has already read request.POST looking for the
+        # token, and that drains the multipart stream — so parsing it a second
+        # time here read nothing and rejected every gallery upload as "no file".
+        # The cover photo escaped it only because that save is a PATCH, which
+        # the middleware never reads. Same fix as _company.py.
+        upload_error = _validate_upload(request.FILES.get("photo"), label="image")
         if upload_error:
             return JsonResponse({"error": upload_error}, status=400)
-        sort_order = int(post_data.get("sortOrder") or PropertyPhoto.objects.filter(property=prop).count())
-        photo = PropertyPhoto(property=prop, photo=files["photo"], sort_order=sort_order)
+        try:
+            sort_order = int(
+                request.POST.get("sortOrder") or PropertyPhoto.objects.filter(property=prop).count()
+            )
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "sortOrder must be a whole number."}, status=400)
+        photo = PropertyPhoto(property=prop, photo=request.FILES["photo"], sort_order=sort_order)
         photo.save()
         return JsonResponse({"photo": _serialize_property_photo(photo, request)}, status=201)
 

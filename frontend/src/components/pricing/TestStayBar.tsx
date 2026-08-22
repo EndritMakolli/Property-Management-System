@@ -5,6 +5,7 @@
 // engine has always known both; nothing displayed them. Pick a property and
 // dates here and every rule row on the page reports what it did.
 
+import { StayDateRangeField } from '../shared/StayDateRangeField'
 import { AlertTriangle, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { useState } from 'react'
 import type { PricingQuote, PropertyListing } from '../../types/domain'
@@ -69,21 +70,11 @@ export function TestStayBar({
           </select>
         </div>
         <div>
-          <label htmlFor="test-check-in">Check-in</label>
-          <input
-            id="test-check-in"
-            type="date"
-            value={stay.checkIn}
-            onChange={(e) => set('checkIn', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="test-check-out">Check-out</label>
-          <input
-            id="test-check-out"
-            type="date"
-            value={stay.checkOut}
-            onChange={(e) => set('checkOut', e.target.value)}
+          <label>Stay</label>
+          <StayDateRangeField
+            checkIn={stay.checkIn}
+            checkOut={stay.checkOut}
+            onChange={(checkIn, checkOut) => onChange({ ...stay, checkIn, checkOut })}
           />
         </div>
         <div>

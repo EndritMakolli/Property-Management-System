@@ -1,5 +1,6 @@
 import { CalendarDays, Download, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useReservationTypeOptions } from '../features/reservations/reservationOptions'
 import { useNavigate } from 'react-router-dom'
 import {
   createReservation,
@@ -40,6 +41,7 @@ const defaultSort: ReservationSort = { key: 'checkIn', direction: 'asc' }
 const numericSortKeys: ReservationSortKey[] = ['totalNights', 'nightlyPrice', 'totalPaid']
 
 export function ReservationsPage() {
+  const reservationTypeOptions = useReservationTypeOptions()
   const navigate = useNavigate()
   const [view, setView] = useState<ReservationsView>(() => {
     const stored = window.localStorage.getItem('pms.reservations.view') as ReservationsView | null
@@ -257,7 +259,7 @@ export function ReservationsPage() {
     }
 
     const defaultProperty = properties[0]
-    const validTypes = new Set(['private', 'airbnb', 'booking', 'monthly', 'maintenance'])
+    const validTypes = new Set(reservationTypeOptions.map((option) => option.value))
 
     const newRows: EditableReservation[] = pastedRows.map((row, index) => {
       const guestName = (row.guestName || '').trim()
@@ -512,17 +514,17 @@ export function ReservationsPage() {
           </select>
         </label>
         <label>
-          Platform
+          Type
           <select
             value={selectedPlatform}
             onChange={(e) => setSelectedPlatform(e.target.value)}
           >
-            <option value="">All platforms</option>
-            <option value="private">Private</option>
-            <option value="airbnb">Airbnb</option>
-            <option value="booking">Booking.com</option>
-            <option value="monthly">Monthly</option>
-            <option value="maintenance">Maintenance</option>
+            <option value="">All types</option>
+            {reservationTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>

@@ -204,11 +204,6 @@
   padding: 4px 8px;
 }
 
-.platform-airbnb {
-  background: #ffe6e6;
-  color: #c2182f;
-}
-
 .show-more-button {
   justify-self: start;
   min-height: 32px;
@@ -789,4 +784,77 @@
   color: var(--badge-warning-text);
   font-size: 0.78rem;
   font-weight: 600;
+}
+
+/* ── Check-in panel ────────────────────────────────────────────────────────
+   Deliberately the same row shape as the cleaning panel above it: they are
+   read at the same moment and should not need two different reading habits.
+   The badge colour comes from the reservation-type table (platform-* class). */
+.checkin-panel {
+  grid-column: 1 / -1;
+}
+
+.checkin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.checkin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+}
+
+.checkin-row.done {
+  opacity: 0.6;
+}
+
+.checkin-time {
+  flex-shrink: 0;
+  width: 62px;
+  min-height: 30px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-input, transparent);
+  color: var(--text-primary);
+  padding: 0 4px;
+}
+
+.checkin-returning {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+.checkin-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--bg-table-head);
+  color: var(--text-muted);
 }

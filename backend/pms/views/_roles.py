@@ -21,7 +21,11 @@ def user_role(user):
         return ROLE_MANAGEMENT
     if user.groups.filter(name="Cleaning").exists():
         return ROLE_CLEANING
-    return ROLE_CLEANING
+    # No group means no role. This used to fall through to ROLE_CLEANING, which
+    # granted door codes and lockbox codes to any account nobody had assigned a
+    # group to. Protection here is per-view and hand-written, with no
+    # default-deny, so a fallback that *grants* is the wrong direction to fail.
+    return ""
 
 
 def role_allowed(request, allowed_roles):

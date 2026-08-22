@@ -49,6 +49,11 @@ if _render_host and _render_host not in ALLOWED_HOSTS:
 
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default='')
 
+# Where an emailed guest sign-in link points. Deliberately NOT PUBLIC_BASE_URL:
+# the SPA and this API are separate origins (see CORS_ALLOWED_ORIGINS), so a
+# link built from the API host would land on a domain with no /account page.
+GUEST_PORTAL_URL = config('GUEST_PORTAL_URL', default='http://localhost:5173')
+
 # Claude API (optional) — powers expense-invoice auto-extraction. Leave
 # ANTHROPIC_API_KEY blank to disable the feature (manual entry still works).
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')

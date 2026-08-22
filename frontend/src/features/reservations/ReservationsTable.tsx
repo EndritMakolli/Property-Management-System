@@ -6,7 +6,7 @@ import type {
   ReservationPlatform,
 } from '../../types/domain'
 import { DateInput } from '../../components/shared/DateInput'
-import { reservationTypeOptions } from './reservationOptions'
+import { useReservationTypeOptions } from './reservationOptions'
 import { ReservationAttachmentsModal } from './ReservationAttachmentsModal'
 
 type ReservationsTableProps = {
@@ -81,6 +81,7 @@ export function ReservationsTable({
   rows,
   sort,
 }: ReservationsTableProps) {
+  const reservationTypeOptions = useReservationTypeOptions()
   const [discounts, setDiscounts] = useState<Record<string, string>>({})
   const [attachmentsFor, setAttachmentsFor] = useState<EditableReservation | null>(null)
 

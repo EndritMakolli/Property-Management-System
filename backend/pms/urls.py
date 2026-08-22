@@ -116,10 +116,22 @@ urlpatterns = [
     path("booking/reservations/<uuid:token>/cancel/", views.booking_cancel, name="booking-cancel"),
     path("booking/reservations/<uuid:token>/change-request/", views.booking_change_request, name="booking-change-request"),
 
+    # ---- Guest account portal (public site, guest session) ----
+    path("guest/auth/request-link/", views.guest_request_link, name="guest-request-link"),
+    path("guest/auth/verify/", views.guest_verify, name="guest-verify"),
+    path("guest/auth/me/", views.guest_me, name="guest-me"),
+    path("guest/auth/logout/", views.guest_logout, name="guest-logout"),
+    path("guest/bookings/", views.guest_bookings, name="guest-bookings"),
+    path("guest/stats/", views.guest_stats, name="guest-stats"),
+    path("guest/bookings/<uuid:request_id>/cancel/", views.guest_cancel_booking, name="guest-cancel-booking"),
+
     # ---- Booking Engine: PMS Management (requires auth) ----
     path("booking-requests/", views.booking_request_list, name="booking-request-list"),
     path("booking-requests/<uuid:request_id>/approve/", views.booking_request_approve, name="booking-request-approve"),
     path("booking-requests/<uuid:request_id>/reject/", views.booking_request_reject, name="booking-request-reject"),
+    path("booking-requests/<uuid:request_id>/notify/", views.booking_request_notify, name="booking-request-notify"),
+    path("reservation-types/", views.reservation_type_list, name="reservation-type-list"),
+    path("reservation-types/<uuid:type_id>/", views.reservation_type_detail, name="reservation-type-detail"),
     path("message-templates/", views.message_template_list, name="message-template-list"),
     path("message-templates/<str:scenario>/", views.message_template_detail, name="message-template-detail"),
     path("message-drafts/", views.message_draft, name="message-draft"),

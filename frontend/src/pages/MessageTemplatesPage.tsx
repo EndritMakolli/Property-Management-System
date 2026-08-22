@@ -26,7 +26,15 @@ const WHEN_IT_FIRES: Record<MessageScenario, string> = {
   split_stay: 'Nothing is free throughout, but a split stay covers the dates.',
   alternative_dates: 'Nothing is free, no split works, but a later window fits.',
   no_availability: 'Nothing is free within the search horizon.',
+  booking_approved: 'Emailed to the guest when you approve their booking request.',
+  booking_rejected: 'Emailed to the guest when you decline their booking request.',
 }
+
+// The four availability replies are copied into WhatsApp by hand; the two
+// booking outcomes are emailed. That difference matters here: an email is not
+// proofread on its way out, so the sender refuses any placeholder that did not
+// resolve rather than letting a guest read "Hello (guest name)".
+const EMAILED: MessageScenario[] = ['booking_approved', 'booking_rejected']
 
 // Grouped as staff think about them, not as the renderer stores them.
 const PLACEHOLDERS: { group: string; tokens: string[] }[] = [
@@ -37,13 +45,17 @@ const PLACEHOLDERS: { group: string; tokens: string[] }[] = [
   },
   {
     group: 'Money',
-    tokens: ['(nightly price)', '(subtotal)', '(discount)', '(total price)'],
+    tokens: ['(nightly price)', '(subtotal)', '(discount)', '(discount %)', '(total price)'],
   },
   {
     group: 'Alternatives',
     tokens: ['(next free date)', '(unavailable until)', '(change date)'],
   },
   { group: 'Other', tokens: ['(guest name)', '(location)'] },
+  {
+    group: 'Booking outcome',
+    tokens: ['(apartment)', '(reason)'],
+  },
 ]
 
 function sampleDates() {
@@ -156,6 +168,8 @@ function TemplateCard({
     }
   }
 
+  const isEmailed = EMAILED.includes(template.scenario)
+
   async function togglePreview() {
     if (previewing) {
       setPreviewing(false)
@@ -189,10 +203,22 @@ function TemplateCard({
       <div className="template-head">
         <div>
           <h3>{template.label}</h3>
-          <span className="template-when">{WHEN_IT_FIRES[template.scenario]}</span>
+          <span className="template-when">
+            {WHEN_IT_FIRES[template.scenario]}
+            {isEmailed && ' Every placeholder must resolve, or the send is refused.'}
+          </span>
         </div>
         <div className="template-actions">
-          <button className="btn btn-sm btn-outline" onClick={togglePreview}>
+          <button
+            className="btn btn-sm btn-outline"
+            disabled={isEmailed}
+            title={
+              isEmailed
+                ? 'Previewed against a real booking on the Booking requests page, where it is sent from'
+                : undefined
+            }
+            onClick={togglePreview}
+          >
             {previewing ? <EyeOff size={13} /> : <Eye size={13} />}
             {previewing ? 'Hide preview' : 'Preview'}
           </button>

@@ -213,3 +213,101 @@
   flex: 1;
   min-width: 0;
 }
+
+/* ── Reservation types ─────────────────────────────────────────────────────
+   One colour per type, and the app reads it everywhere. See
+   context/ReservationTypesContext.tsx for how it reaches the rest of the UI. */
+.restype-list {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 16px;
+}
+
+.restype-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.restype-swatch {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+}
+
+.restype-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: text;
+}
+
+.restype-name-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.restype-code {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-table-head);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.restype-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.restype-delete {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.restype-delete:hover {
+  color: var(--badge-danger-text);
+  background: var(--badge-danger-bg);
+}
+
+.restype-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.restype-create input[type='text'],
+.restype-create input:not([type]) {
+  flex: 1;
+  min-width: 180px;
+}

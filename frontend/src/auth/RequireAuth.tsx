@@ -11,11 +11,16 @@ export function RequireAuth() {
   }
 
   if (!user.isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/login" />
+    // /staff-login, not /login: /login is becoming the guest sign-in, and a
+    // staff member bounced there would have no way through.
+    return <Navigate replace state={{ from: location }} to="/staff-login" />
   }
 
   if (!canAccess(user.role, location.pathname)) {
-    return <Navigate replace to="/dashboard" />
+    // A session with no role fails this check on every path, /dashboard
+    // included — sending them there would re-enter this same branch forever.
+    // There is no page for them: the API will refuse every call.
+    return <Navigate replace to={user.role ? '/dashboard' : '/staff-login'} />
   }
 
   return <Outlet />

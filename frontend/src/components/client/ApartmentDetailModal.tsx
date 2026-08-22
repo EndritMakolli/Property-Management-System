@@ -1,3 +1,4 @@
+import { formatBaths } from '../../utils/formatBaths'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { calculateNights, formatDisplayDate } from '../../utils/date'
 
@@ -11,7 +12,7 @@ import {
   type PublicPriceBreakdown,
   type BlockedRange,
 } from '../../api/bookingApi'
-import AvailabilityCalendar from './AvailabilityCalendar'
+import StayRangePicker from '../shared/StayRangePicker'
 import styles from './ApartmentDetailModal.module.css'
 
 interface Props {
@@ -33,12 +34,6 @@ interface Props {
 }
 
 const HOST_NAME = 'AirStay'
-
-const HIGHLIGHTS = [
-  { icon: '🔑', title: 'Self check-in', desc: 'Check yourself in with the smart lock.' },
-  { icon: '📍', title: 'Great location', desc: 'Recent guests rated the location highly.' },
-  { icon: '🗓️', title: 'Free cancellation', desc: 'Cancel before check-in for a partial refund.' },
-]
 
 export default function ApartmentDetailModal({
   property, checkIn, checkOut, guests, onClose, onReserve, generalLocation,
@@ -145,7 +140,6 @@ export default function ApartmentDetailModal({
       ? { latitude: buildingLatitude, longitude: buildingLongitude, radiusM: 0 }
       : null
   const beds = property.beds || 1
-  const baths = property.bathrooms || 1
   const maxGuests = property.maxGuests || 8
 
   const photos = property.photos.length ? property.photos : []
@@ -217,24 +211,10 @@ export default function ApartmentDetailModal({
                 <div>
                   <h2 className={styles.h2}>Entire apartment hosted by {HOST_NAME}</h2>
                   <p className={styles.specs}>
-                    {g} guests · {property.bedrooms} {property.bedrooms === 1 ? 'bedroom' : 'bedrooms'} · {beds} {beds === 1 ? 'bed' : 'beds'} · {baths} {baths === 1 ? 'bath' : 'baths'}
+                    {g} guests · {property.bedrooms} {property.bedrooms === 1 ? 'bedroom' : 'bedrooms'} · {beds} {beds === 1 ? 'bed' : 'beds'} · {formatBaths(property.bathrooms)}
                   </p>
                 </div>
                 <div className={styles.avatar}>{HOST_NAME[0]}</div>
-              </div>
-
-              <hr className={styles.hr} />
-
-              <div className={styles.highlights}>
-                {HIGHLIGHTS.map((h) => (
-                  <div key={h.title} className={styles.highlight}>
-                    <span className={styles.highlightIcon}>{h.icon}</span>
-                    <div>
-                      <strong>{h.title}</strong>
-                      <p>{h.desc}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
 
               <hr className={styles.hr} />
@@ -292,7 +272,7 @@ export default function ApartmentDetailModal({
 
                 {calOpen && (
                   <div className={styles.calPop}>
-                    <AvailabilityCalendar blocked={blocked} checkIn={ci} checkOut={co} onChange={applyDates} />
+                    <StayRangePicker blocked={blocked} checkIn={ci} checkOut={co} onChange={applyDates} />
                   </div>
                 )}
 

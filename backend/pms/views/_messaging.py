@@ -110,6 +110,9 @@ def _bedrooms_list(free_types, language):
     return _join_list([str(b) for b in sorted(set(free_types))], language)
 
 
+ZERO_PCT = Decimal("0")
+
+
 def _money(value):
     """Trim a Decimal string for prose: 245.00 -> 245, 208.25 stays."""
     text = str(value)
@@ -128,18 +131,25 @@ def _priced_types(free_types, check_in, check_out):
         breakdown = calculate_price(prop, check_in, check_out)
         if breakdown["errors"]:
             continue
-        discount = (
-            Decimal(breakdown["subtotal"]) - Decimal(breakdown["total"])
+        subtotal = Decimal(breakdown["subtotal"])
+        discount = subtotal - Decimal(breakdown["total"])
+        # Only a real reduction is a discount. A whole-stay increase drives this
+        # negative, and "− -10% zbritje" is not a sentence a guest should read.
+        discount_pct = (
+            (discount / subtotal * 100).quantize(Decimal("0.1"))
+            if subtotal > 0 and discount > 0
+            else ZERO_PCT
         )
         rows.append({
             "bedrooms": str(prop.bedrooms),
             "capacity": str(prop.max_guests),
             "beds": str(prop.beds),
-            "bathrooms": str(prop.bathrooms),
+            "bathrooms": _money(prop.bathrooms),
             "apartment type": f"{prop.bedrooms}-bedroom",
             "nightly price": _money(breakdown["base_nightly"]),
             "subtotal": _money(breakdown["subtotal"]),
             "discount": _money(discount),
+            "discount %": _money(discount_pct),
             "total price": _money(breakdown["total"]),
         })
     return rows

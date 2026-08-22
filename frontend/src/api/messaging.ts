@@ -1,10 +1,17 @@
 import { apiGet, apiSend } from './client'
 
-export type MessageScenario =
+/** What the availability search can produce — copied into WhatsApp by hand. */
+export type AvailabilityScenario =
   | 'available'
   | 'split_stay'
   | 'alternative_dates'
   | 'no_availability'
+
+/** How a booking request was decided — emailed to the guest, so the sender
+ *  refuses any placeholder that did not resolve. */
+export type BookingOutcomeScenario = 'booking_approved' | 'booking_rejected'
+
+export type MessageScenario = AvailabilityScenario | BookingOutcomeScenario
 
 export type MessageTemplateRecord = {
   scenario: MessageScenario
@@ -77,4 +84,35 @@ export async function updateMessageTemplate(
 
 export async function fetchMessageDraft(request: DraftRequest) {
   return apiSend<DraftResponse>('/api/message-drafts/', 'POST', request)
+}
+
+export type BookingNotifyDraft = {
+  body: string
+  unresolved: string[]
+  subject: string
+  guestEmail: string
+  empty: boolean
+}
+
+/** Read the draft for a decided booking request, before anything is sent. */
+export async function fetchBookingNotifyDraft(
+  requestId: string,
+  scenario: BookingOutcomeScenario,
+  language: DraftLanguage,
+) {
+  return apiGet<BookingNotifyDraft>(
+    `/api/booking-requests/${requestId}/notify/?scenario=${scenario}&language=${language}`,
+  )
+}
+
+/** Send exactly what the staff member has in front of them. */
+export async function sendBookingNotification(
+  requestId: string,
+  payload: { body: string; subject?: string; language: DraftLanguage },
+) {
+  return apiSend<{ sent: boolean; to: string }>(
+    `/api/booking-requests/${requestId}/notify/`,
+    'POST',
+    payload,
+  )
 }

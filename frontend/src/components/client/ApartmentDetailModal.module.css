@@ -230,11 +230,6 @@
 
 .hr { border: none; border-top: 1px solid var(--c-divider); margin: 26px 0; }
 
-.highlights { display: grid; gap: 20px; }
-.highlight { display: flex; gap: 16px; align-items: flex-start; }
-.highlightIcon { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
-.highlight strong { display: block; font-size: 0.96rem; color: var(--c-ink); margin-bottom: 2px; }
-.highlight p { margin: 0; font-size: 0.85rem; color: var(--c-muted-2); line-height: 1.5; }
 
 .desc { font-size: 0.95rem; line-height: 1.8; color: #4a443c; margin: 0; white-space: pre-line; }
 

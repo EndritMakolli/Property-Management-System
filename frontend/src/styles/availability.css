@@ -17,11 +17,19 @@
   font-size: 1.35rem;
 }
 
+/* Flex rather than a fixed column count: the stay picker is one wide control
+   where two date fields used to sit, so the track count no longer matches the
+   number of things in the row. */
 .availability-search-form {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: 12px;
+}
+
+.availability-search-form > label {
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .availability-search-form label {
@@ -318,9 +326,6 @@
   white-space: nowrap;
 }
 
-.change-apt-type-airbnb { background: #ffe6e6; color: #c2182f; }
-.change-apt-type-booking { background: #dceeff; color: #0f3460; }
-.change-apt-type-private { background: #e8f7ef; color: #1a6845; }
 
 .change-apt-res-arrow {
   color: var(--text-muted);

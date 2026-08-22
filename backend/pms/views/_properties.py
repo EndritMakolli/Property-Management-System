@@ -64,7 +64,7 @@ def property_list(request):
                 name=name,
                 bedrooms=bedrooms,
                 beds=int(beds_raw) if beds_raw else 1,
-                bathrooms=int(bathrooms_raw) if bathrooms_raw else 1,
+                bathrooms=decimal_value(bathrooms_raw, "bathrooms") if bathrooms_raw else Decimal("1.0"),
                 address=request.POST.get("address") or "",
                 floor=request.POST.get("floor") or "",
                 wifi_name=request.POST.get("wifiName") or "",
@@ -126,7 +126,7 @@ def property_detail(request, property_id):
             if "beds" in payload:
                 prop.beds = int(payload.get("beds") or "1")
             if "bathrooms" in payload:
-                prop.bathrooms = int(payload.get("bathrooms") or "1")
+                prop.bathrooms = decimal_value(payload.get("bathrooms"), "bathrooms")
             if "locationLabel" in payload:
                 prop.location_label = payload.get("locationLabel") or ""
             if "rating" in payload:

@@ -4,12 +4,46 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.functions import Lower
 from django.db.models import Q
 
 from .base import TimeStampedModel
 from .guests import Guest
 from .monthly import monthly_period_count
 from .properties import Property
+
+
+class ReservationType(models.Model):
+    """What a reservation's `platform` value means, and what colour it draws in.
+
+    Keyed by `code` — the exact string stored on `Reservation.platform`. The
+    column stays a plain string rather than becoming a foreign key: it sits
+    inside two unique constraints, drives channel-sync de-duplication, and gates
+    behaviour (monthly billing periods, the Booking.com commission, maintenance
+    blocks skipping overlap checks). A lookup table keyed by the same string
+    gives an editable vocabulary without that migration risk.
+
+    `is_builtin` marks the codes the application reasons about by name. They can
+    be recoloured and relabelled freely, but deleting one would break billing
+    rather than merely a swatch, so it is refused.
+
+    This is also the single source of truth for colour. Before it existed the
+    same five types were coloured independently in seven places that disagreed.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.SlugField(max_length=20, unique=True)
+    label = models.CharField(max_length=60)
+    color = models.CharField(max_length=7, default="#6b7280")
+    sort_order = models.PositiveIntegerField(default=0)
+    is_builtin = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sort_order", "label"]
+
+    def __str__(self):
+        return self.label
 
 
 class Reservation(TimeStampedModel):
@@ -36,7 +70,10 @@ class Reservation(TimeStampedModel):
     check_out = models.DateField()
     nights = models.PositiveIntegerField(editable=False, default=0)
     guests_count = models.PositiveIntegerField(default=1)
-    platform = models.CharField(max_length=20, choices=Platform.choices)
+    # No `choices`: types are user-editable (see ReservationType). The enum
+    # above stays for the built-in codes the code reasons about by name, and
+    # clean() below is what actually rejects an unknown value.
+    platform = models.CharField(max_length=20)
     platform_reservation_id = models.CharField(max_length=255, blank=True, null=True)
     external_uid = models.CharField(max_length=255, blank=True, null=True)
     # When an imported (channel) reservation is moved to a different apartment by
@@ -99,6 +136,7 @@ class Reservation(TimeStampedModel):
         ]
         indexes = [
             models.Index(fields=["property", "check_in", "check_out"]),
+            models.Index(Lower("guest_email"), name="reservation_email_lower"),
             models.Index(fields=["platform", "platform_reservation_id"]),
             models.Index(fields=["paid", "payment_due"]),
             models.Index(fields=["guest_name"]),
@@ -111,6 +149,10 @@ class Reservation(TimeStampedModel):
 
     def clean(self):
         errors = {}
+        # Dropping `choices` removed the only thing rejecting a typo, so the
+        # check moves here — against the types that actually exist.
+        if self.platform and not ReservationType.objects.filter(code=self.platform).exists():
+            errors["platform"] = f"Unknown reservation type '{self.platform}'."
         if self.check_in and self.check_out and self.check_out <= self.check_in:
             errors["check_out"] = "Check-out must be after check-in."
 
@@ -169,14 +211,9 @@ class Reservation(TimeStampedModel):
 
     @builtin_property
     def calendar_color(self):
-        colors = {
-            self.Platform.PRIVATE: "#111111",
-            self.Platform.AIRBNB: "#FF5A5F",
-            self.Platform.BOOKING: "#003580",
-            self.Platform.MONTHLY: "#eab308",
-            self.Platform.MAINTENANCE: "#16a34a",
-        }
-        return colors.get(self.platform, "#6B7280")
+        """The type's colour, from the one table that owns colours."""
+        row = ReservationType.objects.filter(code=self.platform).only("color").first()
+        return row.color if row else "#6b7280"
 
 
 class GuestStay(models.Model):
@@ -188,7 +225,7 @@ class GuestStay(models.Model):
     check_out = models.DateField()
     nights = models.PositiveIntegerField()
     amount_paid_eur = models.DecimalField(max_digits=10, decimal_places=2)
-    platform = models.CharField(max_length=20, choices=Reservation.Platform.choices)
+    platform = models.CharField(max_length=20)
 
     class Meta:
         ordering = ["-check_in"]

@@ -1,13 +1,35 @@
+// The stay date picker, shared by the guest site and the PMS.
+//
+// It began as the guest booking calendar. The PMS used native
+// `<input type="date">` pickers, which open the browser's own grey popup and
+// cannot show which nights are already taken — so this moved here rather than
+// being reimplemented. One component, two palettes (see `tone`).
+
 import { useMemo, useState } from 'react'
 import { toDateInputValue } from '../../utils/date'
-import type { BlockedRange } from '../../api/bookingApi'
-import styles from './AvailabilityCalendar.module.css'
+import { compareMonths, openingMonth, shiftMonth } from './stayRangeMonths'
+import styles from './StayRangePicker.module.css'
+
+/** A night that cannot be booked. Structural, so this component stays
+ *  independent of whichever API produced it. */
+export type BlockedRange = { checkIn: string; checkOut: string }
 
 interface Props {
-  blocked: BlockedRange[]
+  blocked?: BlockedRange[]
   checkIn: string
   checkOut: string
   onChange: (checkIn: string, checkOut: string) => void
+  /** Which palette to wear. The guest site is warm; the PMS is not. */
+  tone?: 'client' | 'pms'
+  /** How many months to show at once. Two side by side unless space is tight. */
+  months?: number
+  /**
+   * Whether dates before today can be chosen.
+   *
+   * False for a guest — nobody books last week. True inside the PMS, where
+   * staff record stays that already happened and price ones that did.
+   */
+  allowPast?: boolean
 }
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -34,14 +56,28 @@ function expandBlocked(ranges: BlockedRange[]): Set<string> {
   return set
 }
 
-export default function AvailabilityCalendar({ blocked, checkIn, checkOut, onChange }: Props) {
+export default function StayRangePicker({
+  blocked = [],
+  checkIn,
+  checkOut,
+  onChange,
+  tone = 'client',
+  months: monthCount = 2,
+  allowPast = false,
+}: Props) {
   const blockedNights = useMemo(() => expandBlocked(blocked), [blocked])
   const today = toDateInputValue(new Date())
-  const [offset, setOffset] = useState(0)
+
+  // Where the calendar opens. Initialised from the stay being edited rather
+  // than from today, and held as state so it does not jump back mid-selection
+  // when the first click rewrites check-in.
+  const [view, setView] = useState(() => openingMonth(checkIn, today))
+  const floor = allowPast ? null : openingMonth('', today)
+  const atFloor = floor !== null && compareMonths(view, floor) <= 0
 
   function monthData(addMonths: number) {
-    const base = new Date()
-    const d = new Date(base.getFullYear(), base.getMonth() + addMonths, 1)
+    const shifted = shiftMonth(view, addMonths)
+    const d = new Date(shifted.year, shifted.month, 1)
     const year = d.getFullYear()
     const month = d.getMonth()
     const firstWeekday = d.getDay()
@@ -53,7 +89,7 @@ export default function AvailabilityCalendar({ blocked, checkIn, checkOut, onCha
   }
 
   function state(iso: string) {
-    if (iso < today) return 'past'
+    if (!allowPast && iso < today) return 'past'
     if (blockedNights.has(iso)) return 'blocked'
     return 'open'
   }
@@ -79,12 +115,33 @@ export default function AvailabilityCalendar({ blocked, checkIn, checkOut, onCha
     return iso === checkIn
   }
 
-  const months = [monthData(offset), monthData(offset + 1)]
+  const months = Array.from({ length: monthCount }, (_, index) => monthData(index))
 
   return (
-    <div className={styles.cal}>
-      <button className={`${styles.nav} ${styles.prev}`} onClick={() => setOffset((o) => Math.max(0, o - 1))} disabled={offset === 0} aria-label="Previous">‹</button>
-      <button className={`${styles.nav} ${styles.next}`} onClick={() => setOffset((o) => o + 1)} aria-label="Next">›</button>
+    <div
+      className={[styles.cal, tone === 'pms' ? styles.pms : '', monthCount === 1 ? styles.single : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {/* type="button" matters: this picker is rendered inside forms, and a
+          button with no type defaults to submit. */}
+      <button
+        aria-label="Previous month"
+        className={`${styles.nav} ${styles.prev}`}
+        disabled={atFloor}
+        type="button"
+        onClick={() => setView((current) => shiftMonth(current, -1))}
+      >
+        ‹
+      </button>
+      <button
+        aria-label="Next month"
+        className={`${styles.nav} ${styles.next}`}
+        type="button"
+        onClick={() => setView((current) => shiftMonth(current, 1))}
+      >
+        ›
+      </button>
 
       <div className={styles.months}>
         {months.map((m, mi) => (

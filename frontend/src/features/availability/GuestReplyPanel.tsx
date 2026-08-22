@@ -12,10 +12,11 @@ import {
   fetchMessageDraft,
   type DraftLanguage,
   type DraftResponse,
+  type AvailabilityScenario,
   type MessageScenario,
 } from '../../api/messaging'
 
-const SCENARIO_LABELS: Record<MessageScenario, string> = {
+const SCENARIO_LABELS: Record<AvailabilityScenario, string> = {
   available: 'Apartments available',
   split_stay: 'Split stay possible',
   alternative_dates: 'Free on nearby dates',
@@ -116,7 +117,7 @@ export function GuestReplyPanel({
             onChange={(e) => setOverride(e.target.value as MessageScenario)}
             title="Detected from the search — change it if the guess is wrong"
           >
-            {(Object.keys(SCENARIO_LABELS) as MessageScenario[]).map((scenario) => (
+            {(Object.keys(SCENARIO_LABELS) as AvailabilityScenario[]).map((scenario) => (
               <option key={scenario} value={scenario}>
                 {SCENARIO_LABELS[scenario]}
                 {draft?.detected === scenario ? ' (detected)' : ''}
@@ -143,7 +144,8 @@ export function GuestReplyPanel({
 
       {draft?.empty ? (
         <p className="list-empty">
-          No template yet for “{SCENARIO_LABELS[draft.scenario]}” in{' '}
+          No template yet for “{SCENARIO_LABELS[draft.scenario as AvailabilityScenario] ?? draft.scenario}”{' '}
+          in{' '}
           {language === 'sq' ? 'Albanian' : 'English'}.
         </p>
       ) : (

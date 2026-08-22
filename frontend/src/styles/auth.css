@@ -1,5 +1,10 @@
 /* ─── Login page root ─────────────────────────────────────────── */
 .lp-root {
+  /* One family, two colours. The guest page overrides only these. */
+  --lp-accent: #a78bfa;
+  --lp-accent-rgb: 167 139 250;
+  --lp-btn: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 50%, #a78bfa 100%);
+  --lp-btn-glow-rgb: 109 40 217;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -106,7 +111,7 @@
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.18em;
-  color: #a78bfa;
+  color: var(--lp-accent);
   margin: 0 0 22px;
   text-transform: uppercase;
 }
@@ -116,7 +121,7 @@
   width: 7px;
   height: 7px;
   border-radius: 2px;
-  background: #a78bfa;
+  background: var(--lp-accent);
   transform: rotate(45deg);
   flex-shrink: 0;
 }
@@ -159,7 +164,7 @@
 }
 
 .lp-indicator--active {
-  background: #a78bfa;
+  background: var(--lp-accent);
   width: 42px;
 }
 
@@ -176,7 +181,7 @@
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   box-shadow:
-    0 0 0 1px rgba(167 139 250 / 0.08),
+    0 0 0 1px rgba(var(--lp-accent-rgb) / 0.08),
     0 32px 80px rgba(0 0 0 / 0.55),
     inset 0 1px 0 rgba(255 255 255 / 0.06);
 }
@@ -191,7 +196,7 @@
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: #a78bfa;
+  color: var(--lp-accent);
   text-transform: uppercase;
   margin: 0;
 }
@@ -238,9 +243,9 @@
 
 .lp-input:focus {
   outline: none;
-  border-color: rgba(167 139 250 / 0.5);
-  background: rgba(167 139 250 / 0.06);
-  box-shadow: 0 0 0 3px rgba(167 139 250 / 0.1);
+  border-color: rgba(var(--lp-accent-rgb) / 0.5);
+  background: rgba(var(--lp-accent-rgb) / 0.06);
+  box-shadow: 0 0 0 3px rgba(var(--lp-accent-rgb) / 0.1);
 }
 
 .lp-btn {
@@ -251,7 +256,7 @@
   min-height: 46px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 50%, #a78bfa 100%);
+  background: var(--lp-btn);
   color: #fff;
   font-size: 0.88rem;
   font-weight: 700;
@@ -259,13 +264,13 @@
   letter-spacing: 0.05em;
   cursor: pointer;
   transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
-  box-shadow: 0 4px 24px rgba(109 40 217 / 0.45), 0 1px 0 rgba(255 255 255 / 0.1) inset;
+  box-shadow: 0 4px 24px rgba(var(--lp-btn-glow-rgb) / 0.45), 0 1px 0 rgba(255 255 255 / 0.1) inset;
   margin-top: 4px;
 }
 
 .lp-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 36px rgba(109 40 217 / 0.65), 0 1px 0 rgba(255 255 255 / 0.1) inset;
+  box-shadow: 0 10px 36px rgba(var(--lp-btn-glow-rgb) / 0.65), 0 1px 0 rgba(255 255 255 / 0.1) inset;
 }
 
 .lp-btn:active {
@@ -323,7 +328,7 @@
   background: none;
   border: none;
   padding: 0;
-  color: #a78bfa;
+  color: var(--lp-accent);
   font-size: 0.79rem;
   cursor: pointer;
   text-decoration: underline;
@@ -407,4 +412,35 @@
     gap: 4px;
     padding: 12px 20px;
   }
+}
+
+/* ── Guest sign-in ─────────────────────────────────────────────────────────
+   Same page, same motion, a different family colour — so a guest and a staff
+   member recognise the two as one product rather than two. */
+.lp-root--guest {
+  --lp-accent: #60a5fa;
+  --lp-accent-rgb: 96 165 250;
+  --lp-btn: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #60a5fa 100%);
+  --lp-btn-glow-rgb: 29 78 216;
+}
+
+/* The "I'm a staff member" line under the card. */
+.lp-card-alt {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgba(255 255 255 / 0.4);
+}
+
+.lp-card-alt button {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--lp-accent);
+  cursor: pointer;
+}
+
+.lp-card-alt button:hover {
+  text-decoration: underline;
 }

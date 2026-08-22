@@ -119,6 +119,10 @@ from ._receipts import (
 )
 from ._sync_conflicts import sync_conflict_dismiss, sync_conflict_link, sync_conflict_list
 from ._sync_log import sync_log_list
+from ._guest_auth import guest_logout, guest_me, guest_request_link, guest_verify
+from ._guest_mail import booking_request_notify
+from ._guest_portal import guest_bookings, guest_cancel_booking, guest_stats
+from ._reservation_types import reservation_type_detail, reservation_type_list
 from ._taxes import tax_detail, tax_list
 
 __all__ = [
@@ -140,6 +144,7 @@ __all__ = [
     "booking_property_detail",
     "booking_request_approve",
     "booking_request_list",
+    "booking_request_notify",
     "booking_request_reject",
     "booking_reservation_detail",
     "booking_settings",
@@ -160,6 +165,10 @@ __all__ = [
     "finance_expense_list",
     "finance_summary",
     "guest_detail",
+    "guest_bookings",
+    "guest_cancel_booking",
+    "guest_logout",
+    "guest_me",
     "guest_list",
     "house_rule_detail",
     "house_rule_list",
@@ -207,6 +216,8 @@ __all__ = [
     "reservation_detail",
     "reservation_history",
     "reservation_list",
+    "reservation_type_detail",
+    "reservation_type_list",
     "reservation_restore",
     "stay_constraint_detail",
     "stay_constraint_list",

@@ -37,6 +37,7 @@ export default function ClientBookingModal({ draft, onClose, onBooked }: Props) 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -50,8 +51,9 @@ export default function ClientBookingModal({ draft, onClose, onBooked }: Props) 
     const first = firstName.trim()
     const last = lastName.trim()
     const guestPhone = phone.trim()
-    if (!first || !last || !guestPhone) {
-      setError('Please enter your first name, last name, and phone number.')
+    const guestEmail = email.trim()
+    if (!first || !last || !guestPhone || !guestEmail) {
+      setError('Please enter your name, email address, and phone number.')
       return
     }
 
@@ -81,6 +83,7 @@ export default function ClientBookingModal({ draft, onClose, onBooked }: Props) 
           checkOut: target.checkOut,
           guestName,
           guestPhone,
+          guestEmail,
           guestsCount,
         })
         submittedCount += 1
@@ -164,6 +167,18 @@ export default function ClientBookingModal({ draft, onClose, onBooked }: Props) 
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Doe"
                   autoComplete="family-name"
+                  required
+                />
+              </label>
+              <label className={styles.label}>
+                Email
+                <input
+                  className={styles.input}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  type="email"
+                  autoComplete="email"
                   required
                 />
               </label>

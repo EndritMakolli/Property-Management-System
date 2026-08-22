@@ -52,7 +52,8 @@ def serialize_property(prop, request):
         "name": prop.name,
         "bedrooms": prop.bedrooms,
         "beds": prop.beds,
-        "bathrooms": prop.bathrooms,
+        # float(), not the Decimal: JsonResponse would render it as a string.
+        "bathrooms": float(prop.bathrooms),
         "floor": prop.floor or "",
         "wifiName": prop.wifi_name or "",
         "wifiPassword": prop.wifi_password or "",
@@ -88,6 +89,9 @@ def serialize_reservation(reservation):
         "guestPhone": reservation.guest_phone,
         "guestEmail": reservation.guest_email or "",
         "guestId": str(reservation.guest_id) if reservation.guest_id else "",
+        # Whether this person has stayed before. The list views already
+        # select_related("guest"), so this costs no extra query.
+        "guestIsReturning": bool(reservation.guest and reservation.guest.is_returning),
         "paymentDue": reservation.payment_due.isoformat() if reservation.payment_due else "",
         "paid": reservation.paid,
         "paidMonths": list(reservation.paid_months or []),

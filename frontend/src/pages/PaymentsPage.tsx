@@ -13,20 +13,20 @@ import { Metric } from '../components/shared/Metric'
 import { PaymentStatusDonuts } from '../features/dashboard/PaymentStatusDonuts'
 import { buildDueRows, togglePayload, type DueRow } from '../features/payments/paymentPeriods'
 import { monthNames } from '../features/reports/reportCalculations'
-import { reservationTypeOptions } from '../features/reservations/reservationOptions'
+import { useReservationTypeOptions } from '../features/reservations/reservationOptions'
 import type { PropertyListing, ReservationRecord } from '../types/domain'
 import { toDateInputValue } from '../utils/date'
 import '../styles/payments.css'
 
 type PaidFilter = 'all' | 'unpaid' | 'paid'
 
-const typeOptions = reservationTypeOptions.filter((option) => option.value !== 'maintenance')
 
 function euro(amount: number) {
   return `EUR ${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }
 
 export function PaymentsPage() {
+  const typeOptions = useReservationTypeOptions({ excludeMaintenance: true })
   const now = new Date()
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'

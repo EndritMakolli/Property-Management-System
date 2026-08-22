@@ -1,3 +1,4 @@
+import { formatBaths } from '../../utils/formatBaths'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { fetchBookingProperties, type PublicProperty } from '../../api/bookingApi'
 import { useBuildingLocation } from '../../components/client/useBuildingLocation'
@@ -92,7 +93,7 @@ export default function MapPage() {
                 </span>
                 <span className={styles.cardMeta}>
                   {property.maxGuests} guests · {property.beds} bed{property.beds !== 1 ? 's' : ''} ·{' '}
-                  {property.bathrooms} bath{property.bathrooms !== 1 ? 's' : ''}
+                  {formatBaths(property.bathrooms)}
                 </span>
                 <span className={styles.cardPrice}>
                   <strong>

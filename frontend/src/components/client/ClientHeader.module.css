@@ -10,7 +10,10 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 8, 18, 0.72);
+  /* Warm near-black rather than the old cool 72% wash: on the cream
+     account page a half-transparent cool bar read as a floating strip.
+     The home page is unaffected — it uses .header, not this. */
+  background: rgba(26, 22, 19, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);

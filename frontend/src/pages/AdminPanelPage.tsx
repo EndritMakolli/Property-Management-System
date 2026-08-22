@@ -20,6 +20,7 @@ import {
   importMedia,
 } from '../api/backup'
 import { CompanyProfileCard } from '../features/company/CompanyProfileCard'
+import { ReservationTypesCard } from '../features/settings/ReservationTypesCard'
 import { useAuth } from '../auth/AuthContext'
 import type { ManagedUser, PropertyListing } from '../types/domain'
 
@@ -455,6 +456,8 @@ export function AdminPanelPage() {
           ))}
         </div>
       </article>
+
+      <ReservationTypesCard />
 
       <CompanyProfileCard />
 

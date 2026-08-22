@@ -1,3 +1,6 @@
+import { toDateInputValue } from '../utils/date'
+import { lastMonths, topApartmentsByRevenue } from '../features/reports/insightCalculations'
+import { useReservationTypes } from '../context/ReservationTypesContext'
 import { BarChart3, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchProperties, fetchReservations } from '../api/pmsApi'
@@ -13,8 +16,8 @@ import {
   MonthlyRevenueChart,
 } from '../features/reports/ReportCharts'
 import {
-  AdrTrendChart,
-  OccupancyTrendChart,
+  GuestMixDonut,
+  TopApartmentsByRevenue,
   PlatformRevenueDonut,
   TopApartmentsBar,
 } from '../features/reports/InsightCharts'
@@ -39,6 +42,12 @@ const excludedPropertyStorageKey = 'pms.reports.excludedProperties'
 type ViewMode = 'monthly' | 'yearly' | 'all_time'
 
 export function ReportsPage() {
+  const { types } = useReservationTypes()
+  // Charts want just the three fields, in the operator's own order.
+  const seriesTypes = useMemo(
+    () => types.map((row) => ({ code: row.code, label: row.label, color: row.color })),
+    [types],
+  )
   const today = new Date()
   const { platform } = usePlatform()
 
@@ -140,6 +149,15 @@ export function ReportsPage() {
     }
     return buildPropertyReportStats(visibleProperties, includedReservations, selectedYear, selectedMonth)
   }, [viewMode, visibleProperties, includedAllReservations, includedReservations, selectedYear, selectedMonth])
+
+  // A rolling four-month window rather than the selected period: "which
+  // apartments earn the most" is a question about recent form, and a
+  // year-to-date answer means eight months of evidence in August and three
+  // weeks of it in January.
+  const recentTop = useMemo(() => {
+    const window = lastMonths(toDateInputValue(new Date()), 4)
+    return topApartmentsByRevenue(visibleProperties, includedAllReservations, window)
+  }, [visibleProperties, includedAllReservations])
 
   const sortedStats = useMemo(
     () => sortPropertyStats(stats, propertySort),
@@ -576,6 +594,7 @@ export function ReportsPage() {
                 <PlatformRevenueDonut
                   month={viewMode === 'monthly' ? selectedMonth : 0}
                   reservations={includedAllReservations}
+                  types={seriesTypes}
                   year={selectedYear}
                 />
               </div>
@@ -584,16 +603,16 @@ export function ReportsPage() {
                 <TopApartmentsBar stats={stats} />
               </div>
               <div>
-                <h4>Occupancy % by month — {selectedYear} vs {selectedYear - 1}</h4>
-                <OccupancyTrendChart
-                  properties={visibleProperties}
+                <h4>New vs returning guests — {periodLabel}</h4>
+                <GuestMixDonut
+                  month={viewMode === 'monthly' ? selectedMonth : 0}
                   reservations={includedAllReservations}
                   year={selectedYear}
                 />
               </div>
               <div>
-                <h4>Average nightly rate — {selectedYear} vs {selectedYear - 1}</h4>
-                <AdrTrendChart reservations={includedAllReservations} year={selectedYear} />
+                <h4>Top {platform.unitPlural.toLowerCase()} — last 4 months</h4>
+                <TopApartmentsByRevenue monthsLabel="the last 4 months" rows={recentTop} />
               </div>
             </div>
           </section>

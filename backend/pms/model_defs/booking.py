@@ -2,6 +2,7 @@ import uuid
 from decimal import Decimal
 
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from .base import TimeStampedModel
@@ -354,6 +355,9 @@ class BookingRequest(TimeStampedModel):
             models.Index(fields=["status", "expires_at"]),
             models.Index(fields=["property", "check_in", "check_out"]),
             models.Index(fields=["token"]),
+            # The guest portal matches a signed-in account to the bookings
+            # it made by the email they were made with.
+            models.Index(Lower("guest_email"), name="bookingreq_email_lower"),
         ]
 
     def save(self, *args, **kwargs):

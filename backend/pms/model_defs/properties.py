@@ -28,7 +28,9 @@ class Property(TimeStampedModel):
     calendar_export_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     bedrooms = models.PositiveIntegerField(default=1)
     beds = models.PositiveIntegerField(default=1)
-    bathrooms = models.PositiveIntegerField(default=1)
+    # Decimal, not an integer: "1.5 bathrooms" is a real layout — one full
+    # bathroom and one without a shower.
+    bathrooms = models.DecimalField(max_digits=3, decimal_places=1, default=Decimal("1.0"))
     max_guests = models.PositiveIntegerField(default=2)
     location_label = models.CharField(max_length=255, blank=True, help_text="Short location shown to guests, e.g. 'Prishtina, Kosovo'")
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

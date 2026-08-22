@@ -180,6 +180,13 @@ def _run_data_import(records):
         from django.core.management import call_command as _call
 
         _call("link_guests", verbosity=0)
+        # And backups from before a lookup table existed carry no rows for it,
+        # so the wipe above emptied it. Reference data is vocabulary, not user
+        # data — without it there are no reservation-type colours and every
+        # reservation save is rejected as an unknown type.
+        from ..reference_data import ensure_reference_data
+
+        ensure_reference_data()
     except Exception as exc:  # noqa: BLE001 — surface any load failure to the client
         return f"Import failed: {exc}"
     finally:

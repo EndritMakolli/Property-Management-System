@@ -1,7 +1,7 @@
+import { StayDateRangeField } from '../components/shared/StayDateRangeField'
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { fetchProperties, fetchQuotes, fetchReservations } from '../api/pmsApi'
-import { DateInput } from '../components/shared/DateInput'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
 import { GuestReplyPanel } from '../features/availability/GuestReplyPanel'
@@ -338,14 +338,14 @@ export function AvailabilityPage() {
           <h2>Find free apartments</h2>
         </div>
         <div className="availability-search-form">
-          <label>
-            Check-in
-            <DateInput ariaLabel="Check-in" value={checkIn} onChange={setCheckIn} />
-          </label>
-          <label>
-            Check-out
-            <DateInput ariaLabel="Check-out" min={checkIn} value={checkOut} onChange={setCheckOut} />
-          </label>
+          <StayDateRangeField
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onChange={(nextIn, nextOut) => {
+              setCheckIn(nextIn)
+              setCheckOut(nextOut)
+            }}
+          />
           <label>
             Bedrooms
             <select value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}>

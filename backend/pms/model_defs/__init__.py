@@ -26,6 +26,7 @@ from .finance import (
     FinancialReport,
     Loan,
 )
+from .guest_auth import GuestAccount, GuestLoginLink
 from .guests import Guest, GuestDocument
 from .invoices import Invoice
 from .maintenance import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto
@@ -33,7 +34,7 @@ from .properties import Property
 from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
 from .reviews import PropertyReview
 from .security import LoginChallenge, UserSecurity
-from .reservations import GuestStay, Reservation
+from .reservations import GuestStay, Reservation, ReservationType
 from .sync_log import SyncConflict, SyncLog
 from .taxes import MonthlyTax
 
@@ -54,6 +55,8 @@ __all__ = [
     "FinancialObligation",
     "FinancialReport",
     "Guest",
+    "GuestAccount",
+    "GuestLoginLink",
     "GuestDocument",
     "GuestStay",
     "HouseRule",
@@ -77,6 +80,7 @@ __all__ = [
     "ReceiptItemReservation",
     "Reservation",
     "ReservationAttachment",
+    "ReservationType",
     "ReservationAuditLog",
     "StayConstraint",
     "SyncConflict",
