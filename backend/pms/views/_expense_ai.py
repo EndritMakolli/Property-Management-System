@@ -27,10 +27,21 @@ ALLOWED_TYPES = {
     "image/png",
     "image/gif",
     "image/webp",
+    "image/avif",
 }
 
+# Types that mean "I could not tell". Windows derives a file's type from the
+# registry, so an extension with no entry there — .webp and .avif on a stock
+# install — uploads as octet-stream. See _validate_upload for why that is
+# tolerated rather than refused.
+UNKNOWN_TYPES = {"application/octet-stream", "binary/octet-stream"}
+
 # Deliberately excludes .svg and .html — both execute script when served.
-ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp"}
+# AVIF and WebP earn their place for the opposite reason: they are ordinary
+# raster formats every current browser renders, and neither can carry script.
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
+
+UNSUPPORTED_MESSAGE = "Upload an image (JPG, PNG, WebP, AVIF or GIF) or a PDF."
 
 MAX_FILE_BYTES = 10 * 1024 * 1024  # matches Django's upload cap
 
@@ -79,10 +90,19 @@ def _validate_upload(upload, label="invoice file"):
         return "The file is larger than 10 MB — scan it at a lower resolution."
     extension = Path(upload.name or "").suffix.lower()
     if extension not in ALLOWED_EXTENSIONS:
-        return "Upload an image (JPG/PNG/WebP/GIF) or a PDF."
+        return UNSUPPORTED_MESSAGE
+
+    # The extension above is the control. This header is only the client's
+    # claim about its own file, so an attacker simply sets one that passes and
+    # it protects nothing. What it does do is refuse honest uploads: a browser
+    # reads it from the uploading machine, and Windows answers
+    # "application/octet-stream" for any extension missing from its registry.
+    # That is how real .webp and .avif photos were being turned away. So an
+    # absent or unknown type is accepted once the extension has been vetted; a
+    # type that positively contradicts the allow-list is still refused.
     content_type = (upload.content_type or "").lower()
-    if content_type not in ALLOWED_TYPES:
-        return "Upload an image (JPG/PNG/WebP/GIF) or a PDF."
+    if content_type and content_type not in UNKNOWN_TYPES and content_type not in ALLOWED_TYPES:
+        return UNSUPPORTED_MESSAGE
     return None
 
 

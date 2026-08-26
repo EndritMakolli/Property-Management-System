@@ -18,6 +18,12 @@ import {
   type PropertyPayload,
 } from '../../api/pmsApi'
 import type { AmenityRecord, PropertyListing, PropertyPhotoRecord, PropertyReviewRecord } from '../../types/domain'
+import {
+  PHOTO_ACCEPT_ATTR,
+  rejectionFor,
+  uploadFailureMessage,
+  type PhotoRejection,
+} from './photoUploads'
 
 type PropertyCreateFormProps = {
   error: string
@@ -108,7 +114,17 @@ export function PropertyCreateForm({
 
   function handleFileChange() {
     const file = fileInputRef.current?.files?.[0]
-    if (file) setPreviewUrl(URL.createObjectURL(file))
+    if (!file) return
+    const reason = rejectionFor(file)
+    if (reason) {
+      // Clear it, or the form would post a file the server has to refuse.
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      setPreviewUrl(null)
+      setPhotoError(uploadFailureMessage([{ name: file.name, reason }]))
+      return
+    }
+    setPhotoError('')
+    setPreviewUrl(URL.createObjectURL(file))
   }
 
   function handleCoverDrop(event: DragEvent<HTMLLabelElement>) {
@@ -125,10 +141,24 @@ export function PropertyCreateForm({
 
   function handleGalleryFiles() {
     const files = Array.from(galleryInputRef.current?.files ?? [])
-    if (!files.length) return
-    setPendingPhotos((prev) => [...prev, ...files])
-    setPendingPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))])
     if (galleryInputRef.current) galleryInputRef.current.value = ''
+    if (!files.length) return
+
+    // Screen here rather than one failed request at a time. A file the server
+    // is certain to refuse should say so while it is still on screen next to
+    // the photo you picked.
+    const usable: File[] = []
+    const rejected: PhotoRejection[] = []
+    for (const file of files) {
+      const reason = rejectionFor(file)
+      if (reason) rejected.push({ name: file.name, reason })
+      else usable.push(file)
+    }
+
+    setPhotoError(uploadFailureMessage(rejected))
+    if (!usable.length) return
+    setPendingPhotos((prev) => [...prev, ...usable])
+    setPendingPreviews((prev) => [...prev, ...usable.map((f) => URL.createObjectURL(f))])
   }
 
   function removePending(index: number) {
@@ -244,12 +274,20 @@ export function PropertyCreateForm({
     let sortBase = galleryPhotos.length
     const uploaded: PropertyPhotoRecord[] = []
     const failed: File[] = []
+    const rejections: PhotoRejection[] = []
 
     for (const file of pendingPhotos) {
       try {
         uploaded.push(await uploadPropertyPhoto(savedProperty.id, file, sortBase++))
-      } catch {
+      } catch (caught) {
+        // The server says exactly why — which format, or which size limit.
+        // Swallowing it left "12 photos could not be uploaded" and no way to
+        // find out what to do about it.
         failed.push(file)
+        rejections.push({
+          name: file.name,
+          reason: caught instanceof Error ? caught.message : '',
+        })
       }
     }
 
@@ -262,11 +300,7 @@ export function PropertyCreateForm({
 
     if (failed.length > 0) {
       // Stay open so the message is actually readable and the files can be retried.
-      setPhotoError(
-        failed.length === 1
-          ? `“${failed[0].name}” could not be uploaded.`
-          : `${failed.length} photos could not be uploaded.`,
-      )
+      setPhotoError(uploadFailureMessage(rejections))
       return
     }
 
@@ -312,7 +346,7 @@ export function PropertyCreateForm({
                   <span>Click or drop an image to upload the cover photo</span>
                 </>
               )}
-              <input accept="image/*" name="photo" type="file" ref={fileInputRef} onChange={handleFileChange} />
+              <input accept={PHOTO_ACCEPT_ATTR} name="photo" type="file" ref={fileInputRef} onChange={handleFileChange} />
             </label>
           </div>
 
@@ -532,7 +566,7 @@ export function PropertyCreateForm({
         >
           <Plus size={15} />
           Select photos to upload (you can pick several at once)
-          <input accept="image/*" multiple type="file" ref={galleryInputRef} onChange={handleGalleryFiles} style={{ display: 'none' }} />
+          <input accept={PHOTO_ACCEPT_ATTR} multiple type="file" ref={galleryInputRef} onChange={handleGalleryFiles} style={{ display: 'none' }} />
         </label>
         <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
           Use the ↑ ↓ buttons under each photo to set their order. The first photo is shown first to guests.

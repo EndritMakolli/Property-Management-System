@@ -35,8 +35,8 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 608 tests
-    cd frontend && npx tsc -b --force && npm run build && npm test    # 260 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 707 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 393 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -55,7 +55,28 @@ financial records. A pre-hosting audit fixed these; keep them true:
 - **Every new endpoint needs `require_roles(...)`** as its first lines. There is
   no default-deny; protection is per-view and hand-written.
 - **Every upload path calls `_validate_upload`** (extension-based — `.svg` and
-  `.html` execute as script when served back).
+  `.html` execute as script when served back). The property **cover** photo was
+  the one path that did not, on both create and edit, so an `.svg` could be
+  stored and served from `/media/` as an apartment's cover; `tests_property_cover.py`
+  now holds that door shut. Count call sites per *path*, not per file — the
+  cover was missed by counting imports.
+- **The declared Content-Type is not a security control.** It is the client's
+  claim about its own file, so an attacker just sets one that passes. It is
+  read from the uploading machine's registry, which is why Windows sends
+  `application/octet-stream` for `.webp` and `.avif` and got honest photos
+  refused. `_validate_upload` accepts an unknown type once the *extension*
+  passes, and the extension list stays strict.
+- **`SECURE_CONTENT_TYPE_NOSNIFF` stays on, so a served file's declared type is
+  the only thing the browser will act on.** Django takes that from Python's
+  `mimetypes`, which on Windows reads the registry and knows neither `.avif`
+  nor `.webp` — both came back as `application/octet-stream` and rendered as
+  broken images. `settings.py` registers them with `mimetypes.add_type`. Adding
+  an image format to the allow-list means registering it there too, and
+  checking the production web server's own `mime.types` knows it.
+- **Accepted image formats live in two places that must agree:**
+  `ALLOWED_EXTENSIONS` in `views/_expense_ai.py` and `ACCEPTED_PHOTO_EXTENSIONS`
+  in `features/properties/photoUploads.ts`. A picker offering more than the
+  server takes is how twelve uploads failed with no reason shown.
 - **The Django admin stays disabled** (`DJANGO_ADMIN_ENABLED`). It bypasses 2FA
   and its session is trusted by the whole API.
 - **Public booking endpoints never leak** exact coordinates, door codes, wifi
@@ -77,6 +98,42 @@ financial records. A pre-hosting audit fixed these; keep them true:
 
 ## Conventions
 
+- **Revenue is attributed to the month its nights fall in**, never to the month
+  a stay began. `revenueInsideMonth` in `features/reports/reportCalculations.ts`
+  is the only place that decides this: `totalPaid / totalNights x nightsInMonth`.
+  It divides by the stored `totalNights`, which is safe only because
+  `Reservation.save()` recomputes `nights` from the dates on every write — keep
+  it that way, and never bulk-`update()` a check-in or check-out around it.
+  The reservation *list* endpoint must keep its overlap filter
+  (`check_in__lte=month_end, check_out__gt=month_start`); a containment filter
+  would drop boundary-spanning stays before the proration ever saw them.
+  `reportCalculations.test.ts` pins all of this.
+- **Monthly rent is no exception — it prorates by night too.** Rent is
+  *collected* per anniversary period (`buildDueRows`, unchanged: a started
+  period is owed in full, and `paymentPeriods.test.ts` holds that), but a report
+  answers a different question. Crediting the whole instalment to the month the
+  period began put all 31 nights of a 23 Aug → 23 Sep tenancy into August —
+  overstating it by the 22 nights that are September's and leaving September
+  with occupied nights worth nothing. Collection is cash, reporting is accrual;
+  never let a change to one drag the other with it.
+- **Every statistic on the Reports page reconciles to the same month total.**
+  `revenueInsideMonth` is the only revenue rule; "Reservations by nights"
+  (`nightsBuckets.ts`) buckets by whole-stay length but credits only the
+  month's nights, so its cards sum to the turnover figure exactly. If a new
+  panel sums `totalPaid` directly, it is wrong.
+- **Never filter guests through `reservations__...` on `annotated_guests()`.**
+  It joins the reservation table a second time and every `Sum` is counted once
+  per join - one client went from 1092 nights to 2184 and 22,602 EUR to 45,204.
+  `Count(distinct=True)` survives it; `Sum` does not. Select ids through a
+  subquery (`pk__in=Reservation.objects.filter(...).values(guest_id)`), as
+  `stayed_within` does. `tests_clients.AggregatesSurviveFilteringTests` fails
+  the moment the join comes back.
+- **A client is archived, not deleted.** `Guest.is_archived` hides them from the
+  directory and keeps their history; permanent delete is reachable only from the
+  Archive tab. The iCal import invents a client named after the channel
+  (`Airbnb`, 42 stays), so `without_channel_placeholders` hides rows named after
+  a `ReservationType` that carry no phone and no email - hidden, never deleted,
+  because reservations still point at them.
 - Expense statistics are keyed by **expense month** (`start_year`/`start_month`
   plus recurrence) — never invoice date or payment date.
 - Paid status is per month (`ExpensePayment` rows), not a flag on the expense.

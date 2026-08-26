@@ -18,6 +18,11 @@ class Guest(TimeStampedModel):
     id_document_url = models.URLField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     is_returning = models.BooleanField(default=False)
+    # Filed away rather than destroyed. Deleting a client used to be the only
+    # option and it takes their history with them - the reservations keep their
+    # typed-in name, but the stay counts, nights and spend are gone for good.
+    is_archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ["last_name", "first_name"]

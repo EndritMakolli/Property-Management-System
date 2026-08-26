@@ -1,6 +1,5 @@
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
 import { calculateNights, nextDateValue } from '../../utils/date'
-import { stayPeriods } from '../payments/paymentPeriods'
 
 export type PropertyReportStat = {
   averageNightlyPrice: number
@@ -60,11 +59,26 @@ export function buildPropertyReportStats(
 
   return properties.map((property) => {
     const propertyReservations = reservations.filter((r) => r.propertyId === property.id)
-    const turnover = propertyReservations.reduce(
-      (sum, r) => sum + (useAllTime ? Number(r.totalPaid) : revenueInsideMonth(r, year, month)),
+
+    // A stay belongs to this month only if it has nights in it — or, for a
+    // monthly rent period, money in it. Turnover and nights were already
+    // prorated, but the *count* was taken straight from the property filter,
+    // so ApartmentYearlyBreakdown (which passes every reservation, once per
+    // month) showed the apartment's all-time total in all twelve rows and
+    // summed it twelve times in the year total.
+    const inMonth = useAllTime
+      ? propertyReservations
+      : propertyReservations.filter(
+          (r) =>
+            nightsInsideMonth(r, monthStart, monthEnd) > 0 || revenueInsideMonth(r, year, month) > 0,
+        )
+
+    const turnover = inMonth.reduce(
+      (sum, r) =>
+        sum + (useAllTime ? Number(r.totalPaid) || 0 : revenueInsideMonth(r, year, month)),
       0,
     )
-    const bookedNights = propertyReservations.reduce(
+    const bookedNights = inMonth.reduce(
       (sum, r) => sum + (useAllTime ? r.totalNights : nightsInsideMonth(r, monthStart, monthEnd)),
       0,
     )
@@ -80,7 +94,7 @@ export function buildPropertyReportStats(
       id: property.id,
       name: property.name,
       occupancy,
-      reservations: propertyReservations.length,
+      reservations: inMonth.length,
       turnover,
     }
   })
@@ -200,18 +214,17 @@ export function nightsInsideMonth(reservation: ReservationRecord, monthStart: st
   return calculateNights(start, end)
 }
 
+// What this month earned. Every reservation type, monthly rent included, is
+// prorated across the nights it actually occupied.
+//
+// Monthly rent used to be the exception: the whole instalment was credited to
+// the month its billing period *started* in. That is how the rent is collected,
+// but it is not what a month earned — a tenancy running 23 Aug to 23 Sep put
+// all 31 nights of rent into August, overstating it by the 22 nights that
+// belong to September and leaving September holding occupied nights worth
+// nothing. Collection still works per period; see buildDueRows, which is
+// deliberately unchanged and guarded by paymentPeriods.test.ts.
 export function revenueInsideMonth(reservation: ReservationRecord, year: number, month: number) {
-  // Monthly stays with a flat rent contribute the full price to each month a
-  // billing period starts in — never prorated by nights.
-  if (reservation.reservationType === 'monthly') {
-    const flat = Number(reservation.monthlyPrice)
-    if (Number.isFinite(flat) && flat > 0) {
-      const key = `${year}-${String(month).padStart(2, '0')}`
-      const startsInMonth = stayPeriods(reservation).filter((p) => p.key === key).length
-      return startsInMonth * flat
-    }
-  }
-
   const daysInMonth = new Date(year, month, 0).getDate()
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`

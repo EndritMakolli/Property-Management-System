@@ -1,64 +1,49 @@
-import { Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { deleteGuest, fetchGuests } from '../api/guests'
+// The client directory, on the same shape as Reservations: tabs across the
+// top, cards below, and everything that narrows the list handled by the server
+// so the page holds twenty rows rather than four hundred.
+
+import { useState } from 'react'
+import { ClientArchiveView } from '../features/clients/ClientArchiveView'
 import { ClientFormModal } from '../features/clients/ClientFormModal'
+import { ClientLatestAddedView } from '../features/clients/ClientLatestAddedView'
+import { ClientListView } from '../features/clients/ClientListView'
 import type { GuestRecord } from '../types/domain'
 import '../styles/clients.css'
 
+type ClientsView = 'list' | 'latest' | 'archive'
+const clientViews: ClientsView[] = ['list', 'latest', 'archive']
+const clientViewLabels: Record<ClientsView, string> = {
+  list: 'Clients',
+  latest: 'Latest added',
+  archive: 'Archive',
+}
+
+const VIEW_STORAGE_KEY = 'pms.clients.view'
+
 export function ClientsPage() {
-  const [guests, setGuests] = useState<GuestRecord[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [search, setSearch] = useState('')
+  const [view, setView] = useState<ClientsView>(() => {
+    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY) as ClientsView | null
+    return stored && clientViews.includes(stored) ? stored : 'list'
+  })
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<GuestRecord | null>(null)
-  const [error, setError] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  // Bumped after a save so the open tab refetches rather than guessing where a
+  // new or renamed client belongs in the current sort and filter.
+  const [refreshToken, setRefreshToken] = useState(0)
 
-  useEffect(() => {
-    let ignore = false
-    fetchGuests()
-      .then((rows) => {
-        if (!ignore) {
-          setGuests(rows)
-          setStatus('ready')
-        }
-      })
-      .catch(() => {
-        if (!ignore) setStatus('error')
-      })
-    return () => {
-      ignore = true
-    }
-  }, [])
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return guests
-    return guests.filter((g) =>
-      [g.fullName, g.email, g.phone, g.nationality].some((field) => field.toLowerCase().includes(q)),
-    )
-  }, [guests, search])
-
-  function handleSaved(saved: GuestRecord) {
-    setGuests((current) => {
-      const exists = current.some((g) => g.id === saved.id)
-      return exists ? current.map((g) => (g.id === saved.id ? saved : g)) : [saved, ...current]
-    })
+  function chooseView(next: ClientsView) {
+    setView(next)
+    window.localStorage.setItem(VIEW_STORAGE_KEY, next)
   }
 
-  async function handleDelete(guest: GuestRecord) {
-    if (confirmDeleteId !== guest.id) {
-      setConfirmDeleteId(guest.id)
-      return
-    }
-    setConfirmDeleteId(null)
-    setError('')
-    try {
-      await deleteGuest(guest.id)
-      setGuests((current) => current.filter((g) => g.id !== guest.id))
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not delete the client.')
-    }
+  function edit(client: GuestRecord) {
+    setEditing(client)
+    setFormOpen(true)
+  }
+
+  function register() {
+    setEditing(null)
+    setFormOpen(true)
   }
 
   return (
@@ -67,113 +52,40 @@ export function ClientsPage() {
         <div>
           <h1 className="page-title">Clients</h1>
           <p className="page-subtitle">
-            Your guest directory — new reservations link to it automatically, and returning guests are flagged.
+            Your guest directory — new reservations link to it automatically, and returning guests
+            are flagged.
           </p>
         </div>
-        <button
-          className="pill-button accent"
-          type="button"
-          onClick={() => {
-            setEditing(null)
-            setFormOpen(true)
-          }}
-        >
-          <Plus size={15} /> Register client
-        </button>
       </div>
 
-      <div className="clients-search">
-        <Search size={16} />
-        <input
-          placeholder="Search name, email, phone, nationality…"
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="view-tabs">
+        {clientViews.map((option) => (
+          <button
+            key={option}
+            className={`view-tab${view === option ? ' active' : ''}`}
+            type="button"
+            onClick={() => chooseView(option)}
+          >
+            {clientViewLabels[option]}
+          </button>
+        ))}
       </div>
 
-      {error && <p className="form-error">{error}</p>}
-      {status === 'loading' && <p className="clients-empty">Loading clients…</p>}
-      {status === 'error' && <p className="form-error">Could not load clients.</p>}
-
-      {status === 'ready' && (
-        <section className="panel">
-          <p className="clients-count">
-            {filtered.length} client{filtered.length !== 1 ? 's' : ''}
-            {search.trim() ? ` matching “${search.trim()}”` : ''}
-          </p>
-          {filtered.length === 0 ? (
-            <p className="clients-empty">No clients yet — register one, or create a reservation and it will appear here.</p>
-          ) : (
-            <div className="clients-table-wrap">
-              <table className="clients-table">
-                <thead>
-                  <tr>
-                    <th>Client</th>
-                    <th>Phone</th>
-                    <th>Nationality</th>
-                    <th>Stays</th>
-                    <th>Nights</th>
-                    <th>Total paid</th>
-                    <th>Status</th>
-                    <th aria-label="Actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((guest) => (
-                    <tr
-                      key={guest.id}
-                      onClick={() => {
-                        setEditing(guest)
-                        setFormOpen(true)
-                      }}
-                    >
-                      <td className="clients-name">
-                        <strong>{guest.fullName}</strong>
-                        {guest.email && <small>{guest.email}</small>}
-                      </td>
-                      <td>{guest.phone || '—'}</td>
-                      <td>{guest.nationality || '—'}</td>
-                      <td>{guest.totalStays}</td>
-                      <td>{guest.totalNights}</td>
-                      <td>
-                        EUR {Number(guest.totalPaidEur).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </td>
-                      <td>
-                        {guest.isReturning && (
-                          <span className="returning-badge">
-                            <RotateCcw size={11} /> Returning
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <button
-                          className={`pill-button${confirmDeleteId === guest.id ? ' danger' : ''}`}
-                          type="button"
-                          title={confirmDeleteId === guest.id ? 'Click again to confirm' : 'Delete client'}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(guest)
-                          }}
-                        >
-                          <Trash2 size={13} />
-                          {confirmDeleteId === guest.id ? ' Confirm?' : ''}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
+      <section className="panel">
+        {view === 'list' && (
+          <ClientListView onEdit={edit} onRegister={register} refreshToken={refreshToken} />
+        )}
+        {view === 'latest' && (
+          <ClientLatestAddedView onEdit={edit} refreshToken={refreshToken} />
+        )}
+        {view === 'archive' && <ClientArchiveView />}
+      </section>
 
       <ClientFormModal
         client={editing}
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={handleSaved}
+        onSaved={() => setRefreshToken((n) => n + 1)}
       />
     </div>
   )

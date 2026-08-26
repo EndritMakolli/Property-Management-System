@@ -1,4 +1,5 @@
 import os
+import mimetypes
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -199,6 +200,16 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+
+# Django serves uploads with the type `mimetypes` guesses from the extension,
+# and on Windows that table comes from the registry — which has no entry for
+# .avif or .webp on a stock install, so both came back as
+# application/octet-stream. With SECURE_CONTENT_TYPE_NOSNIFF on (it stays on),
+# the browser takes that declaration literally and refuses to render the image.
+# Every apartment photo in the gallery is an .avif, so they all showed broken.
+# Register the two the guest site actually displays.
+mimetypes.add_type('image/avif', '.avif')
+mimetypes.add_type('image/webp', '.webp')
 DATA_UPLOAD_MAX_MEMORY_SIZE = config('DATA_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int)
 FILE_UPLOAD_MAX_MEMORY_SIZE = config('FILE_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int)
 

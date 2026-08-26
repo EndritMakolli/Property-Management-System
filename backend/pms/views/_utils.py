@@ -107,3 +107,23 @@ def is_active_for_month(item, year, month):
         return selected <= period_number(item.end_year, item.end_month)
 
     return True
+
+
+def paginate(queryset, request, default_limit=20, max_limit=100):
+    """Slice a queryset by ?limit / ?offset, returning (rows, total).
+
+    The cap is the point: without it `?limit=100000` is the unbounded query
+    paging was added to remove. Rubbish values fall back to the default rather
+    than raising - a malformed query string should not be a 500.
+    """
+    def whole(name, fallback):
+        try:
+            return int(request.GET.get(name) or fallback)
+        except (TypeError, ValueError):
+            return fallback
+
+    limit = max(1, min(whole("limit", default_limit), max_limit))
+    offset = max(0, whole("offset", 0))
+    # One COUNT before slicing; the slice itself is a LIMIT/OFFSET in SQL.
+    total = queryset.count()
+    return list(queryset[offset:offset + limit]), total

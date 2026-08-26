@@ -12,6 +12,7 @@ import {
 } from '../api/pmsApi'
 import { DateInput } from '../components/shared/DateInput'
 import { formatDisplayDate } from '../utils/date'
+import { buildDoorCopyText } from '../features/codes/copyTemplates'
 import type { DoorCodeRecord, LockboxCodeRecord } from '../types/domain'
 
 type CodeTab = 'door' | 'lockbox'
@@ -184,16 +185,6 @@ export function CodesPage() {
       )}
     </section>
   )
-}
-
-function buildDoorCopyText(code: DoorCodeRecord): string {
-  return [
-    `Apartamenti: ${code.apartmentNumber || '—'}`,
-    `Kati: ${code.floor || '—'}`,
-    `Kodi i derës: ${code.newCode || '—'}`,
-    `Wi-Fi: ${code.wifiName || '—'}`,
-    `Fjalëkalimi: ${code.wifiPassword || '—'}`,
-  ].join('\n')
 }
 
 function buildLockboxCopyText(code: LockboxCodeRecord): string {

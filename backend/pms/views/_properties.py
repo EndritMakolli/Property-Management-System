@@ -9,6 +9,7 @@ from django.http.multipartparser import MultiPartParser
 
 from ..models import Property, PropertyReview, Reservation, SyncLog
 from ._company import coord_value
+from ._expense_ai import _validate_upload
 from ._ical import escape_ical, fetch_ical_events, import_ical_reservations, reservation_label_for_export
 from ._roles import ROLE_ADMIN, ROLE_CLEANING, ROLE_MANAGEMENT, is_management, require_roles, user_role
 from ._serializers import serialize_property
@@ -43,6 +44,14 @@ def property_list(request):
         denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
         if denied:
             return denied
+        # The cover photo goes through the same door as the gallery. It used to
+        # be assigned unchecked, which let an .svg become a property's cover
+        # image — served back from our own origin, where it executes.
+        if request.FILES.get("photo"):
+            upload_error = _validate_upload(request.FILES["photo"], label="image")
+            if upload_error:
+                return JsonResponse({"error": {"photo": upload_error}}, status=400)
+
         try:
             name = (request.POST.get("name") or "").strip()
             if not name:
@@ -166,6 +175,9 @@ def property_detail(request, property_id):
                     prop.booking_ical_url = (payload.get("bookingIcalUrl") or "").strip() or None
             _apply_coordinates(prop, payload)
             if files.get("photo"):
+                upload_error = _validate_upload(files["photo"], label="image")
+                if upload_error:
+                    raise ValidationError({"photo": upload_error})
                 prop.photo = files["photo"]
             prop.full_clean()
             prop.save()

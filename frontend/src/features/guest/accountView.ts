@@ -8,14 +8,24 @@ import { formatDisplayDate } from '../../utils/date'
 /** Statuses that are over regardless of what the calendar says. */
 const FINISHED: GuestBooking['status'][] = ['declined', 'expired', 'cancelled']
 
-export function partitionStays(bookings: GuestBooking[], today: string) {
-  const upcoming: GuestBooking[] = []
-  const past: GuestBooking[] = []
+/** The least a row needs for "has this happened yet" to be answerable.
+ *
+ *  Kept structural so the staff-side client page can split a `ReservationRecord`
+ *  with this same function. A reservation carries no `status` — it exists, so it
+ *  was never declined — and the date test alone is the right answer for it.
+ */
+type StayLike = { checkIn: string; checkOut: string; status?: GuestBooking['status'] }
+
+export function partitionStays<T extends StayLike>(bookings: T[], today: string) {
+  const upcoming: T[] = []
+  const past: T[] = []
 
   for (const booking of bookings) {
     // A declined or cancelled booking is history whatever its dates say, and a
     // stay in progress is still ahead of you until the day you leave.
-    const isPast = FINISHED.includes(booking.status) || booking.checkOut <= today
+    const isPast =
+      (booking.status !== undefined && FINISHED.includes(booking.status)) ||
+      booking.checkOut <= today
     ;(isPast ? past : upcoming).push(booking)
   }
 

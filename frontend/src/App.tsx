@@ -31,6 +31,7 @@ const MaintenancePage = lazy(() => import('./pages/MaintenancePage').then((m) =>
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })))
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })))
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })))
+const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
 const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').then((m) => ({ default: m.BookingRequestsPage })))
 const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((m) => ({ default: m.MessageTemplatesPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
@@ -80,6 +81,7 @@ function App() {
                 <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/clients/:clientId" element={<ClientDetailPage />} />
                 <Route path="/booking-requests" element={<BookingRequestsPage />} />
                 <Route path="/pricing-rules" element={<PricingRulesPage />} />
                 <Route path="/message-templates" element={<MessageTemplatesPage />} />

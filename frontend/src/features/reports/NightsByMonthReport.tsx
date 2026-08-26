@@ -3,20 +3,10 @@ import { useMemo, useState } from 'react'
 import type { ReservationRecord } from '../../types/domain'
 import { formatDisplayDate } from '../../utils/date'
 import { monthOptions, yearOptions } from '../reservations/monthOptions'
+import { bucketFor, bucketLabel, buildNightBuckets, staysInMonth } from './nightsBuckets'
+import { nightsInsideMonth, revenueInsideMonth } from './reportCalculations'
 
-// Exact night counts to break down, plus a final "8+ nights" bucket.
-const EXACT_NIGHTS = [1, 2, 3, 4, 5, 6, 7]
-const PLUS_BUCKET = 8
 const DETAIL_LIMIT = 100
-
-function bucketFor(nights: number): number {
-  return nights >= PLUS_BUCKET ? PLUS_BUCKET : nights
-}
-
-function bucketLabel(value: number): string {
-  if (value === PLUS_BUCKET) return '8+ nights'
-  return `${value} night${value !== 1 ? 's' : ''}`
-}
 
 type NightsByMonthReportProps = {
   reservations: ReservationRecord[]
@@ -28,26 +18,22 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
   const [year, setYear] = useState(today.getFullYear())
   const [selected, setSelected] = useState<number | null>(null)
 
-  // Reservations that check in during the selected month.
-  const inMonth = useMemo(() => {
-    const prefix = `${year}-${String(month).padStart(2, '0')}`
-    return reservations.filter((r) => r.checkIn.slice(0, 7) === prefix)
-  }, [reservations, month, year])
+  // Every stay that occupied a night of the selected month, arrivals from the
+  // month before included - their nights are this month's too.
+  const inMonth = useMemo(
+    () => staysInMonth(reservations, year, month),
+    [reservations, month, year],
+  )
 
-  const buckets = useMemo(() => {
-    const total = inMonth.length || 1
-    return [...EXACT_NIGHTS, PLUS_BUCKET].map((value) => {
-      const matches = inMonth.filter((r) => bucketFor(r.totalNights) === value)
-      const revenue = matches.reduce((sum, r) => sum + Number(r.totalPaid || 0), 0)
-      return {
-        value,
-        label: bucketLabel(value),
-        count: matches.length,
-        pct: Math.round((matches.length / total) * 100),
-        revenue,
-      }
-    })
-  }, [inMonth])
+  const buckets = useMemo(
+    () => buildNightBuckets(reservations, year, month),
+    [reservations, month, year],
+  )
+
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(
+    new Date(year, month, 0).getDate(),
+  ).padStart(2, '0')}`
 
   // Reservations for the bucket the user clicked (empty until one is picked).
   const detail = useMemo(() => {
@@ -103,7 +89,9 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
             <p className="stats-card-label">{bucket.label}</p>
             <strong className="stats-card-value">{bucket.count}</strong>
             <span className="stats-card-sub">{bucket.pct}% of stays</span>
-            <span className="stats-card-sub">EUR {bucket.revenue.toLocaleString()}</span>
+            <span className="stats-card-sub">
+              EUR {Math.round(bucket.revenue).toLocaleString()} · {bucket.nights} nights
+            </span>
             <div className="stats-bar-bg">
               <div className="stats-bar-fill" style={{ width: `${bucket.pct}%` }} />
             </div>
@@ -126,7 +114,8 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
                   <th>Check-in</th>
                   <th>Check-out</th>
                   <th>Nights</th>
-                  <th>Paid</th>
+                  <th>Nights this month</th>
+                  <th>Earned this month</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,7 +126,13 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
                     <td>{formatDisplayDate(r.checkIn)}</td>
                     <td>{formatDisplayDate(r.checkOut)}</td>
                     <td>{r.totalNights}</td>
-                    <td>EUR {Number(r.totalPaid || 0).toLocaleString()}</td>
+                    <td>{nightsInsideMonth(r, monthStart, monthEnd)}</td>
+                    <td>
+                      EUR{' '}
+                      {revenueInsideMonth(r, year, month).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
                   </tr>
                 ))}
               </tbody>

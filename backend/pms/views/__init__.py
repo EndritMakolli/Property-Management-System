@@ -46,6 +46,7 @@ from ._guests import (
     guest_document_detail,
     guest_document_download,
     guest_document_list,
+    guest_stays,
     guest_list,
 )
 from ._invoices import invoice_detail, invoice_import, invoice_list
@@ -165,6 +166,7 @@ __all__ = [
     "finance_expense_list",
     "finance_summary",
     "guest_detail",
+    "guest_stays",
     "guest_bookings",
     "guest_cancel_booking",
     "guest_logout",

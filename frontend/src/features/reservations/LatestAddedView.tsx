@@ -5,28 +5,10 @@ import { fetchProperties, fetchReservations } from '../../api/pmsApi'
 import { NewReservationModal } from './NewReservationModal'
 import type { PropertyListing, ReservationRecord } from '../../types/domain'
 import { formatDisplayDate } from '../../utils/date'
+import { formatAdded } from '../../utils/relativeTime'
 
 const MAX_ROWS = 100
 
-// "Added just now" / "Added 3 hours ago" / "Added 12-Jun-2024"
-function formatAdded(value?: string): string {
-  if (!value) return 'Added date unknown'
-  const created = new Date(value)
-  const time = created.getTime()
-  if (Number.isNaN(time)) return 'Added date unknown'
-
-  const minutes = Math.round((Date.now() - time) / 60000)
-  if (minutes < 1) return 'Added just now'
-  if (minutes < 60) return `Added ${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `Added ${hours} hour${hours !== 1 ? 's' : ''} ago`
-  const days = Math.round(hours / 24)
-  if (days < 30) return `Added ${days} day${days !== 1 ? 's' : ''} ago`
-
-  const day = String(created.getDate()).padStart(2, '0')
-  const month = new Intl.DateTimeFormat('en', { month: 'short' }).format(created)
-  return `Added ${day}-${month}-${created.getFullYear()}`
-}
 
 export function LatestAddedView() {
   const navigate = useNavigate()

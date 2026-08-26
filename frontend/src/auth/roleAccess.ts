@@ -50,7 +50,17 @@ export function canAccess(role: UserRole, path: string) {
   if (!role) {
     return false
   }
-  return accessByRole[role].includes(path)
+  // A granted page grants what sits underneath it: `/clients` has to admit
+  // `/clients/<id>`. Comparing for equality sent every click on a client back
+  // to the dashboard.
+  //
+  // The boundary is the point. A bare `startsWith` would let `/clients` open
+  // `/clientsecret` and `/invoice` open `/invoices` — so the match is the page
+  // itself, or the page followed by a slash, and nothing else.
+  const normalised = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
+  return accessByRole[role].some(
+    (allowed) => normalised === allowed || normalised.startsWith(`${allowed}/`),
+  )
 }
 
 export function defaultPathForRole(role: UserRole) {

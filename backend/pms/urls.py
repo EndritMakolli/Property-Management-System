@@ -49,6 +49,7 @@ urlpatterns = [
     # Clients (guest directory)
     path("guests/", views.guest_list, name="guest-list"),
     path("guests/<uuid:guest_id>/", views.guest_detail, name="guest-detail"),
+    path("guests/<uuid:guest_id>/stays/", views.guest_stays, name="guest-stays"),
     path("guests/<uuid:guest_id>/documents/", views.guest_document_list, name="guest-document-list"),
     path("guests/<uuid:guest_id>/documents/<uuid:document_id>/", views.guest_document_detail, name="guest-document-detail"),
     path("guests/<uuid:guest_id>/documents/<uuid:document_id>/download/", views.guest_document_download, name="guest-document-download"),

@@ -94,7 +94,20 @@ export type GuestRecord = {
   totalStays: number
   totalNights: number
   totalPaidEur: string
+  isArchived: boolean
   createdAt: string
+}
+
+/** One client's history: the stays themselves plus their numbers.
+ *
+ *  `stays`/`nights`/`totalSpentEur` are lifetime and match the directory row.
+ *  `finished` and `upcoming` split that total rather than replacing it. */
+export type ClientStayBreakdown = {
+  stays: ReservationRecord[]
+  stats: GuestStats & {
+    finished: { stays: number; nights: number }
+    upcoming: { stays: number; nights: number }
+  }
 }
 
 export type EditableReservation = ReservationRecord & {
