@@ -1,4 +1,5 @@
 import calendar
+from django.utils.timezone import localdate
 from datetime import date, timezone, datetime, timedelta
 
 from django.core.exceptions import ValidationError
@@ -22,6 +23,7 @@ TRACKED_FIELDS = [
     ("total_price_eur", "totalPaid"),
     ("paid", "paid"),
     ("notes", "notes"),
+    ("garage_card", "garageCard"),
     ("property_id", "propertyId"),
 ]
 
@@ -64,7 +66,15 @@ def reservation_list(request):
         if is_management(request):
             reservations = reservations.filter(property__hidden_from_management=False)
 
-        if year and month:
+        # "Who is in the building right now" - arrivals today included,
+        # departures today not: they handed the key back this morning. It wins
+        # over the month filter, because it is not a question about a month.
+        if request.GET.get("hosting") == "1":
+            today = localdate()
+            reservations = reservations.filter(
+                check_in__lte=today, check_out__gt=today
+            ).exclude(platform="maintenance")
+        elif year and month:
             try:
                 selected_year = int(year)
                 selected_month = int(month)

@@ -358,8 +358,10 @@ export function DashboardPage() {
               </div>
               <p className="month-forecast-note">
                 {monthForecast.freeNightsRemaining} free nights left this month · usual{' '}
-                {monthForecast.usualOccupancyPct}% occupancy · ~EUR{' '}
-                {Math.round(monthForecast.avgNightlyEur).toLocaleString()}/night
+                {monthForecast.usualOccupancyPct}% occupancy ·{' '}
+                <span className="money">
+                  ~EUR {Math.round(monthForecast.avgNightlyEur).toLocaleString()}/night
+                </span>
               </p>
             </section>
           )}

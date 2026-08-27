@@ -97,7 +97,7 @@ export function ArchivePage() {
                     </td>
                     <td>{formatDisplayDate(r.checkIn)}</td>
                     <td>{formatDisplayDate(r.checkOut)}</td>
-                    <td>{r.totalPaid} EUR</td>
+                    <td className="money">{r.totalPaid} EUR</td>
                     <td className="col-muted">
                       {r.archivedAt ? formatDisplayDate(r.archivedAt.slice(0, 10)) : '—'}
                     </td>

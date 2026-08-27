@@ -64,13 +64,13 @@ export function PaymentsDuePanel({ reservations, onReservationUpdated }: Payment
 
       <div className="payments-due-totals">
         <span>
-          Owed: <strong>EUR {owed.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
+          Owed: <strong className="money">EUR {owed.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
         </span>
         <span>
           Payments remaining: <strong>{remaining}</strong>
         </span>
         <span>
-          Total value: <strong>EUR {totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
+          Total value: <strong className="money">EUR {totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
         </span>
       </div>
 
@@ -113,7 +113,7 @@ export function PaymentsDuePanel({ reservations, onReservationUpdated }: Payment
                 {row.reservation.reservationType}
               </span>
 
-              <strong className="payments-due-amount">
+              <strong className="payments-due-amount money">
                 EUR {row.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </strong>
             </li>

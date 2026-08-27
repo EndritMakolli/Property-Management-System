@@ -58,7 +58,7 @@ export function ReservationList({ title, items, initialVisibleCount, onSelect }:
               <small>{item.detail}</small>
             </div>
             <div className="reservation-item-right">
-              {item.amount != null && <span className="reservation-amount">{formatEur(item.amount)}</span>}
+              {item.amount != null && <span className="reservation-amount money">{formatEur(item.amount)}</span>}
               <span className={`platform platform-${item.platformCode}`}>{item.platform}</span>
             </div>
           </article>

@@ -11,6 +11,8 @@ def apply_reservation_payload(reservation, payload):
         reservation.guest_name = (payload.get("guestName") or "").strip()
     if "guestPhone" in payload:
         reservation.guest_phone = (payload.get("guestPhone") or "").strip()
+    if "garageCard" in payload:
+        reservation.garage_card = bool(payload.get("garageCard"))
     if "guestEmail" in payload:
         reservation.guest_email = (payload.get("guestEmail") or "").strip()
     if "guestId" in payload:

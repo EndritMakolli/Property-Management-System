@@ -221,7 +221,7 @@ export function DayDetailModal({ date, month, year, onClose, onDayUpdated }: Pro
           <div>
             <h3>{formatDateFull(date)}</h3>
             {entry && (
-              <small className="day-detail-subtitle">
+              <small className="day-detail-subtitle money">
                 Receipts: €{parseFloat(entry.receiptTotal).toFixed(2)} ·
                 Deposit: €{parseFloat(entry.depositAmount).toFixed(2)}
               </small>
@@ -319,15 +319,15 @@ export function DayDetailModal({ date, month, year, onClose, onDayUpdated }: Pro
                 <div className="receipt-day-totals">
                   <div className="receipt-total-row">
                     <span>Total receipt value</span>
-                    <strong>€ {totalReceiptValue.toFixed(2)}</strong>
+                    <strong className="money">€ {totalReceiptValue.toFixed(2)}</strong>
                   </div>
                   <div className="receipt-total-row">
                     <span>Total reservation paid</span>
-                    <strong>€ {totalLinkedPaid.toFixed(2)}</strong>
+                    <strong className="money">€ {totalLinkedPaid.toFixed(2)}</strong>
                   </div>
                   <div className={`receipt-total-row receipt-diff-row${difference !== 0 ? ' has-diff' : ''}`}>
                     <span>Difference</span>
-                    <strong className={difference !== 0 ? 'diff-nonzero' : ''}>
+                    <strong className={`money ${difference !== 0 ? 'diff-nonzero' : ''}`}>
                       {difference > 0 ? '+' : ''}€ {difference.toFixed(2)}
                     </strong>
                   </div>
@@ -395,10 +395,10 @@ function ReceiptItemRow({
           />
           {item.reservations.length > 0 && (
             <div className="receipt-item-note-totals">
-              <span>Receipt: <strong>€{itemValue.toFixed(2)}</strong></span>
-              <span>Reservations: <strong>€{linkedPaid.toFixed(2)}</strong></span>
+              <span>Receipt: <strong className="money">€{itemValue.toFixed(2)}</strong></span>
+              <span>Reservations: <strong className="money">€{linkedPaid.toFixed(2)}</strong></span>
               <span className={diff !== 0 ? 'diff-nonzero' : ''}>
-                Diff: <strong>{diff > 0 ? '+' : ''}€{diff.toFixed(2)}</strong>
+                Diff: <strong className="money">{diff > 0 ? '+' : ''}€{diff.toFixed(2)}</strong>
               </span>
             </div>
           )}
@@ -430,7 +430,7 @@ function ReceiptItemRow({
             <span className="linked-res-detail">
               {r.apartment} · {r.checkIn} → {r.checkOut}
             </span>
-            <span className="linked-res-paid">€ {parseFloat(r.totalPaid).toFixed(2)}</span>
+            <span className="linked-res-paid money">€ {parseFloat(r.totalPaid).toFixed(2)}</span>
             <button
               className="linked-res-remove"
               title="Remove link"
@@ -476,7 +476,7 @@ function ReceiptItemRow({
                 <span className="picker-dates">
                   {r.checkIn} → {r.checkOut}
                 </span>
-                <span className="picker-paid">€ {parseFloat(r.totalPaid).toFixed(2)}</span>
+                <span className="picker-paid money">€ {parseFloat(r.totalPaid).toFixed(2)}</span>
               </button>
             )
           })}

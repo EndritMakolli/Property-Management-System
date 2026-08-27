@@ -35,8 +35,8 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 707 tests
-    cd frontend && npx tsc -b --force && npm run build && npm test    # 393 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 728 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 443 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -134,6 +134,23 @@ financial records. A pre-hosting audit fixed these; keep them true:
   (`Airbnb`, 42 stays), so `without_channel_placeholders` hides rows named after
   a `ReservationType` that carry no phone and no email - hidden, never deleted,
   because reservations still point at them.
+- **A guest is "currently hosting" from the day they arrive until the day they
+  leave, and not on the day they leave** — `check_in <= today < check_out`.
+  Server side that is `?hosting=1` on the reservation list; client side it is
+  `currentlyHosting` in `features/clients/hostingView.ts`. Both exist because
+  the list must stay right as midnight passes without a reload.
+- **The garage card is one boolean on the *reservation*, not the guest.** It is
+  issued on arrival and taken back on departure, so a returning guest starts
+  unticked and the list answers "who holds one right now". It has no
+  who/when columns: `TRACKED_FIELDS` in `views/_reservations.py` already writes
+  a `ReservationAuditLog` row for every field it lists.
+- **The privacy switch hides money only.** `PrivacyProvider` sets
+  `data-privacy="on"` on the document root and one CSS rule in `shared.css`
+  blurs `.money` and `.money-chart`. Counts, occupancy, names and apartments
+  stay readable so the PMS is still usable. A new currency figure needs the
+  `money` class; `Metric` and `ComparePanel` decide for themselves via
+  `looksLikeMoney`, because they are handed "EUR 26,544" and "94%" alike. The
+  guest-facing site is deliberately unmarked — the switch is a PMS thing.
 - Expense statistics are keyed by **expense month** (`start_year`/`start_month`
   plus recurrence) — never invoice date or payment date.
 - Paid status is per month (`ExpensePayment` rows), not a flag on the expense.

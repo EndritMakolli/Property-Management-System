@@ -253,7 +253,7 @@ function TimelinePropertyRow({
             onClick={() => onDayClick?.(property, day.key)}
           >
             {!isBookedNight && property.basePriceEur ? (
-              <span className="timeline-price">{`${Number(property.basePriceEur).toFixed(0)} EUR`}</span>
+              <span className="timeline-price money">{`${Number(property.basePriceEur).toFixed(0)} EUR`}</span>
             ) : null}
             {dayReservations.map((reservation) => {
               const startsHere = reservationStartsOnOrBeforeVisibleDay(

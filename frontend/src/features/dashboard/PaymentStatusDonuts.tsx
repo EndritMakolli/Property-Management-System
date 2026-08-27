@@ -30,7 +30,7 @@ function SplitDonut({ split, centerLabel }: { split: PaymentSplit; centerLabel: 
   return (
     <div className="insight-donut-wrap">
       <div className="insight-donut">
-        <ResponsiveContainer width="100%" height={190}>
+        <ResponsiveContainer className="money-chart" width="100%" height={190}>
           <PieChart>
             <Pie
               cx="50%"
@@ -59,15 +59,17 @@ function SplitDonut({ split, centerLabel }: { split: PaymentSplit; centerLabel: 
         </ResponsiveContainer>
         <div className="insight-donut-center">
           <strong>{paidPct}% paid</strong>
-          <span>{centerLabel}</span>
+          <span className="money">{centerLabel}</span>
         </div>
       </div>
       <div className="chart-legend">
         <span>
-          <i style={{ background: STATUS_COLORS.paid }} /> Paid · {split.paidCount} · {euro(split.paidAmount)}
+          <i style={{ background: STATUS_COLORS.paid }} /> Paid · {split.paidCount} ·{' '}
+          <span className="money">{euro(split.paidAmount)}</span>
         </span>
         <span>
-          <i style={{ background: STATUS_COLORS.unpaid }} /> Unpaid · {split.unpaidCount} · {euro(split.unpaidAmount)}
+          <i style={{ background: STATUS_COLORS.unpaid }} /> Unpaid · {split.unpaidCount} ·{' '}
+          <span className="money">{euro(split.unpaidAmount)}</span>
         </span>
       </div>
     </div>

@@ -75,6 +75,9 @@ export type ReservationRecord = {
   nightlyPrice: string
   monthlyPrice?: string
   totalPaid: string
+  /** Whether this guest holds a garage card for this stay. Per stay, not per
+   *  guest: it is handed out on arrival and taken back on departure. */
+  garageCard?: boolean
   isArchived: boolean
   archivedAt: string
   createdAt?: string

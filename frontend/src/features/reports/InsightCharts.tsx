@@ -47,7 +47,7 @@ export function PlatformRevenueDonut({
   return (
     <div className="insight-donut-wrap">
       <div className="insight-donut">
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer className="money-chart" width="100%" height={220}>
           <PieChart>
             <Pie
               cx="50%"
@@ -73,14 +73,15 @@ export function PlatformRevenueDonut({
           </PieChart>
         </ResponsiveContainer>
         <div className="insight-donut-center">
-          <strong>{euro(total)}</strong>
+          <strong className="money">{euro(total)}</strong>
           <span>total revenue</span>
         </div>
       </div>
       <div className="chart-legend">
         {data.map((entry) => (
           <span key={entry.key}>
-            <i style={{ background: entry.color }} /> {entry.label} — {euro(entry.value)}
+            <i style={{ background: entry.color }} /> {entry.label} —{' '}
+            <span className="money">{euro(entry.value)}</span>
           </span>
         ))}
       </div>
@@ -102,7 +103,7 @@ export function TopApartmentsBar({ stats }: { stats: PropertyReportStat[] }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={Math.max(180, data.length * 34)}>
+    <ResponsiveContainer className="money-chart" width="100%" height={Math.max(180, data.length * 34)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 60, left: 8, bottom: 4 }}>
         <XAxis hide type="number" />
         <YAxis dataKey="name" tick={{ fontSize: 11 }} type="category" width={110} />
@@ -132,7 +133,7 @@ export function TopApartmentsByRevenue({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={Math.max(180, rows.length * 34)}>
+    <ResponsiveContainer className="money-chart" width="100%" height={Math.max(180, rows.length * 34)}>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 66, left: 8, bottom: 4 }}>
         <XAxis hide type="number" />
         <YAxis dataKey="name" tick={{ fontSize: 11 }} type="category" width={110} />

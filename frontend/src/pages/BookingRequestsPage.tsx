@@ -162,7 +162,7 @@ export function BookingRequestsPage() {
                 <div className="br-card-meta">
                   <span>{req.checkIn} → {req.checkOut} ({req.nights} nights)</span>
                   <span>{req.guestsCount} guest{req.guestsCount !== 1 ? 's' : ''}</span>
-                  <span>€{parseFloat(req.totalPriceEur).toFixed(2)}</span>
+                  <span className="money">€{parseFloat(req.totalPriceEur).toFixed(2)}</span>
                   <span>{req.guestEmail}</span>
                   <span>{req.guestPhone}</span>
                   {req.expiresAt && (
@@ -251,7 +251,7 @@ export function BookingRequestsPage() {
                     <td>{booking.checkIn}</td>
                     <td>{booking.checkOut}</td>
                     <td>{booking.nights}</td>
-                    <td>€{(parseFloat(booking.totalPriceEur) || 0).toFixed(2)}</td>
+                    <td className="money">€{(parseFloat(booking.totalPriceEur) || 0).toFixed(2)}</td>
                     <td>
                       <span className={`br-status-badge br-status-${booking.paid || booking.onlinePaymentStatus === 'full' ? 'approved' : 'pending'}`}>
                         {paymentLabel(booking)}

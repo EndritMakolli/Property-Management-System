@@ -87,7 +87,7 @@ export function ObligationsPanel({ obligations, onReload, onError }: Obligations
             <span>{obligation.description || 'No description'}</span>
             <span>{obligation.dueDate ? formatDisplayDate(obligation.dueDate) : 'No due date'}</span>
             <span>{obligation.paid ? 'Paid' : 'Unpaid'}</span>
-            <strong>EUR {money(obligation.amountEur)}</strong>
+            <strong className="money">EUR {money(obligation.amountEur)}</strong>
             <button type="button" onClick={() => toggleObligationPaid(obligation)}>
               {obligation.paid ? 'Mark unpaid' : 'Mark paid'}
             </button>

@@ -17,7 +17,7 @@ export function ReservationPopover({ reservation }: ReservationPopoverProps) {
       </span>
       <span>{reservation.totalNights} nights</span>
       {!isMaintenance && reservation.reservationType !== 'airbnb' && (
-        <span>{Number(reservation.totalPaid).toFixed(2)} EUR</span>
+        <span className="money">{Number(reservation.totalPaid).toFixed(2)} EUR</span>
       )}
     </div>
   )

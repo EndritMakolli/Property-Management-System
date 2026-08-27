@@ -70,7 +70,7 @@ export function PropertyListings({ onAdd, onDelete, onEdit, properties, status }
               <div className="listing-info">
                 <strong>{property.name}</strong>
                 <span>{property.bedrooms} bedroom{property.bedrooms !== 1 ? 's' : ''}{property.floor ? ` · ${property.floor}` : ''}</span>
-                <span>{formatNightlyPrice(property.basePriceEur)} per night</span>
+                <span className="money">{formatNightlyPrice(property.basePriceEur)} per night</span>
                 <small>{property.address || 'Home in Prishtina, Kosovo'}</small>
                 {property.wifiName && (
                   <small className="wifi-row"><Wifi size={12} /> {property.wifiName}</small>

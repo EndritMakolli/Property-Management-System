@@ -116,7 +116,7 @@ export function LatestAddedView() {
                     </span>
                   </div>
 
-                  <div className="search-res-card-total">
+                  <div className="search-res-card-total money">
                     <strong>{Number(r.totalPaid).toFixed(0)} EUR</strong>
                     <small>{r.nightlyPrice} / night</small>
                   </div>

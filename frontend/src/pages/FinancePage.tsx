@@ -171,15 +171,15 @@ export function FinancePage() {
       <section className="metric-row expense-stat-row">
         <article className="metric expense-stat total">
           <span>Total Expenses ({monthLabel})</span>
-          <strong>EUR {money(monthExpensesTotal.toFixed(2))}</strong>
+          <strong className="money">EUR {money(monthExpensesTotal.toFixed(2))}</strong>
         </article>
         <article className="metric expense-stat paid">
           <span>Total Paid</span>
-          <strong>EUR {money(monthExpensesPaid.toFixed(2))}</strong>
+          <strong className="money">EUR {money(monthExpensesPaid.toFixed(2))}</strong>
         </article>
         <article className="metric expense-stat unpaid">
           <span>Total Unpaid</span>
-          <strong>EUR {money(monthExpensesUnpaid.toFixed(2))}</strong>
+          <strong className="money">EUR {money(monthExpensesUnpaid.toFixed(2))}</strong>
         </article>
       </section>
 

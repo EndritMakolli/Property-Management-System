@@ -135,7 +135,7 @@ export function PropertyMonthCalendar({
             >
               <div className="property-calendar-date">
                 <span>{day.date.getDate()}</span>
-                <small>{property ? `${Number(property.basePriceEur || 0).toFixed(0)} EUR` : ''}</small>
+                <small className="money">{property ? `${Number(property.basePriceEur || 0).toFixed(0)} EUR` : ''}</small>
               </div>
               <div className="property-calendar-bookings">
                 {dayReservations.map((reservation) => {

@@ -649,7 +649,9 @@ export function NewReservationModal({
                             <li key={prop.id}>
                               <span>
                                 <strong>{prop.name}</strong> · {prop.apartmentType} ·{' '}
-                                {Number(prop.basePriceEur || 0).toFixed(0)} EUR/night
+                                <span className="money">
+                                  {Number(prop.basePriceEur || 0).toFixed(0)} EUR/night
+                                </span>
                               </span>
                               <button
                                 className="pill-button primary"

@@ -93,7 +93,7 @@ export function ExpensesYearlyChart({ allExpenses, categories, taxes, year, plat
         </p>
       ) : (
         <>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer className="money-chart" width="100%" height={240}>
             <BarChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
@@ -186,7 +186,7 @@ export function MonthlyRevenueChart({ data, selectedYear, today }: MonthlyRevenu
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer className="money-chart" width="100%" height={220}>
         <BarChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
@@ -283,7 +283,7 @@ export function CompareRevenueChart({ data, year, primaryName, secondaryName }: 
   return (
     <section className="panel stats-chart-panel">
       <h3 className="stats-section-title">Revenue Comparison — {year}</h3>
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer className="money-chart" width="100%" height={240}>
         <BarChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />

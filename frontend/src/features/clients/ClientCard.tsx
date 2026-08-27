@@ -69,7 +69,7 @@ export function ClientCard({
           <b>{client.totalNights}</b> night{client.totalNights === 1 ? '' : 's'}
         </span>
         <span title="Total paid">
-          <b>EUR {Number.isFinite(paid) ? paid.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0'}</b>
+          <b className="money">EUR {Number.isFinite(paid) ? paid.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0'}</b>
         </span>
       </div>
 

@@ -419,3 +419,58 @@
     grid-column: 2;
   }
 }
+
+/* ── Currently hosting ───────────────────────────────────────────────────── */
+
+.hosting-counts {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.hosting-count-has,
+.hosting-count-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hosting-count-has {
+  color: var(--accent, #1f6f5b);
+}
+
+.hosting-count-missing {
+  color: #b4690e;
+}
+
+.garage-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border, #e2e2e6);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.garage-check:hover {
+  border-color: var(--accent, #1f6f5b);
+}
+
+.garage-check.has-card {
+  border-color: var(--accent, #1f6f5b);
+  background: rgba(31, 111, 91, 0.09);
+  color: var(--accent, #1f6f5b);
+}
+
+.garage-check input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.garage-check input:disabled {
+  cursor: wait;
+}

@@ -134,8 +134,8 @@ export function TaxesPanel({ taxes, setTaxes, selectedMonth, selectedYear, month
                 .map((tax) => (
                   <tr key={tax.id} className={tax.year === selectedYear && tax.month === selectedMonth ? 'tax-row-current' : ''}>
                     <td>{monthName(tax.month)} {tax.year}</td>
-                    <td>EUR {money(tax.tvsh)}</td>
-                    <td>EUR {money(tax.tatimNeFitim)}</td>
+                    <td className="money">EUR {money(tax.tvsh)}</td>
+                    <td className="money">EUR {money(tax.tatimNeFitim)}</td>
                     <td>{tax.notes || '—'}</td>
                   </tr>
                 ))}

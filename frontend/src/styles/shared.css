@@ -868,3 +868,35 @@
   background: var(--accent-bg-mid);
   color: var(--accent-mid);
 }
+
+/* ── Privacy: hide every money figure ────────────────────────────────────────
+   One rule, keyed off the root attribute the PrivacyProvider sets. Toggling it
+   repaints without re-rendering the tree. `user-select: none` so a blurred
+   figure cannot simply be selected and read from the highlight. */
+
+[data-privacy='on'] .money {
+  filter: blur(7px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Revenue curves read at a glance even with the axis labels gone. */
+[data-privacy='on'] .money-chart {
+  filter: blur(9px);
+  user-select: none;
+}
+
+.privacy-flag {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(180, 105, 14, 0.14);
+  color: #b4690e;
+  white-space: nowrap;
+}
+
+.icon-button.privacy-toggle.active {
+  color: #b4690e;
+}

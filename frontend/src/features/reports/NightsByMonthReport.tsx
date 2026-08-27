@@ -90,7 +90,8 @@ export function NightsByMonthReport({ reservations }: NightsByMonthReportProps) 
             <strong className="stats-card-value">{bucket.count}</strong>
             <span className="stats-card-sub">{bucket.pct}% of stays</span>
             <span className="stats-card-sub">
-              EUR {Math.round(bucket.revenue).toLocaleString()} · {bucket.nights} nights
+              <span className="money">EUR {Math.round(bucket.revenue).toLocaleString()}</span> ·{' '}
+              {bucket.nights} nights
             </span>
             <div className="stats-bar-bg">
               <div className="stats-bar-fill" style={{ width: `${bucket.pct}%` }} />

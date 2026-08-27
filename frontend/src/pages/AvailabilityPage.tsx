@@ -387,8 +387,8 @@ export function AvailabilityPage() {
                   <div>
                     <strong>{property.name}</strong>
                     <p>{property.apartmentType}</p>
-                    <small>{Number(nightlyRate || 0).toFixed(0)} EUR per night</small>
-                    {totalNote && <small>{totalNote}</small>}
+                    <small className="money">{Number(nightlyRate || 0).toFixed(0)} EUR per night</small>
+                    {totalNote && <small className="money">{totalNote}</small>}
                   </div>
                   <button
                     className="primary-button availability-book-btn"

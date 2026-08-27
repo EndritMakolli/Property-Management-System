@@ -1,3 +1,4 @@
+import { looksLikeMoney } from '../../components/shared/money'
 import type { PropertyReportStat } from './reportCalculations'
 
 type ComparePanelProps = {
@@ -72,11 +73,19 @@ export function ComparePanel({ primary, secondary, periodLabel, primarySub, seco
       <div className="compare-metrics-grid">
         {metrics.map((m) => (
           <div className="compare-metric-row" key={m.label}>
-            <span className={`compare-value${m.winner === 'primary' ? ' winner' : ''}`}>
+            <span
+              className={`compare-value${m.winner === 'primary' ? ' winner' : ''}${
+                looksLikeMoney(m.primaryValue) ? ' money' : ''
+              }`}
+            >
               {m.primaryValue}
             </span>
             <span className="compare-metric-label">{m.label}</span>
-            <span className={`compare-value${m.winner === 'secondary' ? ' winner' : ''}`}>
+            <span
+              className={`compare-value${m.winner === 'secondary' ? ' winner' : ''}${
+                looksLikeMoney(m.secondaryValue) ? ' money' : ''
+              }`}
+            >
               {m.secondaryValue}
             </span>
           </div>

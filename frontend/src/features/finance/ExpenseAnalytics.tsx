@@ -232,7 +232,8 @@ export function ExpenseAnalyticsSection({
                       </BarChart>
                     </ResponsiveContainer>
                     <p className="expense-chart-footer">
-                      {selectedCategory?.name}: <strong>{euro(categoryTotal)}</strong> in {periodLabel}
+                      {selectedCategory?.name}: <strong className="money">{euro(categoryTotal)}</strong> in{' '}
+                      {periodLabel}
                     </p>
                   </>
                 )
@@ -267,14 +268,15 @@ export function ExpenseAnalyticsSection({
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="insight-donut-center">
-                      <strong>{euro(periodTotal)}</strong>
+                      <strong className="money">{euro(periodTotal)}</strong>
                       <span>total expenses</span>
                     </div>
                   </div>
                   <div className="chart-legend">
                     {categorySlices.map((entry) => (
                       <span key={entry.id}>
-                        <i style={{ background: entry.color }} /> {entry.name} — {euro(entry.value)}
+                        <i style={{ background: entry.color }} /> {entry.name} —{' '}
+                        <span className="money">{euro(entry.value)}</span>
                       </span>
                     ))}
                   </div>
@@ -323,7 +325,7 @@ export function ExpenseAnalyticsSection({
                     </BarChart>
                   </ResponsiveContainer>
                   <p className="expense-chart-footer">
-                    Total taxes: <strong>{euro(taxTotal)}</strong> in {periodLabel}
+                    Total taxes: <strong className="money">{euro(taxTotal)}</strong> in {periodLabel}
                   </p>
                 </>
               )}
@@ -361,7 +363,7 @@ export function ExpenseAnalyticsSection({
                       <li key={cat.id}>
                         <span className="category-dot" style={{ background: cat.color }} />
                         <span className="expense-top-name">{cat.name}</span>
-                        <strong>EUR {money(cat.totalEur)}</strong>
+                        <strong className="money">EUR {money(cat.totalEur)}</strong>
                       </li>
                     ))}
                   </ol>
@@ -381,12 +383,14 @@ export function ExpenseAnalyticsSection({
                         {row.name}
                         <small>
                           {row.categoryName}
-                          {row.frequency === 'repeated'
-                            ? ` · EUR ${money(row.amountEur)}/month × ${row.monthsActive}`
-                            : ''}
+                          {row.frequency === 'repeated' && (
+                            <span className="money">
+                              {` · EUR ${money(row.amountEur)}/month × ${row.monthsActive}`}
+                            </span>
+                          )}
                         </small>
                       </span>
-                      <strong>EUR {money(row.totalEur)}</strong>
+                      <strong className="money">EUR {money(row.totalEur)}</strong>
                     </li>
                   ))}
                 </ol>

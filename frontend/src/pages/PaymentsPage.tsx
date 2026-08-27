@@ -271,7 +271,7 @@ export function PaymentsPage() {
                         </span>
                       </td>
                       <td>{row.dueLabel}</td>
-                      <td className="payments-amount">{euro(row.amount)}</td>
+                      <td className="payments-amount money">{euro(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -312,7 +312,7 @@ export function PaymentsPage() {
                 <button className="pill-button" type="button" onClick={() => markExpensePaid(expense)}>
                   Mark paid
                 </button>
-                <strong className="payments-due-amount">
+                <strong className="payments-due-amount money">
                   EUR {Number(expense.amountEur).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </strong>
               </li>

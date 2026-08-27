@@ -1,5 +1,6 @@
-import { Bell, Menu, Plus } from 'lucide-react'
+import { Bell, Eye, EyeOff, Menu, Plus } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
+import { usePrivacy } from '../../context/PrivacyContext'
 
 type TopbarProps = {
   navOpen?: boolean
@@ -9,6 +10,7 @@ type TopbarProps = {
 
 export function Topbar({ navOpen = false, onMenuToggle, onNewReservation }: TopbarProps) {
   const { logout, user } = useAuth()
+  const { hidden, toggle } = usePrivacy()
   const canCreateReservation = user.role === 'admin' || user.role === 'management'
 
   return (
@@ -31,6 +33,21 @@ export function Topbar({ navOpen = false, onMenuToggle, onNewReservation }: Topb
         </div>
       </div>
       <div className="topbar-actions">
+        {hidden && <span className="privacy-flag">Figures hidden</span>}
+        <button
+          aria-label={hidden ? 'Show figures' : 'Hide figures'}
+          aria-pressed={hidden}
+          className={`icon-button privacy-toggle${hidden ? ' active' : ''}`}
+          title={
+            hidden
+              ? 'Figures are hidden — click to show them'
+              : 'Hide every money figure, for when someone is beside you'
+          }
+          type="button"
+          onClick={toggle}
+        >
+          {hidden ? <EyeOff size={19} /> : <Eye size={19} />}
+        </button>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={19} />
         </button>

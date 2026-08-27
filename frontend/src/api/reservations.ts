@@ -21,12 +21,24 @@ export type ReservationPayload = {
   monthlyPrice?: string
 }
 
-export async function fetchReservations(filters?: { month: number; propertyId?: string; year: number; archived?: boolean }) {
+export async function fetchReservations(filters?: {
+  month?: number
+  propertyId?: string
+  year?: number
+  archived?: boolean
+  /** Only stays in progress today. Ignores month/year - "who is here now" is
+   *  not a question about a chosen month. */
+  hosting?: boolean
+}) {
   const params = new URLSearchParams()
   params.set('platform', activePlatform())
   if (filters) {
-    params.set('year', String(filters.year))
-    params.set('month', String(filters.month))
+    if (filters.hosting) {
+      params.set('hosting', '1')
+    } else if (filters.year && filters.month) {
+      params.set('year', String(filters.year))
+      params.set('month', String(filters.month))
+    }
     if (filters.propertyId) {
       params.set('property', filters.propertyId)
     }
@@ -55,6 +67,20 @@ export async function createReservation(payload: ReservationPayload) {
 
 export async function updateReservation(id: string, payload: ReservationPayload) {
   const data = await apiSend<{ reservation: ReservationRecord }>(`/api/reservations/${id}/`, 'PATCH', payload)
+  return data.reservation
+}
+
+/** Partial PATCH for the garage-card tick alone.
+ *
+ *  Its own function rather than a loosened `updateReservation`, so ticking a
+ *  checkbox can never send a half-filled reservation. The change is written to
+ *  the reservation audit log like any other tracked field. */
+export async function updateReservationGarageCard(id: string, garageCard: boolean) {
+  const data = await apiSend<{ reservation: ReservationRecord }>(
+    `/api/reservations/${id}/`,
+    'PATCH',
+    { garageCard },
+  )
   return data.reservation
 }
 

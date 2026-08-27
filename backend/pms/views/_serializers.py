@@ -108,6 +108,7 @@ def serialize_reservation(reservation):
         if reservation.monthly_price_eur is not None
         else "",
         "totalPaid": str(reservation.total_price_eur),
+        "garageCard": reservation.garage_card,
         "isArchived": reservation.is_archived,
         "archivedAt": reservation.archived_at.isoformat() if reservation.archived_at else "",
         "createdAt": reservation.created_at.isoformat() if reservation.created_at else "",

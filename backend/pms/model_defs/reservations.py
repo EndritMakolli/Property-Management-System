@@ -102,6 +102,12 @@ class Reservation(TimeStampedModel):
         max_digits=10, decimal_places=2, editable=False, default=Decimal("0.00")
     )
     notes = models.TextField(blank=True, null=True)
+    # Whether this guest is holding a garage card for this stay. Per stay, not
+    # per guest: the card is handed out on arrival and taken back on departure,
+    # so a returning guest starts unticked and the list answers "who holds one
+    # right now" rather than "who has ever held one". Who ticked it and when is
+    # in ReservationAuditLog, via TRACKED_FIELDS - no columns of its own.
+    garage_card = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False, db_index=True)
     archived_at = models.DateTimeField(blank=True, null=True)
     # Direct booking fields (null for PMS-entered and synced reservations)

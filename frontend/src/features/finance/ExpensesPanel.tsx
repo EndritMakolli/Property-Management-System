@@ -454,7 +454,7 @@ export function ExpensesPanel({
             >
               {expense.paidForMonth ? 'Paid' : 'Unpaid'}
             </button>
-            <strong>EUR {money(expense.amountEur)}</strong>
+            <strong className="money">EUR {money(expense.amountEur)}</strong>
           </>
         )}
       />

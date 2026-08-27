@@ -59,9 +59,9 @@ export function ApartmentYearlyBreakdown({ property, allReservations, year, unit
                 <td>{row.bookedNights}</td>
                 <td>{row.freeNights}</td>
                 <td>{row.occupancy}%</td>
-                <td>EUR {row.averageNightlyPrice.toFixed(2)}</td>
+                <td className="money">EUR {row.averageNightlyPrice.toFixed(2)}</td>
                 <td>
-                  <strong>EUR {row.turnover.toLocaleString()}</strong>
+                  <strong className="money">EUR {row.turnover.toLocaleString()}</strong>
                 </td>
               </tr>
             ))}
@@ -75,7 +75,7 @@ export function ApartmentYearlyBreakdown({ property, allReservations, year, unit
               <td>—</td>
               <td>—</td>
               <td>
-                <strong>EUR {totals.turnover.toLocaleString()}</strong>
+                <strong className="money">EUR {totals.turnover.toLocaleString()}</strong>
               </td>
             </tr>
           </tfoot>

@@ -352,7 +352,7 @@ export function NeedsAttentionPage() {
                               onChange={(e) => updateDraft(row.id, 'draftNightlyPrice', e.target.value)}
                             />
                           ) : (
-                            <span className="attention-missing">{row.nightlyPrice} EUR</span>
+                            <span className="attention-missing money">{row.nightlyPrice} EUR</span>
                           )}
                         </td>
                         <td>
@@ -440,7 +440,7 @@ export function NeedsAttentionPage() {
                               onChange={(e) => updatePriceDraft(row.id, e.target.value)}
                             />
                           ) : (
-                            <span className="attention-missing">{row.nightlyPrice} EUR</span>
+                            <span className="attention-missing money">{row.nightlyPrice} EUR</span>
                           )}
                         </td>
                         <td>
@@ -597,7 +597,7 @@ export function NeedsAttentionPage() {
                             </td>
                             <td>{formatDisplayDate(r.checkIn)}</td>
                             <td>{formatDisplayDate(r.checkOut)}</td>
-                            <td>{r.totalPaid} EUR</td>
+                            <td className="money">{r.totalPaid} EUR</td>
                           </tr>
                         ))}
                       </tbody>

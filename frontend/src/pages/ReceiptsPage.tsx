@@ -226,7 +226,7 @@ function SummaryCard({
   return (
     <div className={`receipts-summary-card receipts-summary-${variant}`}>
       <span className="summary-label">{label}</span>
-      <strong className="summary-value">€ {parseFloat(value).toFixed(2)}</strong>
+      <strong className="summary-value money">€ {parseFloat(value).toFixed(2)}</strong>
     </div>
   )
 }
@@ -264,7 +264,7 @@ function DayRow({
       <td className="col-right receipts-receipt-total">
         <button className="receipts-total-cell" type="button" onClick={onOpenDetail}>
           {receiptNum > 0 ? (
-            <span className="receipts-amount">€ {receiptNum.toFixed(2)}</span>
+            <span className="receipts-amount money">€ {receiptNum.toFixed(2)}</span>
           ) : (
             <span className="receipts-zero">—</span>
           )}

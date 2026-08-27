@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { PlatformProvider } from './context/PlatformContext'
+import { PrivacyProvider } from './context/PrivacyContext'
 import { ReservationTypesProvider } from './context/ReservationTypesContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './components/layout/AppLayout'
@@ -44,6 +45,7 @@ function App() {
   return (
     <PlatformProvider>
       <AuthProvider>
+        <PrivacyProvider>
         <ReservationTypesProvider>
         <Suspense fallback={<p className="auth-loading">Loading…</p>}>
           <Routes>
@@ -92,6 +94,7 @@ function App() {
           </Routes>
         </Suspense>
         </ReservationTypesProvider>
+        </PrivacyProvider>
       </AuthProvider>
     </PlatformProvider>
   )

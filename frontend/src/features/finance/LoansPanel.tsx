@@ -83,7 +83,7 @@ export function LoansPanel({ loans, selectedMonth, selectedYear, onReload, onErr
           <>
             <strong>{loan.name}</strong>
             <span>{monthName(loan.startMonth)} {loan.startYear} to {monthName(loan.endMonth)} {loan.endYear}</span>
-            <strong>EUR {money(loan.monthlyValueEur)}</strong>
+            <strong className="money">EUR {money(loan.monthlyValueEur)}</strong>
           </>
         )}
       />

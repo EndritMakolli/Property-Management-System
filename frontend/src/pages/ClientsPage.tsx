@@ -7,13 +7,15 @@ import { ClientArchiveView } from '../features/clients/ClientArchiveView'
 import { ClientFormModal } from '../features/clients/ClientFormModal'
 import { ClientLatestAddedView } from '../features/clients/ClientLatestAddedView'
 import { ClientListView } from '../features/clients/ClientListView'
+import { CurrentlyHostingView } from '../features/clients/CurrentlyHostingView'
 import type { GuestRecord } from '../types/domain'
 import '../styles/clients.css'
 
-type ClientsView = 'list' | 'latest' | 'archive'
-const clientViews: ClientsView[] = ['list', 'latest', 'archive']
+type ClientsView = 'list' | 'hosting' | 'latest' | 'archive'
+const clientViews: ClientsView[] = ['list', 'hosting', 'latest', 'archive']
 const clientViewLabels: Record<ClientsView, string> = {
   list: 'Clients',
+  hosting: 'Currently hosting',
   latest: 'Latest added',
   archive: 'Archive',
 }
@@ -75,6 +77,7 @@ export function ClientsPage() {
         {view === 'list' && (
           <ClientListView onEdit={edit} onRegister={register} refreshToken={refreshToken} />
         )}
+        {view === 'hosting' && <CurrentlyHostingView />}
         {view === 'latest' && (
           <ClientLatestAddedView onEdit={edit} refreshToken={refreshToken} />
         )}

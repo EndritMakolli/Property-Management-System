@@ -628,8 +628,8 @@ export function ReportsPage() {
                     <p className="stats-card-label">{beds}-bedroom</p>
                     <strong className="stats-card-name">{lowest.name}</strong>
                     <div className="perf-metrics">
-                      <span>Turnover: <strong>EUR {lowest.turnover.toLocaleString()}</strong></span>
-                      <span>Avg/night: <strong>EUR {lowest.averageNightlyPrice.toFixed(2)}</strong></span>
+                      <span>Turnover: <strong className="money">EUR {lowest.turnover.toLocaleString()}</strong></span>
+                      <span>Avg/night: <strong className="money">EUR {lowest.averageNightlyPrice.toFixed(2)}</strong></span>
                       <span>Reservations: <strong>{lowest.reservations}</strong></span>
                       <span>Booked nights: <strong>{lowest.bookedNights}</strong></span>
                     </div>
