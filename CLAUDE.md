@@ -35,8 +35,8 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 728 tests
-    cd frontend && npx tsc -b --force && npm run build && npm test    # 443 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 838 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 452 tests
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -77,6 +77,12 @@ financial records. A pre-hosting audit fixed these; keep them true:
   `ALLOWED_EXTENSIONS` in `views/_expense_ai.py` and `ACCEPTED_PHOTO_EXTENSIONS`
   in `features/properties/photoUploads.ts`. A picker offering more than the
   server takes is how twelve uploads failed with no reason shown.
+- **A contract carries no ID document and no property secret.** It is printed
+  and handed to the guest. `(guest id number)` is a number written in by hand -
+  there is no such field on `Guest`, and it must never be wired to
+  `id_document_url`, which links to a passport scan behind the role-checked
+  download view. `tests_contracts.ContractNeverLeaksIdDocumentsTests` greps the
+  raw response for the document URL, the wifi password and the coordinates.
 - **The Django admin stays disabled** (`DJANGO_ADMIN_ENABLED`). It bypasses 2FA
   and its session is trusted by the whole API.
 - **Public booking endpoints never leak** exact coordinates, door codes, wifi
@@ -151,6 +157,43 @@ financial records. A pre-hosting audit fixed these; keep them true:
   `money` class; `Metric` and `ComparePanel` decide for themselves via
   `looksLikeMoney`, because they are handed "EUR 26,544" and "94%" alike. The
   guest-facing site is deliberately unmarked — the switch is a PMS thing.
+- **A contract is a document, not a block of text.** The template holds the
+  *terms only*; the logo, both parties, the stay summary and the signature
+  block are laid out by `ContractModal` from structured data, reusing the
+  invoice's `.inv-doc*` classes so the two look like one company. Never put
+  the company address back into a template body - it is already on
+  `CompanyProfile`.
+- **Contracts share the message-template engine.** `ContractTemplate` holds one
+  apartment and one vehicle draft in both languages, seeded by migration 0050
+  and edited under Templates. `render_template` from `views/_drafts.py` fills
+  them - never write a second placeholder engine. It resolves **a line at a
+  time**, so an optional `[segment]` must open and close on the same line; split
+  over two it never matches and the placeholder inside is reported missing.
+- **An invoice knows whether it bills a person or a company.** `client_type`
+  decides which reference is asked for and printed: an individual carries
+  `client_id_number` and has *no* VAT or tax number - that is a complete
+  invoice, not a draft - while a business carries tax id, VAT id and
+  registration number. Only the name is required either way. Existing rows
+  default to `business`, which is what they always were.
+- **The contract is the operator's own paper form, rebuilt.** Centred
+  letterhead, black section bars, bordered label/value tables, terms in a box,
+  signature line - see `ContractModal`. A hire agreement names *this* car, so
+  `brand`, `model`, `chassis_number`, `licence_plate` and `allowed_countries`
+  live on the fleet `Property` and are filled in on the Service page. The
+  second-driver column is deliberately blank: it is completed by hand at the desk.
+- **A vehicle is a `Property` with `platform="fleet"`**, so its service record
+  lives there. `vehicle_alerts` in `views/_fleet.py` is the only place that
+  decides whether a van is due: the codes page, the notifications bell and any
+  future report all call it, so they cannot disagree. Two clocks run - months
+  since the last service and kilometres since it - and whichever comes first
+  wins, but a vehicle overdue on both still reports **one** service to book.
+- **Notifications are computed, never stored.** Every source is a fact about
+  current state, so the feed cannot go stale and nothing has to retract a
+  reminder for a service already done. Only the *reading* is stored, per user,
+  in `NotificationRead`. The key carries a fingerprint of the state behind it,
+  so an alert dismissed, dealt with, and later triggered again comes back
+  unread. `info`-severity alerts ("nothing recorded yet") are setup tasks and
+  deliberately never reach the bell.
 - Expense statistics are keyed by **expense month** (`start_year`/`start_month`
   plus recurrence) — never invoice date or payment date.
 - Paid status is per month (`ExpensePayment` rows), not a flag on the expense.

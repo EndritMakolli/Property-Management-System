@@ -1,4 +1,4 @@
-import { Check, Copy, KeyRound, Plus, Wifi } from 'lucide-react'
+import { KeyRound, Plus, Wifi } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   createLockboxCode,
@@ -13,6 +13,9 @@ import {
 import { DateInput } from '../components/shared/DateInput'
 import { formatDisplayDate } from '../utils/date'
 import { buildDoorCopyText } from '../features/codes/copyTemplates'
+import { CopyButton } from '../components/shared/CopyButton'
+import { usePlatform } from '../context/PlatformContext'
+import { VehicleServicePanel } from '../features/fleet/VehicleServicePanel'
 import type { DoorCodeRecord, LockboxCodeRecord } from '../types/domain'
 
 type CodeTab = 'door' | 'lockbox'
@@ -20,6 +23,7 @@ type EditableDoorCode = DoorCodeRecord & { isDirty?: boolean }
 type EditableLockboxCode = LockboxCodeRecord & { isDirty?: boolean; isNew?: boolean }
 
 export function CodesPage() {
+  const { platform } = usePlatform()
   const [activeTab, setActiveTab] = useState<CodeTab>('door')
   const [doorCodes, setDoorCodes] = useState<EditableDoorCode[]>([])
   const [lockboxCodes, setLockboxCodes] = useState<EditableLockboxCode[]>([])
@@ -137,6 +141,20 @@ export function CodesPage() {
     ])
   }
 
+  if (platform.id === 'fleet') {
+    return (
+      <section className="codes-page">
+        <div className="codes-header">
+          <div>
+            <p className="eyebrow">Fleet</p>
+            <h2>Service &amp; registration</h2>
+          </div>
+        </div>
+        <VehicleServicePanel />
+      </section>
+    )
+  }
+
   return (
     <section className="codes-page">
       <div className="codes-header">
@@ -192,32 +210,6 @@ function buildLockboxCopyText(code: LockboxCodeRecord): string {
   lines.push(code.name || '—')
   lines.push(`Kodi: ${code.newCode || '—'}`)
   return lines.join('\n')
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    } catch {
-      // fallback: select text
-    }
-  }
-
-  return (
-    <button
-      className={`copy-info-btn ${copied ? 'copied' : ''}`}
-      title="Copy apartment info to clipboard"
-      type="button"
-      onClick={handleCopy}
-    >
-      {copied ? <Check size={14} /> : <Copy size={14} />}
-      {copied ? 'Copied!' : 'Copy info'}
-    </button>
-  )
 }
 
 function DoorCodesTable({
@@ -298,7 +290,7 @@ function DoorCodesTable({
               </td>
               <td>
                 <div className="table-actions">
-                  <CopyButton text={buildDoorCopyText(row)} />
+                  <CopyButton label="Copy info" value={buildDoorCopyText(row)} />
                   <button disabled={!row.isDirty} onClick={() => onSave(row)}>
                     Save
                   </button>
@@ -378,7 +370,7 @@ function LockboxCodesTable({
               </td>
               <td>
                 <div className="table-actions">
-                  <CopyButton text={buildLockboxCopyText(row)} />
+                  <CopyButton label="Copy info" value={buildLockboxCopyText(row)} />
                   <button disabled={!row.isDirty} onClick={() => onSave(row)}>
                     Save
                   </button>

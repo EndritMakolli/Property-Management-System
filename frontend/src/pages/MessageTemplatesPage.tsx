@@ -18,6 +18,7 @@ import {
   type MessageScenario,
   type MessageTemplateRecord,
 } from '../api/messaging'
+import { ContractTemplatesPanel } from '../features/templates/ContractTemplatesPanel'
 import { toDateInputValue } from '../utils/date'
 import '../styles/message-templates.css'
 
@@ -66,10 +67,21 @@ function sampleDates() {
   return { checkIn: toDateInputValue(from), checkOut: toDateInputValue(to) }
 }
 
+type TemplatesView = 'replies' | 'contracts'
+const VIEW_STORAGE_KEY = 'pms.templates.view'
+
 export function MessageTemplatesPage() {
   const [templates, setTemplates] = useState<MessageTemplateRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [view, setView] = useState<TemplatesView>(() =>
+    window.localStorage.getItem(VIEW_STORAGE_KEY) === 'contracts' ? 'contracts' : 'replies',
+  )
+
+  function chooseView(next: TemplatesView) {
+    setView(next)
+    window.localStorage.setItem(VIEW_STORAGE_KEY, next)
+  }
 
   useEffect(() => {
     fetchMessageTemplates()
@@ -82,30 +94,54 @@ export function MessageTemplatesPage() {
 
   return (
     <div className="templates-page">
-      <h2>Guest reply templates</h2>
-      <p className="templates-lede">
-        One reply per situation the availability search can produce. Placeholders
-        in <code>(brackets)</code> are filled from the search; a segment in{' '}
-        <code>[square brackets]</code> disappears when the values inside it are
-        empty, which is how the discount clause vanishes on a short stay.
-      </p>
+      <h2>Templates</h2>
 
-      {error && <p className="pricing-error">{error}</p>}
+      <div className="view-tabs">
+        <button
+          className={`view-tab${view === 'replies' ? ' active' : ''}`}
+          type="button"
+          onClick={() => chooseView('replies')}
+        >
+          Guest replies
+        </button>
+        <button
+          className={`view-tab${view === 'contracts' ? ' active' : ''}`}
+          type="button"
+          onClick={() => chooseView('contracts')}
+        >
+          Contracts
+        </button>
+      </div>
 
-      {loading ? (
-        <p className="list-empty">Loading…</p>
+      {view === 'contracts' ? (
+        <ContractTemplatesPanel />
       ) : (
-        templates.map((template) => (
-          <TemplateCard
-            key={template.scenario}
-            template={template}
-            onSaved={(saved) =>
-              setTemplates((prev) =>
-                prev.map((t) => (t.scenario === saved.scenario ? saved : t)),
-              )
-            }
-          />
-        ))
+        <>
+          <p className="templates-lede">
+            One reply per situation the availability search can produce. Placeholders
+            in <code>(brackets)</code> are filled from the search; a segment in{' '}
+            <code>[square brackets]</code> disappears when the values inside it are
+            empty, which is how the discount clause vanishes on a short stay.
+          </p>
+
+          {error && <p className="pricing-error">{error}</p>}
+
+          {loading ? (
+            <p className="list-empty">Loading…</p>
+          ) : (
+            templates.map((template) => (
+              <TemplateCard
+                key={template.scenario}
+                template={template}
+                onSaved={(saved) =>
+                  setTemplates((prev) =>
+                    prev.map((t) => (t.scenario === saved.scenario ? saved : t)),
+                  )
+                }
+              />
+            ))
+          )}
+        </>
       )}
     </div>
   )

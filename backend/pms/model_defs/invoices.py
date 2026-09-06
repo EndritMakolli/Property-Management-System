@@ -24,8 +24,25 @@ class Invoice(TimeStampedModel):
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
     paid = models.BooleanField(default=False)
 
+    class ClientType(models.TextChoices):
+        BUSINESS = "business", "Business"
+        INDIVIDUAL = "individual", "Individual"
+
     # Bill-to block (denormalized so invoices survive client edits/deletes).
+    #
+    # Who is being billed decides which reference number is asked for and
+    # printed. An individual has no VAT or tax number - that is not a missing
+    # field, it is the normal case - and carries a personal ID instead. A
+    # business carries the tax id, the VAT id and its registration number.
+    # Defaulting to business keeps every invoice written before this existed
+    # reading exactly as it did.
+    client_type = models.CharField(
+        max_length=12, choices=ClientType.choices, default=ClientType.BUSINESS
+    )
     client_name = models.CharField(max_length=255, blank=True)
+    # Individual: national ID or passport. Business: registration number.
+    client_id_number = models.CharField(max_length=50, blank=True)
+    client_registration_no = models.CharField(max_length=50, blank=True)
     client_address = models.TextField(blank=True)
     client_city = models.CharField(max_length=100, blank=True)
     client_country = models.CharField(max_length=100, blank=True)

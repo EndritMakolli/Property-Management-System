@@ -69,8 +69,15 @@ export function InvoicePreview({ inv, onPrint, onBack, onEdit, onTogglePaid }: I
           {(inv.clientCity || inv.clientCountry) && (
             <span>{[inv.clientCity, inv.clientCountry].filter(Boolean).join(', ')}</span>
           )}
-          {inv.clientTaxId && <span>Tax ID: {inv.clientTaxId}</span>}
-          {inv.clientVatId && <span>VAT: {inv.clientVatId}</span>}
+          {inv.clientType === 'individual' ? (
+            inv.clientIdNumber && <span>ID: {inv.clientIdNumber}</span>
+          ) : (
+            <>
+              {inv.clientTaxId && <span>Business no: {inv.clientTaxId}</span>}
+              {inv.clientVatId && <span>VAT: {inv.clientVatId}</span>}
+              {inv.clientRegistrationNo && <span>Reg. no: {inv.clientRegistrationNo}</span>}
+            </>
+          )}
           {inv.clientEmail && <span>{inv.clientEmail}</span>}
           {inv.clientPhone && <span>{inv.clientPhone}</span>}
         </div>

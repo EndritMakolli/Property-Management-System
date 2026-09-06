@@ -46,6 +46,42 @@ class Property(TimeStampedModel):
     floor = models.CharField(max_length=50, blank=True)
     wifi_name = models.CharField(max_length=255, blank=True)
     wifi_password = models.CharField(max_length=255, blank=True)
+    # ── Fleet only ──────────────────────────────────────────────────────────
+    # A vehicle is a Property with platform="fleet", so its service record
+    # lives here rather than in a parallel table: every vehicle has exactly one,
+    # and a second table would need a lifecycle of its own for no gain. All of
+    # these stay empty on an apartment.
+    #
+    # Two clocks run independently. The calendar says a service is due every
+    # `service_interval_months`; the odometer says it is due every
+    # `service_interval_km` since `last_service_km`. Whichever arrives first
+    # wins - see `vehicle_alerts`.
+    # Identity, for the hire agreement. A rental contract has to name the car
+    # precisely enough to be enforceable - the chassis number and the plates
+    # are what identify *this* vehicle rather than a model.
+    brand = models.CharField(max_length=60, blank=True)
+    model = models.CharField(max_length=60, blank=True)
+    chassis_number = models.CharField(max_length=40, blank=True)
+    licence_plate = models.CharField(max_length=20, blank=True)
+    # Where the hirer is permitted to drive it. Free text because the list is a
+    # commercial decision that changes per vehicle and per insurer.
+    allowed_countries = models.CharField(max_length=200, blank=True)
+
+    last_service_date = models.DateField(null=True, blank=True)
+    last_service_km = models.PositiveIntegerField(null=True, blank=True)
+    current_km = models.PositiveIntegerField(null=True, blank=True)
+    service_interval_km = models.PositiveIntegerField(null=True, blank=True, default=10000)
+    service_interval_months = models.PositiveIntegerField(null=True, blank=True, default=12)
+    # How much notice to give. Per vehicle rather than one global setting,
+    # because a window only means something next to its interval: 800 km is 8%
+    # of a 10,000 km service cycle and under 3% of a 30,000 km one. Zero means
+    # "tell me only once it is overdue".
+    service_warning_days = models.PositiveIntegerField(default=30)
+    service_warning_km = models.PositiveIntegerField(default=800)
+    registration_warning_days = models.PositiveIntegerField(default=30)
+    registration_date = models.DateField(null=True, blank=True)
+    registration_expiry = models.DateField(null=True, blank=True)
+
     auto_sync_enabled = models.BooleanField(default=False)
     sync_interval_hours = models.PositiveIntegerField(default=24)
     description = models.TextField(blank=True)

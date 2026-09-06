@@ -51,7 +51,10 @@ export function buildPrintHTML(inv: InvoiceApiRecord): string {
     <div style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#68746f;margin-bottom:8px">Bill To</div>
     ${inv.clientName ? `<div style="font-size:1rem;font-weight:600">${esc(inv.clientName)}</div>` : ''}
     ${opt(inv.clientAddress, '')}${opt(`${inv.clientCity}${inv.clientCountry ? (inv.clientCity ? ', ' : '') + inv.clientCountry : ''}`, '')}
-    ${opt(inv.clientTaxId, 'Tax ID')}${opt(inv.clientVatId, 'VAT')}${opt(inv.clientEmail, '')}${opt(inv.clientPhone, '')}
+    ${inv.clientType === 'individual'
+      ? opt(inv.clientIdNumber, 'ID')
+      : opt(inv.clientTaxId, 'Business no') + opt(inv.clientVatId, 'VAT') + opt(inv.clientRegistrationNo, 'Reg. no')
+    }${opt(inv.clientEmail, '')}${opt(inv.clientPhone, '')}
   </div>
   <table style="margin-bottom:24px">
     <thead><tr>

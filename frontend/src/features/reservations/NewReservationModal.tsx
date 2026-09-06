@@ -1,3 +1,4 @@
+import { CopyButton } from '../../components/shared/CopyButton'
 import { StayDateRangeField } from '../../components/shared/StayDateRangeField'
 import { ArrowRight, FileText, Repeat, RotateCcw, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
@@ -386,19 +387,25 @@ export function NewReservationModal({
               <div className="form-grid">
                 <label className="form-field">
                   Guest name
-                  <input
-                    type="text"
-                    value={form.guestName}
-                    onChange={(event) => updateForm({ guestName: event.target.value })}
-                  />
+                  <span className="field-with-copy">
+                    <input
+                      type="text"
+                      value={form.guestName}
+                      onChange={(event) => updateForm({ guestName: event.target.value })}
+                    />
+                    <CopyButton title="Copy the guest name" value={form.guestName} />
+                  </span>
                 </label>
                 <label className="form-field">
                   Phone
-                  <input
-                    type="tel"
-                    value={form.guestPhone}
-                    onChange={(event) => updateForm({ guestPhone: event.target.value })}
-                  />
+                  <span className="field-with-copy">
+                    <input
+                      type="tel"
+                      value={form.guestPhone}
+                      onChange={(event) => updateForm({ guestPhone: event.target.value })}
+                    />
+                    <CopyButton title="Copy the phone number" value={form.guestPhone} />
+                  </span>
                 </label>
                 <label className="form-field wide">
                   Email

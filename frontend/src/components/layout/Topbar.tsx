@@ -1,6 +1,7 @@
-import { Bell, Eye, EyeOff, Menu, Plus } from 'lucide-react'
+import { Eye, EyeOff, Menu, Plus } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { usePrivacy } from '../../context/PrivacyContext'
+import { NotificationsBell } from './NotificationsBell'
 
 type TopbarProps = {
   navOpen?: boolean
@@ -48,9 +49,7 @@ export function Topbar({ navOpen = false, onMenuToggle, onNewReservation }: Topb
         >
           {hidden ? <EyeOff size={19} /> : <Eye size={19} />}
         </button>
-        <button className="icon-button" aria-label="Notifications">
-          <Bell size={19} />
-        </button>
+        <NotificationsBell />
         {canCreateReservation && (
           <button className="primary-button" onClick={onNewReservation}>
             <Plus size={18} />

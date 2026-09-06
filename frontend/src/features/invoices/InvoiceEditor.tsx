@@ -36,6 +36,9 @@ type EditorState = {
   clientCountry: string
   clientTaxId: string
   clientVatId: string
+  clientType: 'business' | 'individual'
+  clientIdNumber: string
+  clientRegistrationNo: string
   clientEmail: string
   clientPhone: string
   guestId: string
@@ -66,6 +69,9 @@ export function InvoiceEditor({ invoice, prefill, defaultTaxRate, onSaved, onCan
     clientCountry: invoice?.clientCountry ?? prefill?.clientCountry ?? '',
     clientTaxId: invoice?.clientTaxId ?? '',
     clientVatId: invoice?.clientVatId ?? '',
+    clientType: invoice?.clientType ?? 'business',
+    clientIdNumber: invoice?.clientIdNumber ?? '',
+    clientRegistrationNo: invoice?.clientRegistrationNo ?? '',
     clientEmail: invoice?.clientEmail ?? prefill?.clientEmail ?? '',
     clientPhone: invoice?.clientPhone ?? prefill?.clientPhone ?? '',
     guestId: invoice?.guestId ?? prefill?.guestId ?? '',
@@ -172,6 +178,9 @@ export function InvoiceEditor({ invoice, prefill, defaultTaxRate, onSaved, onCan
       clientCountry: form.clientCountry,
       clientTaxId: form.clientTaxId,
       clientVatId: form.clientVatId,
+      clientType: form.clientType,
+      clientIdNumber: form.clientIdNumber,
+      clientRegistrationNo: form.clientRegistrationNo,
       clientEmail: form.clientEmail,
       clientPhone: form.clientPhone,
       guestId: form.guestId,
@@ -312,9 +321,29 @@ export function InvoiceEditor({ invoice, prefill, defaultTaxRate, onSaved, onCan
                 )}
               </div>
             )}
+            {/* Who is being billed decides which reference numbers are asked
+                for. An individual has no VAT or tax number and that is the
+                normal case, not a half-filled invoice. */}
+            <div className="pill-toggle-group" style={{ marginBottom: 12 }}>
+              <button
+                className={`view-tab${form.clientType === 'business' ? ' active' : ''}`}
+                type="button"
+                onClick={() => update({ clientType: 'business' })}
+              >
+                Business
+              </button>
+              <button
+                className={`view-tab${form.clientType === 'individual' ? ' active' : ''}`}
+                type="button"
+                onClick={() => update({ clientType: 'individual' })}
+              >
+                Individual
+              </button>
+            </div>
+
             <div className="form-grid">
               <label className="form-field">
-                Name
+                {form.clientType === 'individual' ? 'Full name' : 'Company name'}
                 <input type="text" value={form.clientName} onChange={(e) => update({ clientName: e.target.value })} />
               </label>
               <label className="form-field">
@@ -337,14 +366,35 @@ export function InvoiceEditor({ invoice, prefill, defaultTaxRate, onSaved, onCan
                 Country
                 <input type="text" value={form.clientCountry} onChange={(e) => update({ clientCountry: e.target.value })} />
               </label>
-              <label className="form-field">
-                Tax ID
-                <input type="text" value={form.clientTaxId} onChange={(e) => update({ clientTaxId: e.target.value })} />
-              </label>
-              <label className="form-field">
-                VAT number
-                <input type="text" value={form.clientVatId} onChange={(e) => update({ clientVatId: e.target.value })} />
-              </label>
+              {form.clientType === 'individual' ? (
+                <label className="form-field">
+                  ID / passport number
+                  <input
+                    type="text"
+                    value={form.clientIdNumber}
+                    onChange={(e) => update({ clientIdNumber: e.target.value })}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="form-field">
+                    Business number
+                    <input type="text" value={form.clientTaxId} onChange={(e) => update({ clientTaxId: e.target.value })} />
+                  </label>
+                  <label className="form-field">
+                    VAT number
+                    <input type="text" value={form.clientVatId} onChange={(e) => update({ clientVatId: e.target.value })} />
+                  </label>
+                  <label className="form-field">
+                    Registration number
+                    <input
+                      type="text"
+                      value={form.clientRegistrationNo}
+                      onChange={(e) => update({ clientRegistrationNo: e.target.value })}
+                    />
+                  </label>
+                </>
+              )}
             </div>
           </div>
 

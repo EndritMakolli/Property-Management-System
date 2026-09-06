@@ -20,6 +20,10 @@ export type InvoiceApiRecord = {
   clientAddress: string
   clientCity: string
   clientCountry: string
+  /** Who is billed. An individual has no VAT or tax number; that is normal. */
+  clientType: 'business' | 'individual'
+  clientIdNumber: string
+  clientRegistrationNo: string
   clientTaxId: string
   clientVatId: string
   clientEmail: string

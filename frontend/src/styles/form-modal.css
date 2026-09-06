@@ -103,7 +103,11 @@
   background: var(--border-light);
 }
 
-/* --- Grid & fields ------------------------------------------- */
+/* --- Grid & fields -------------------------------------------
+   These are shared, not modal-only: any panel can opt in with
+   `.form-surface` and get the same fields. Scoping them to `.form-modal`
+   alone is what left the fleet form as bare browser inputs with the label
+   sitting inline beside them. */
 
 .form-grid {
   display: grid;
@@ -115,7 +119,8 @@
   grid-column: 1 / -1;
 }
 
-.form-modal label.form-field {
+.form-modal label.form-field,
+.form-surface label.form-field {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -126,7 +131,10 @@
 
 .form-modal input:not([type='checkbox']):not([type='radio']),
 .form-modal select,
-.form-modal textarea {
+.form-modal textarea,
+.form-surface input:not([type='checkbox']):not([type='radio']),
+.form-surface select,
+.form-surface textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-input);
   background: var(--bg-input);
@@ -141,13 +149,17 @@
 
 .form-modal input:not([type='checkbox']):not([type='radio']):focus,
 .form-modal select:focus,
-.form-modal textarea:focus {
+.form-modal textarea:focus,
+.form-surface input:not([type='checkbox']):not([type='radio']):focus,
+.form-surface select:focus,
+.form-surface textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-.form-modal textarea {
+.form-modal textarea,
+.form-surface textarea {
   resize: vertical;
   min-height: 72px;
 }

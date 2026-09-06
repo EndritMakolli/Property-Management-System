@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { fetchProperties, fetchReservations } from '../../api/pmsApi'
 import { CalendarOverviewTimeline } from '../calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../calendar/useCalendarReservationEditor'
+import { ContractModal } from './ContractModal'
 import { NewReservationModal } from './NewReservationModal'
 import { scoreReservation, stayCoversDate } from './reservationSearch'
 import { useSmartChange } from './useSmartChange'
@@ -78,6 +79,7 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
   const [dateFilter, setDateFilter] = useState('')
   const [sort, setSort] = useState<ListSort>(readStoredSort)
   const [editing, setEditing] = useState<ReservationRecord | null>(null)
+  const [contractFor, setContractFor] = useState<ReservationRecord | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const inputRef = useRef<HTMLInputElement>(null)
   const changePanelRef = useRef<HTMLDivElement>(null)
@@ -406,6 +408,15 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
                     </button>
                     {r.reservationType !== 'maintenance' && (
                       <button
+                        className="search-res-action-btn"
+                        type="button"
+                        onClick={() => setContractFor(r)}
+                      >
+                        Contract
+                      </button>
+                    )}
+                    {r.reservationType !== 'maintenance' && (
+                      <button
                         className={`search-res-action-btn${isChanging ? ' active' : ''}`}
                         type="button"
                         onClick={() => {
@@ -560,6 +571,9 @@ export function ReservationListView({ initialChanging }: ReservationListViewProp
         </div>
       )}
 
+      {contractFor && (
+        <ContractModal reservation={contractFor} onClose={() => setContractFor(null)} />
+      )}
       <NewReservationModal
         open={!!editing}
         mode="edit"

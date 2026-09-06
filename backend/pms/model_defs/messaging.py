@@ -36,3 +36,30 @@ class MessageTemplate(TimeStampedModel):
 
     def __str__(self):
         return self.get_scenario_display()
+
+
+class ContractTemplate(TimeStampedModel):
+    """The rental agreement a guest signs, per business, in each language.
+
+    Same shape as MessageTemplate and for the same reason: a fixed set of rows,
+    seeded with a usable default and then edited in place. The wording belongs
+    to the operator - what the code owns is that the placeholders resolve.
+
+    Bodies use the syntax of `views/_drafts.py`: `(name)` is filled from the
+    reservation, `[square brackets]` disappear when everything inside resolves
+    to nothing. One syntax across templates and contracts, deliberately.
+    """
+
+    class Kind(models.TextChoices):
+        APARTMENT = "apartment", "Apartment rental"
+        VEHICLE = "vehicle", "Car rental"
+
+    kind = models.CharField(max_length=20, choices=Kind.choices, unique=True)
+    body_sq = models.TextField(blank=True)  # sq = Albanian
+    body_en = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["kind"]
+
+    def __str__(self):
+        return self.get_kind_display()

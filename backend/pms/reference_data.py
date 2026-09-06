@@ -23,6 +23,7 @@ so there is one list of built-in types and one set of template bodies.
 from .migrations._0041_templates import TEMPLATES as AVAILABILITY_TEMPLATES
 from .migrations._0043_types import TYPES as BUILTIN_TYPES
 from .migrations._0045_lifecycle import TEMPLATES as OUTCOME_TEMPLATES
+from .migrations._0054_contract_layout import CONTRACTS
 
 # What an unknown-but-used type gets until someone picks a real colour.
 FALLBACK_COLOR = "#6b7280"
@@ -88,7 +89,16 @@ def ensure_reference_data():
     """Fill in any reference row that is missing. Never overwrites an edit."""
     # Imported here rather than at module scope: this module is imported by
     # migration helpers' siblings, and models must not be touched at import time.
-    from .models import MessageTemplate, Reservation, ReservationType
+    from .models import ContractTemplate, MessageTemplate, Reservation, ReservationType
 
     _ensure_reservation_types(ReservationType, Reservation)
     _ensure_message_templates(MessageTemplate)
+    _ensure_contract_templates(ContractTemplate)
+
+
+def _ensure_contract_templates(ContractTemplate):
+    """get_or_create, so an operator's own wording survives a restore."""
+    for kind, body_sq, body_en in CONTRACTS:
+        ContractTemplate.objects.get_or_create(
+            kind=kind, defaults={"body_sq": body_sq, "body_en": body_en}
+        )

@@ -39,6 +39,13 @@ from ._booking_public import (
     booking_validate_promo,
 )
 from ._codes import door_code_detail, door_code_list, lockbox_code_detail, lockbox_code_list
+from ._contracts import (
+    contract_template_detail,
+    contract_template_list,
+    reservation_contract,
+)
+from ._fleet import fleet_service_detail, fleet_service_list, vehicle_alerts
+from ._notifications import notification_list, notification_read
 from ._company import company_profile
 from ._expense_ai import expense_extract, expense_invoice
 from ._guests import (
@@ -165,6 +172,14 @@ __all__ = [
     "finance_expense_detail",
     "finance_expense_list",
     "finance_summary",
+    "contract_template_detail",
+    "contract_template_list",
+    "reservation_contract",
+    "fleet_service_detail",
+    "fleet_service_list",
+    "vehicle_alerts",
+    "notification_list",
+    "notification_read",
     "guest_detail",
     "guest_stays",
     "guest_bookings",

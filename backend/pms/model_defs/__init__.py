@@ -16,7 +16,8 @@ from .booking import (
 )
 from .communication import Inquiry
 from .company import CompanyProfile
-from .messaging import MessageTemplate
+from .messaging import ContractTemplate, MessageTemplate
+from .notifications import NotificationRead
 from .finance import (
     Expense,
     ExpenseCategory,
@@ -46,6 +47,8 @@ __all__ = [
     "CancellationPolicy",
     "ClaudeTask",
     "CompanyProfile",
+    "ContractTemplate",
+    "NotificationRead",
     "MessageTemplate",
     "DoorCode",
     "Expense",

@@ -21,7 +21,10 @@ def serialize_invoice(invoice):
         "dueDate": invoice.due_date.isoformat() if invoice.due_date else "",
         "status": invoice.status,
         "paid": invoice.paid,
+        "clientType": invoice.client_type,
         "clientName": invoice.client_name,
+        "clientIdNumber": invoice.client_id_number,
+        "clientRegistrationNo": invoice.client_registration_no,
         "clientAddress": invoice.client_address,
         "clientCity": invoice.client_city,
         "clientCountry": invoice.client_country,
@@ -69,6 +72,8 @@ def clean_line_items(raw):
 
 CLIENT_FIELDS = {
     "clientName": "client_name",
+    "clientIdNumber": "client_id_number",
+    "clientRegistrationNo": "client_registration_no",
     "clientAddress": "client_address",
     "clientCity": "client_city",
     "clientCountry": "client_country",
@@ -93,6 +98,11 @@ def apply_invoice_payload(invoice, payload):
         invoice.status = status
     if "paid" in payload:
         invoice.paid = bool(payload.get("paid"))
+    if "clientType" in payload:
+        client_type = payload.get("clientType") or Invoice.ClientType.BUSINESS
+        if client_type not in Invoice.ClientType.values:
+            raise ValidationError({"clientType": "Choose an individual or a business."})
+        invoice.client_type = client_type
     for api_key, field in CLIENT_FIELDS.items():
         if api_key in payload:
             setattr(invoice, field, (payload.get(api_key) or "").strip())
@@ -102,6 +112,8 @@ def apply_invoice_payload(invoice, payload):
     if "reservationId" in payload:
         raw = payload.get("reservationId")
         invoice.reservation = Reservation.objects.get(pk=raw) if raw else None
+    if not (invoice.client_name or "").strip():
+        raise ValidationError({"clientName": "Enter who the invoice is for."})
     if "lineItems" in payload:
         invoice.line_items = clean_line_items(payload.get("lineItems"))
     if "taxRate" in payload:

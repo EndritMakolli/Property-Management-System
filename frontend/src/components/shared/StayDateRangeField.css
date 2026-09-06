@@ -61,12 +61,39 @@
   min-width: 560px;
 }
 
-/* Near the right-hand edge of a narrow screen, hang it from the right instead
-   so it cannot push the page sideways. */
+/* On a phone the popup stops hanging off the field and anchors to the viewport
+   instead, as a sheet along the bottom.
+
+   Hanging it from the trigger was the bug: `position: absolute` measures from
+   the field, so a field near either edge pushed the calendar off screen, and
+   any ancestor with `overflow: hidden` clipped it outright. Fixed positioning
+   cannot do either, wherever the field happens to sit. A sheet also puts the
+   calendar under the thumb rather than up by the address bar.
+
+   `env(safe-area-inset-bottom)` keeps it clear of the iPhone home indicator,
+   and the max-height means a tall month scrolls inside the sheet rather than
+   growing past the top of the screen. */
 @media (max-width: 700px) {
   .stay-range-pop {
-    left: auto;
-    right: 0;
-    min-width: min(92vw, 340px);
+    position: fixed;
+    top: auto;
+    left: 50%;
+    right: auto;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: min(94vw, 360px);
+    min-width: 0;
+    max-height: min(80vh, 640px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.28);
+  }
+
+  /* The calendar sizes to its content; without this it can still be wider than
+     the sheet and scroll sideways inside it. */
+  .stay-range-pop > * {
+    max-width: 100%;
   }
 }
