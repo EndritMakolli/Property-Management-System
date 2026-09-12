@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from .models import BookingRequest, PricingGroup, PricingRule, Reservation, StayConstraint
 from .tests import day, make_admin, make_property
@@ -223,6 +223,7 @@ class PromoUsageCountingTests(TestCase):
                 "checkOut": day(start + 3).isoformat(),
                 "guestName": "Test Guest",
                 "guestPhone": "+355000000",
+                "guestEmail": "test.guest@example.com",
                 "promoCode": "TEN",
             }),
             content_type="application/json",
@@ -706,6 +707,7 @@ class PublicBreakdownRedactionTests(TestCase):
                 "checkOut": day(12).isoformat(),
                 "guestName": "Test Guest",
                 "guestPhone": "+355000000",
+                "guestEmail": "test.guest@example.com",
             }),
             content_type="application/json",
         )
@@ -716,7 +718,10 @@ class PublicBreakdownRedactionTests(TestCase):
             self.assertNotIn("reason", report)
             self.assertEqual(set(report.keys()), {"id", "name", "amount"})
 
+    @override_settings(ONLINE_PAYMENTS_ENABLED=True)
     def test_a_direct_bookings_stored_breakdown_is_public_safe(self):
+        # Direct booking is off unless a payment provider exists; this is about
+        # the shape of what it stores, so it switches the path on deliberately.
         response = self.client.post(
             "/api/booking/bookings/",
             data=json.dumps({

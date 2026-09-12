@@ -29,11 +29,18 @@ export async function fetchReservations(filters?: {
   /** Only stays in progress today. Ignores month/year - "who is here now" is
    *  not a question about a chosen month. */
   hosting?: boolean
+  /** Everyone arriving, leaving or staying on one date (YYYY-MM-DD). Like
+   *  `hosting`, a day is not a question about a month, so it ignores them -
+   *  but unlike it, a departure counts: somebody has to clean the apartment
+   *  before the arrival on the same list walks in. */
+  day?: string
 }) {
   const params = new URLSearchParams()
   params.set('platform', activePlatform())
   if (filters) {
-    if (filters.hosting) {
+    if (filters.day) {
+      params.set('day', filters.day)
+    } else if (filters.hosting) {
       params.set('hosting', '1')
     } else if (filters.year && filters.month) {
       params.set('year', String(filters.year))

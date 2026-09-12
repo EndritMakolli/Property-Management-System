@@ -9,6 +9,9 @@ from django.utils.timezone import localdate
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
+from django.conf import settings as settings_module
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -650,9 +653,27 @@ def booking_create_request(request):
         errors["guestName"] = "Name is required."
     if not guest_phone:
         errors["guestPhone"] = "Phone number is required."
-    # Email is optional for booking requests: guests supply only name + phone.
+    # The email is required, and was not. The browser demanded one, the server
+    # did not, and the two disagreed about the same form - so a request could be
+    # stored with no way to reach the guest. Everything guest-facing hangs off
+    # this address: the portal matches on it (`has_website_booking`), and both
+    # the approval and the decline email are sent to it. A request without one
+    # reaches nobody, which is how two of two stored requests came to have none.
+    if not guest_email:
+        errors["guestEmail"] = "Email address is required."
+    else:
+        try:
+            validate_email(guest_email)
+        except DjangoValidationError:
+            # Storing 'asdf' is storing nothing, one step later.
+            errors["guestEmail"] = "Enter a valid email address."
     if errors:
         return JsonResponse({"error": errors}, status=400)
+
+    # Lowercased on the way in: `has_website_booking` matches on a lowercased
+    # address, so the capitals a phone keyboard adds would lock the guest out of
+    # the portal they just earned.
+    guest_email = guest_email.lower()
 
     try:
         prop = Property.objects.get(pk=property_id, active=True, listing_active=True, platform=Property.Platform.AIRSTAY)
@@ -709,10 +730,24 @@ def booking_create_request(request):
 def booking_create_direct(request):
     """
     POST — create a confirmed direct Reservation (online payment path).
-    Payment is stubbed: we accept the booking immediately.
+
+    **Off unless `ONLINE_PAYMENTS_ENABLED` is set.** The payment step is a stub:
+    this writes a confirmed reservation recording `payment_status = FIRST_NIGHT`
+    or `FULL` with no provider behind it, so the money is fiction. Two things
+    then go wrong - revenue figures include it, and `cancellation_outcome`
+    refunds `online_payment_amount`, which is a refund of money never received.
+
+    The switch turns the feature off; it does not delete it. When there is a
+    real payment provider, setting one flag brings the whole path back.
     """
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    if not getattr(settings_module, "ONLINE_PAYMENTS_ENABLED", False):
+        return JsonResponse(
+            {"error": "Online payment is not available yet. Please send a booking request instead."},
+            status=503,
+        )
 
     try:
         payload = json_payload(request)
@@ -873,8 +908,12 @@ def cancellation_outcome(reservation, today=None):
     paid = reservation.online_payment_amount
 
     if policy is None:
-        # No policy configured anywhere: free cancellation, as documented.
-        return True, paid
+        # Nothing configured. This used to mean free cancellation and a full
+        # refund - a commercial term nobody had agreed to, applied because a
+        # table was empty. Fail towards a conversation instead: no policy is
+        # not the same as a generous one, and the guest is asked to get in
+        # touch rather than refunded automatically.
+        return False, Decimal("0")
 
     if policy.policy_type == CancellationPolicy.PolicyType.FREE:
         if policy.days_before_checkin is None or days_until_checkin >= policy.days_before_checkin:
@@ -954,19 +993,8 @@ def _find_cancellation_policy(property_obj):
     return CancellationPolicy.objects.filter(scope="all").first()
 
 
-@csrf_exempt
-def booking_change_request(request, token):
-    """POST — guest requests a date/apartment change (placeholder response for now)."""
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed."}, status=405)
-
-    try:
-        payload = json_payload(request)
-    except Exception:
-        return JsonResponse({"error": "Invalid request body."}, status=400)
-
-    settings = BookingSiteSettings.get()
-    return JsonResponse({
-        "message": "Your change request has been received. We will contact you shortly.",
-        "contactWhatsapp": settings.whatsapp_number,
-    })
+# `booking_change_request` was removed. It answered "Your change request has
+# been received. We will contact you shortly." and stored nothing, so nobody
+# was ever told - a guest reassured and an operator unaware is worse than no
+# feature. Nothing called it. If change requests are wanted, they need somewhere
+# to be recorded and a staff surface to read, and then this can come back.

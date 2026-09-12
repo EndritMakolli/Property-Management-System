@@ -1,37 +1,59 @@
-/* The trigger reads as one control, because check-in and check-out are one
-   decision. The popover floats above whatever it sits in. */
+/* The trigger reads as one control but is two: each end opens the calendar on
+   its own, so a departure can be changed without re-entering an arrival that
+   was already right. */
 .stay-range {
-  position: relative;
   display: inline-block;
 }
 
 .stay-range-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   min-height: 38px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--bg-panel);
   color: var(--text-primary);
-  cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.stay-range-trigger:hover:not(:disabled) {
+.stay-range-trigger:focus-within {
   border-color: var(--accent);
 }
 
-.stay-range-trigger:disabled {
-  opacity: 0.55;
-  cursor: default;
+.stay-range-icon {
+  flex: none;
+  color: var(--text-muted);
 }
 
 .stay-range-part {
   display: grid;
+  gap: 1px;
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   line-height: 1.15;
+  text-align: left;
+}
+
+.stay-range-part:hover:not(:disabled) {
+  background: var(--bg-hover, rgba(127, 127, 127, 0.1));
+}
+
+.stay-range-part.is-editing {
+  border-color: var(--accent);
+  background: var(--accent-bg, rgba(127, 127, 127, 0.12));
+}
+
+.stay-range-part:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .stay-range-part small {
@@ -53,10 +75,18 @@
   font-size: 0.9rem;
 }
 
+/* The panel is portalled to <body> and placed from the field's measured
+   rectangle by `popoverPlacement.ts`. It has to be `fixed` rather than
+   `absolute` for that: those coordinates come from getBoundingClientRect, which
+   is relative to the viewport, and an absolute panel on <body> would drift by
+   the scroll offset. Being on <body> is the point - `absolute` inside the field
+   was measured from whatever panel happened to contain it and clipped by any
+   ancestor hiding its overflow, which is how the Pricing page's sticky "Test a
+   stay" bar sliced the calendar off at its own bottom edge. */
 .stay-range-pop {
-  position: absolute;
-  z-index: 60;
-  top: calc(100% + 6px);
+  position: fixed;
+  z-index: 1200;
+  top: 0;
   left: 0;
   min-width: 560px;
 }

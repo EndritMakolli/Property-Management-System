@@ -108,6 +108,12 @@ class Reservation(TimeStampedModel):
     # right now" rather than "who has ever held one". Who ticked it and when is
     # in ReservationAuditLog, via TRACKED_FIELDS - no columns of its own.
     garage_card = models.BooleanField(default=False)
+    # Sync safety. A feed is an unreliable narrator: it can be truncated, served
+    # stale, or simply omit a booking. So "absent from this fetch" is recorded
+    # as a state to review, not acted on as a cancellation - and only a row the
+    # import itself created may ever be reconciled away.
+    created_by_sync = models.BooleanField(default=False)
+    missing_from_sync_since = models.DateTimeField(null=True, blank=True)
     is_archived = models.BooleanField(default=False, db_index=True)
     archived_at = models.DateTimeField(blank=True, null=True)
     # Direct booking fields (null for PMS-entered and synced reservations)
@@ -222,23 +228,3 @@ class Reservation(TimeStampedModel):
         return row.color if row else "#6b7280"
 
 
-class GuestStay(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    guest = models.ForeignKey(Guest, on_delete=models.CASCADE, related_name="guest_stays")
-    reservation = models.OneToOneField(Reservation, on_delete=models.CASCADE, related_name="guest_stay")
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="guest_stays")
-    check_in = models.DateField()
-    check_out = models.DateField()
-    nights = models.PositiveIntegerField()
-    amount_paid_eur = models.DecimalField(max_digits=10, decimal_places=2)
-    platform = models.CharField(max_length=20)
-
-    class Meta:
-        ordering = ["-check_in"]
-        indexes = [
-            models.Index(fields=["guest", "check_in"]),
-            models.Index(fields=["property", "check_in"]),
-        ]
-
-    def __str__(self):
-        return f"{self.guest} stayed at {self.property} ({self.check_in} to {self.check_out})"

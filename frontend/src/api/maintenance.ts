@@ -13,9 +13,12 @@ export type MaintenanceIssuePayload = {
   photos?: File[]
 }
 
-export async function fetchMaintenanceIssues(propertyId?: string) {
+/** Open issues by default. `resolved` asks for the ones already dealt with —
+ *  the list answers "what needs doing", and a fixed tap is history. */
+export async function fetchMaintenanceIssues(propertyId?: string, resolved = false) {
   const params = new URLSearchParams()
   if (propertyId) params.set('property', propertyId)
+  if (resolved) params.set('resolved', '1')
   const data = await apiGet<{ issues: MaintenanceIssueRecord[] }>(`/api/maintenance/?${params.toString()}`)
   return data.issues
 }
@@ -32,7 +35,10 @@ export async function createMaintenanceIssue(payload: MaintenanceIssuePayload) {
   return data.issue
 }
 
-export async function updateMaintenanceIssue(id: string, payload: { description: string }) {
+export async function updateMaintenanceIssue(
+  id: string,
+  payload: { description?: string; isResolved?: boolean },
+) {
   const data = await apiSend<{ issue: MaintenanceIssueRecord }>(`/api/maintenance/${id}/`, 'PATCH', payload)
   return data.issue
 }

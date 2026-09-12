@@ -37,6 +37,7 @@ const BookingRequestsPage = lazy(() => import('./pages/BookingRequestsPage').the
 const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((m) => ({ default: m.MessageTemplatesPage })))
 const PricingRulesPage = lazy(() => import('./pages/PricingRulesPage').then((m) => ({ default: m.PricingRulesPage })))
 const SecurityPage = lazy(() => import('./pages/SecurityPage').then((m) => ({ default: m.SecurityPage })))
+const StaffLeavesPage = lazy(() => import('./pages/StaffLeavesPage').then((m) => ({ default: m.StaffLeavesPage })))
 const GuestLoginPage = lazy(() => import('./pages/client/GuestLoginPage').then((m) => ({ default: m.GuestLoginPage })))
 const GuestAccountPage = lazy(() => import('./pages/client/GuestAccountPage').then((m) => ({ default: m.GuestAccountPage })))
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })))
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/clients/:clientId" element={<ClientDetailPage />} />
                 <Route path="/booking-requests" element={<BookingRequestsPage />} />
                 <Route path="/pricing-rules" element={<PricingRulesPage />} />
+                <Route path="/staff-leaves" element={<StaffLeavesPage />} />
                 <Route path="/message-templates" element={<MessageTemplatesPage />} />
                 <Route path="/security" element={<SecurityPage />} />
                 <Route path="*" element={<PlaceholderPage />} />

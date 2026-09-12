@@ -1,8 +1,9 @@
-import { Calendar, ChevronDown, ChevronRight, Plus, Trash2, Wrench, X } from 'lucide-react'
+import { Calendar, Check, ChevronDown, ChevronRight, Plus, RotateCcw, Trash2, Wrench, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createMaintenanceIssue,
   deleteMaintenanceIssue,
+  updateMaintenanceIssue,
   deleteMaintenancePhoto,
   fetchMaintenanceIssues,
   fetchProperties,
@@ -41,12 +42,16 @@ export function MaintenancePage() {
     selectedPropertyId: selectedRangePropertyId,
   } = useCalendarReservationEditor()
 
+  // Open issues, or the ones already dealt with. Two views of one list, so
+  // "what needs doing" stays the default answer.
+  const [showResolved, setShowResolved] = useState(false)
+
   async function load() {
     try {
       setStatus('loading')
       const [propRows, issueRows, resRows] = await Promise.all([
         fetchProperties(),
-        fetchMaintenanceIssues(),
+        fetchMaintenanceIssues(undefined, showResolved),
         fetchReservations(),
       ])
       setProperties(propRows)
@@ -60,7 +65,8 @@ export function MaintenancePage() {
 
   useEffect(() => {
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResolved])
 
   function toggleExpand(propertyId: string) {
     setExpandedIds((prev) => {
@@ -71,8 +77,16 @@ export function MaintenancePage() {
     })
   }
 
+  async function handleToggleResolved(issue: MaintenanceIssueRecord) {
+    // No confirm: ticking something off is reversible, and a question in front
+    // of the most common action is how a list stops being kept up to date.
+    await updateMaintenanceIssue(issue.id, { isResolved: !issue.isResolved })
+    await load()
+  }
+
   async function handleDeleteIssue(issueId: string) {
-    if (!window.confirm('Delete this issue?')) return
+    // Resolving keeps the history; this does not, so it says so.
+    if (!window.confirm('Delete this issue entirely? Ticking it off instead keeps the record of what was fixed.')) return
     await deleteMaintenanceIssue(issueId)
     setIssues((prev) => prev.filter((i) => i.id !== issueId))
   }
@@ -177,11 +191,29 @@ export function MaintenancePage() {
           <h2>To Fix</h2>
           {status === 'ready' && (
             <p className="maintenance-summary">
-              {totalIssues} open issue{totalIssues !== 1 ? 's' : ''} across {properties.length} apartment{properties.length !== 1 ? 's' : ''}
+              {totalIssues} {showResolved ? 'fixed' : 'open'} issue{totalIssues !== 1 ? 's' : ''} across {properties.length} apartment{properties.length !== 1 ? 's' : ''}
             </p>
           )}
         </div>
         <div className="maintenance-sort-row">
+          {/* Two views of one list. "What needs doing" stays the default, and
+              the record of what was fixed is a click away rather than gone. */}
+          <div className="maintenance-view-tabs">
+            <button
+              className={`view-tab${showResolved ? '' : ' active'}`}
+              type="button"
+              onClick={() => setShowResolved(false)}
+            >
+              Open
+            </button>
+            <button
+              className={`view-tab${showResolved ? ' active' : ''}`}
+              type="button"
+              onClick={() => setShowResolved(true)}
+            >
+              Fixed
+            </button>
+          </div>
           <label className="maintenance-sort-label">
             Sort
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
@@ -346,15 +378,32 @@ export function MaintenancePage() {
                               <span>
                                 Reported by {issue.reporterName || 'unknown'} on {issue.reportedAt}
                               </span>
+                              {issue.isResolved && issue.resolvedAt && (
+                                <span className="maintenance-resolved-note">
+                                  Fixed by {issue.resolvedBy || 'staff'} on{' '}
+                                  {issue.resolvedAt.slice(0, 10)}
+                                </span>
+                              )}
                             </div>
-                            <button
-                              className="maintenance-delete-btn"
-                              title="Delete issue"
-                              type="button"
-                              onClick={() => handleDeleteIssue(issue.id)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="maintenance-issue-actions">
+                              <button
+                                className={`btn btn-sm ${issue.isResolved ? 'btn-outline' : 'btn-primary'}`}
+                                title={issue.isResolved ? 'Mark as still broken' : 'Mark as fixed'}
+                                type="button"
+                                onClick={() => handleToggleResolved(issue)}
+                              >
+                                {issue.isResolved ? <RotateCcw size={13} /> : <Check size={13} />}
+                                {issue.isResolved ? 'Reopen' : 'Fixed'}
+                              </button>
+                              <button
+                                className="maintenance-delete-btn"
+                                title="Delete issue"
+                                type="button"
+                                onClick={() => handleDeleteIssue(issue.id)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                           {issue.photos.length > 0 && (
                             <div className="maintenance-photos">

@@ -1,3 +1,16 @@
+"""Seeded bodies for the two booking outcomes.
+
+Note on `[(reason)]`: it sits on a line of its own, opening and closing there.
+`render_template` resolves a line at a time, so a segment split across lines
+never matches - the brackets print literally and the placeholder inside is
+reported unresolved. That is not hypothetical: these two bodies shipped with
+`.[` on one line and `(reason)]` two lines later, and because `_guest_mail`
+refuses to send a message with an unresolved placeholder, declining a booking
+without typing a reason sent the guest nothing at all. Migration
+0061_fix_rejection_segment repaired the rows already in the database;
+`tests_message_audit` stops it coming back.
+"""
+
 # backend/pms/migrations/_0045_lifecycle.py
 """The two booking-outcome templates, in both languages.
 
@@ -49,9 +62,8 @@ REJECTED_SQ = """Pershendetje (guest name),
 
 Faleminderit per kerkesen tuaj per datat (check-in) deri me (check-out).
 
-Fatkeqesisht nuk mund ta konfirmojme kete rezervim.[
-
-(reason)]
+Fatkeqesisht nuk mund ta konfirmojme kete rezervim.
+[(reason)]
 
 Nese keni mundesi te na tregoni data te tjera, me kenaqesi kontrollojme perseri per ju.
 
@@ -61,9 +73,8 @@ REJECTED_EN = """Hello (guest name),
 
 Thank you for your request for (check-in) to (check-out).
 
-Unfortunately we cannot confirm this booking.[
-
-(reason)]
+Unfortunately we cannot confirm this booking.
+[(reason)]
 
 If you can tell us some other dates, we would be glad to check again for you.
 

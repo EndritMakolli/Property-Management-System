@@ -295,6 +295,7 @@ def property_sync(request, property_id):
             updated_count=result["updated"],
             skipped_count=result["skipped"],
             conflict_count=result.get("conflicts", 0),
+            missing_count=result.get("missing", 0),
             error_message="; ".join(result["errors"]) if result["errors"] else "",
         )
     except (URLError, TimeoutError):
@@ -363,6 +364,7 @@ def property_sync_all(request):
                         updated_count=result["updated"],
                         skipped_count=result["skipped"],
                         conflict_count=result.get("conflicts", 0),
+                        missing_count=result.get("missing", 0),
                         error_message="; ".join(result["errors"]) if result["errors"] else "",
                     )
                     entry.update(status="completed", sync=result)

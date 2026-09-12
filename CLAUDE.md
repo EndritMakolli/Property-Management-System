@@ -35,8 +35,9 @@ Announce which skill is being used and follow it exactly.
 
 This project has real tests. Before claiming anything works:
 
-    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 838 tests
-    cd frontend && npx tsc -b --force && npm run build && npm test    # 452 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py test pms     # 988 tests
+    cd frontend && npx tsc -b --force && npm run build && npm test    # 508 tests
+    cd backend && .\.venv\Scripts\python.exe manage.py check --deploy  # before releasing
 
 Use the venv interpreter `backend\.venv\Scripts\python.exe` — the system
 `python` on this machine has no Django installed.
@@ -83,10 +84,65 @@ financial records. A pre-hosting audit fixed these; keep them true:
   `id_document_url`, which links to a passport scan behind the role-checked
   download view. `tests_contracts.ContractNeverLeaksIdDocumentsTests` greps the
   raw response for the document URL, the wifi password and the coordinates.
+- **Sync never cancels on one missed fetch, and never deletes.** A feed is an
+  unreliable narrator - truncated mid-transfer, served stale, or simply
+  omitting a booking. `import_ical_reservations` therefore reconciles only when
+  three guards hold: the feed produced a valid event, it *ended* with
+  `END:VCALENDAR` (`feed_looks_complete` - three of forty arriving must not
+  read as thirty-seven cancellations), and the row carries `created_by_sync`.
+  Absence is then recorded as `missing_from_sync_since` and left on the
+  calendar; only after `MISSING_GRACE` does it archive. A booking a person
+  typed in is never the feed's to cancel, even after adoption gave it the
+  channel's UID. `tests_sync_safety.py` holds all of this.
+- **Two calendar imports must never overlap.** Both reconcile the same
+  apartment against two different snapshots of the same feed, and the slower
+  fetch wins - so the calendar reflects a race, not a decision. `SyncRun` is a
+  database lock, not a process one, because the importer is started from a
+  scheduler, from the web process and from a terminal, which share nothing but
+  the database. A run that stops beating for `STALE_RUN_AFTER` has died holding
+  the lock and may be taken over; one that is merely slow has not.
+  `views/_sync_schedule.py` owns all of this and writes no reservations.
+- **A feed that cannot be reached is retried on a backoff, never hammered and
+  never left for its whole interval.** `ChannelSyncState` carries the clock:
+  five minutes doubling to four hours, cleared by a success. It is also what
+  lets the page say *why* a feed is behind instead of showing a stale timestamp
+  with no explanation.
+- **Listing the archive must never delete.** It used to purge every row
+  archived over 30 days ago - a GET that destroyed data, and the second half of
+  "sync deleted my reservation": sync archives it, a month later someone opens
+  the tab and it is gone. 14 live rows were one page-view from deletion.
 - **The Django admin stays disabled** (`DJANGO_ADMIN_ENABLED`). It bypasses 2FA
   and its session is trusted by the whole API.
 - **Public booking endpoints never leak** exact coordinates, door codes, wifi
   passwords, or financials.
+- **A booking request needs a reachable email, and the server is what enforces
+  it.** The browser demanded one and `booking_create_request` did not, so a
+  request could be stored with nobody to send anything to - which is why both
+  stored requests had `guest_email=''`, no `GuestAccount` has ever existed, and
+  neither the approval nor the decline email ever had an address. It is
+  lowercased on the way in, because `has_website_booking` matches on a
+  lowercased address and a phone keyboard's capitals would lock the guest out of
+  the portal they just earned.
+- **`booking_create_direct` stays off** (`ONLINE_PAYMENTS_ENABLED`, default
+  False). Its payment step is a stub: it writes a *confirmed* reservation
+  recording `payment_status = FIRST_NIGHT` or `FULL` with no provider behind it,
+  so the money is fiction - revenue includes it, and `cancellation_outcome`
+  would refund `online_payment_amount`, money never received. The switch turns
+  the feature off; it does not delete it.
+- **No cancellation policy configured means "get in touch", not "have it all
+  back".** An empty `CancellationPolicy` table used to auto-cancel and refund in
+  full - a commercial term nobody had agreed to, applied because nothing was
+  set up. Absence of a policy is not a generous policy.
+- **An endpoint must not tell a guest something happened when nothing did.**
+  `booking_change_request` answered "we will contact you shortly" and stored
+  nothing; it is gone. A feature that needs a record needs somewhere to put it
+  and a staff surface to read it.
+- **Production config is checked, not hoped for.** `pms/checks.py` fails
+  `manage.py check --deploy` on DEBUG, on a localhost or unset
+  `GUEST_PORTAL_URL`, and warns on a consumer mailbox as sender or online
+  payments being on. They are **deploy-scoped** deliberately: the test runner
+  forces DEBUG=False, so an ordinary check would fire on the dev config and
+  abort every test run.
 - **A guest is never a Django user.** `GuestAccount` has its own session key and
   its own `require_guest`. `request.user` stays anonymous for a guest, which is
   why every `require_roles` endpoint already rejects them. Never put a guest in
@@ -134,12 +190,29 @@ financial records. A pre-hosting audit fixed these; keep them true:
   subquery (`pk__in=Reservation.objects.filter(...).values(guest_id)`), as
   `stayed_within` does. `tests_clients.AggregatesSurviveFilteringTests` fails
   the moment the join comes back.
+- **A maintenance issue is resolved, not deleted.** It had no state at all, so
+  the only way to clear one was DELETE - the list could say what was outstanding
+  and never what had been dealt with, and it was the one place in the app that
+  destroyed rather than archived. `is_resolved`/`resolved_at`/`resolved_by`, the
+  list shows open by default, and Delete survives only for a row entered by
+  mistake.
 - **A client is archived, not deleted.** `Guest.is_archived` hides them from the
   directory and keeps their history; permanent delete is reachable only from the
   Archive tab. The iCal import invents a client named after the channel
   (`Airbnb`, 42 stays), so `without_channel_placeholders` hides rows named after
   a `ReservationType` that carry no phone and no email - hidden, never deleted,
   because reservations still point at them.
+- **"Today" is a dashboard popup, not a page, and holds two groups.** Arrivals
+  and departures only: nobody greets a guest who is mid-stay and nobody cleans
+  for them, so they are dropped by `splitDay` even though the server's `?day=`
+  filter returns them - that filter answers a more general question. The cards
+  are the reservation cards, photo and all, because staff already read those.
+- **The arrival message carries the access details, built by the codes page's
+  own function.** `buildArrivalMessage` composes greeting + dates +
+  `buildDoorCopyText`, never a second copy of that wording. A field the
+  apartment has not recorded contributes no line: "Wi-Fi Password: —" is worse
+  than nothing in a message somebody receives. The departure message carries
+  none of it.
 - **A guest is "currently hosting" from the day they arrive until the day they
   leave, and not on the day they leave** — `check_in <= today < check_out`.
   Server side that is `?hosting=1` on the reservation list; client side it is
@@ -163,6 +236,29 @@ financial records. A pre-hosting audit fixed these; keep them true:
   invoice's `.inv-doc*` classes so the two look like one company. Never put
   the company address back into a template body - it is already on
   `CompanyProfile`.
+- **A contract can be edited, put down and picked up again.**
+  `ReservationContract` holds one saved draft per reservation *per language* -
+  the Albanian and English contracts are two documents, and editing one must not
+  overwrite the other. A reservation with no row still renders from
+  `ContractTemplate`, so nothing changed for a contract nobody has touched. A
+  saved draft is returned **exactly as typed and never re-rendered**: running it
+  back through the engine would resolve placeholders the operator deliberately
+  left in, and a draft that quietly refreshes itself has thrown the edit away.
+  Resetting is a DELETE of the row; the reservation is not the contract's to
+  delete. `tests_contract_drafts.py` holds all of it, including that a stored
+  draft carries no passport scan and no wifi password.
+- **An optional `[segment]` opens and closes on one line.** `render_template`
+  resolves a line at a time, so a segment split over two never matches: the
+  brackets print literally and the placeholder inside is reported unresolved.
+  `booking_rejected` shipped that way in both languages, and because the two
+  emailed outcomes refuse to send with a placeholder left in, declining a
+  booking *without typing a reason* sent the guest nothing at all. Migration
+  0061 repaired the stored rows, `_0045_lifecycle.py` fixes the seed, and
+  `tests_message_audit.py` fails if it ever comes back. Do not "fix" this by
+  counting brackets per line - contract clauses are numbered `a)`, `b)`, `c)`,
+  so an unbalanced parenthesis is ordinary prose; what breaks is a placeholder
+  whose *name* spans lines. See `docs/guest-messages-audit.md` for the full
+  inventory of what the system sends and what it does not.
 - **Contracts share the message-template engine.** `ContractTemplate` holds one
   apartment and one vehicle draft in both languages, seeded by migration 0050
   and edited under Templates. `render_template` from `views/_drafts.py` fills
@@ -231,6 +327,21 @@ financial records. A pre-hosting audit fixed these; keep them true:
   JSON *string*, which silently breaks the frontend's `number` type.
 - The stay date picker is `components/shared/StayRangePicker` — one component,
   two palettes via `tone`. The guest site and the PMS share it.
+- **Check-in and check-out are two controls, not one gesture.** Picking a whole
+  range in one go is right when there is no stay yet and wrong once there is:
+  changing a departure meant re-entering an arrival that was already correct,
+  and one stray click wiped both. `stayRangeEdit.ts` holds what a day click
+  means per mode, and check-out mode *disables* days on or before the arrival
+  rather than silently rewriting it. `mode` defaults to `range`, so the guest
+  site - which picks a whole stay from scratch - is unchanged.
+- **A popover is portalled to `<body>`, never hung off its field.**
+  `position: absolute` is measured from the nearest positioned ancestor and
+  clipped by any ancestor hiding its overflow. The Pricing page's "Test a stay"
+  bar is `position: sticky; z-index: 5; overflow: hidden`, which both sliced the
+  calendar off at the bar's own bottom edge and sealed it into a stacking
+  context five layers down — neither fixable from inside. `popoverPlacement.ts`
+  does the arithmetic that replaces the browser's, and is tested without a
+  layout.
 - Backend returns camelCase JSON; frontend types live in `frontend/src/types/domain.ts`.
 - The guest sign-in email is hardcoded security mail (following
   `views/_two_factor.py`), **not** a `MessageTemplate`. The "never hardcode

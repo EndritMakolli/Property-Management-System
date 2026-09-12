@@ -13,7 +13,13 @@ whereas one silently missing the clause is not.
 from django.http import JsonResponse
 from django.utils.timezone import localdate
 
-from ..models import CompanyProfile, ContractTemplate, Property, Reservation
+from ..models import (
+    CompanyProfile,
+    ContractTemplate,
+    Property,
+    Reservation,
+    ReservationContract,
+)
 from ._drafts import format_stay_date, render_template
 from ._roles import ROLE_ADMIN, ROLE_MANAGEMENT, require_roles
 from ._utils import json_payload
@@ -131,12 +137,21 @@ def _money(value):
 
 
 def reservation_contract(request, reservation_id):
-    """GET - the contract for this reservation, filled in and ready to print."""
+    """The contract for one reservation.
+
+    GET    - the saved draft if there is one, otherwise rendered fresh from the
+             template. A reservation nobody has edited behaves exactly as it
+             always did.
+    PUT    - save the draft: the terms as edited, plus the few things written
+             in by hand at the desk.
+    DELETE - throw the draft away and go back to the template. The way out of a
+             mess must not be deleting the reservation.
+    """
     denied = require_roles(request, [ROLE_ADMIN, ROLE_MANAGEMENT])
     if denied:
         return denied
 
-    if request.method != "GET":
+    if request.method not in ("GET", "PUT", "PATCH", "DELETE"):
         return JsonResponse({"error": "Method not allowed."}, status=405)
 
     try:
@@ -157,13 +172,65 @@ def reservation_contract(request, reservation_id):
     # Anything that is not Albanian falls back to English rather than returning
     # an empty contract for a language nobody has written.
     language = "sq" if request.GET.get("language") == "sq" else "en"
+
+    draft = ReservationContract.objects.filter(
+        reservation=reservation, language=language
+    ).first()
+
+    if request.method == "DELETE":
+        # Reset to the template. Nothing else is touched - the reservation, the
+        # guest and the stay are not the contract's to delete.
+        if draft:
+            draft.delete()
+        return JsonResponse({"ok": True, "isDraft": False})
+
+    if request.method in ("PUT", "PATCH"):
+        payload = json_payload(request)
+        body_value = payload.get("body", "")
+        if not isinstance(body_value, str):
+            return JsonResponse({"error": {"body": "The contract terms must be text."}}, status=400)
+
+        draft, _ = ReservationContract.objects.get_or_create(
+            reservation=reservation, language=language
+        )
+        draft.body = body_value
+        # Only the keys sent, so saving the terms does not blank an ID number
+        # typed in a minute earlier by a form that did not send it.
+        for api_key, field in (
+            ("clientIdNumber", "client_id_number"),
+            ("licenceNumber", "licence_number"),
+            ("deposit", "deposit"),
+        ):
+            if api_key in payload:
+                setattr(draft, field, str(payload.get(api_key) or "").strip()[:60])
+        draft.updated_by = request.user if request.user.is_authenticated else None
+        draft.save()
+
     body = template.body_sq if language == "sq" else template.body_en
     if not body.strip():
         body = template.body_en or template.body_sq
         language = "en"
+        draft = ReservationContract.objects.filter(
+            reservation=reservation, language=language
+        ).first()
 
     values = contract_values(reservation, language)
-    rendered, unresolved = render_template(body, values)
+    # The hand-filled fields belong to the draft, not to the guest record:
+    # there is no ID number on Guest, and `id_document_url` is a passport scan
+    # that a printed contract must never carry.
+    if draft:
+        values["guest id number"] = draft.client_id_number
+        values["licence number"] = draft.licence_number
+        values["deposit"] = draft.deposit
+
+    if draft:
+        # A saved draft is returned exactly as it was typed. Re-rendering it
+        # through the template engine would resolve placeholders the operator
+        # deliberately left in, and a draft that quietly refreshes itself has
+        # thrown the edit away.
+        rendered, unresolved = draft.body, []
+    else:
+        rendered, unresolved = render_template(body, values)
 
     company = CompanyProfile.get()
     prop = reservation.property
@@ -176,6 +243,16 @@ def reservation_contract(request, reservation_id):
         "kind": kind,
         "language": language,
         "body": rendered,
+        # Whether this is somebody's edit or a fresh render. The modal says so,
+        # because "this has been changed" is the thing you need to know before
+        # printing it.
+        "isDraft": draft is not None,
+        "updatedAt": draft.updated_at.isoformat() if draft else "",
+        "updatedBy": draft.updated_by.username if draft and draft.updated_by else "",
+        "fields": {
+            "licenceNumber": values["licence number"],
+            "deposit": values["deposit"],
+        },
         # What the operator still has to fill in by hand before signing.
         "unresolved": unresolved,
         "reference": str(reservation.id)[:8].upper(),

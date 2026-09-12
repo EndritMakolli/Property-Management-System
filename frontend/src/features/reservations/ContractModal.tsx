@@ -9,9 +9,15 @@
 // out from structured data, so changing a clause never means retyping the
 // company's address or the chassis number.
 
-import { AlertTriangle, Printer, X } from 'lucide-react'
+import { AlertTriangle, Pencil, Printer, RotateCcw, Save, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { fetchReservationContract, type RenderedContract } from '../../api/contracts'
+import { formatApiError } from '../../api/client'
+import {
+  fetchReservationContract,
+  resetReservationContract,
+  saveReservationContract,
+  type RenderedContract,
+} from '../../api/contracts'
 import { CopyButton } from '../../components/shared/CopyButton'
 import { CarDiagram } from './CarDiagram'
 import { fmtDate } from '../invoices/invoiceModel'
@@ -102,13 +108,32 @@ export function ContractModal({ reservation, onClose }: ContractModalProps) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
 
+  // What is being typed. Held apart from `contract` and written back only on
+  // Save, so closing the modal by accident cannot overwrite a contract that
+  // was already agreed.
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [idNumber, setIdNumber] = useState('')
+  const [licenceNumber, setLicenceNumber] = useState('')
+  const [deposit, setDeposit] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  function adopt(rendered: RenderedContract) {
+    setContract(rendered)
+    setDraft(rendered.body)
+    setIdNumber(rendered.client.idNumber ?? '')
+    setLicenceNumber(rendered.fields?.licenceNumber ?? '')
+    setDeposit(rendered.fields?.deposit ?? '')
+  }
+
   useEffect(() => {
     let ignore = false
     setStatus('loading')
+    setEditing(false)
     fetchReservationContract(reservation.id, language)
       .then((rendered) => {
         if (ignore) return
-        setContract(rendered)
+        adopt(rendered)
         setStatus('ready')
       })
       .catch((caught: unknown) => {
@@ -120,6 +145,43 @@ export function ContractModal({ reservation, onClose }: ContractModalProps) {
       ignore = true
     }
   }, [reservation.id, language])
+
+  async function handleSave() {
+    if (saving) return
+    setSaving(true)
+    setError('')
+    try {
+      adopt(
+        await saveReservationContract(reservation.id, language, {
+          body: draft,
+          clientIdNumber: idNumber,
+          licenceNumber,
+          deposit,
+        }),
+      )
+      setEditing(false)
+    } catch (caught) {
+      setError(formatApiError(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleReset() {
+    // The one action here that typing again cannot undo, so it asks first.
+    if (!window.confirm('Discard this edited contract and go back to the template?')) return
+    setSaving(true)
+    setError('')
+    try {
+      await resetReservationContract(reservation.id, language)
+      adopt(await fetchReservationContract(reservation.id, language))
+      setEditing(false)
+    } catch (caught) {
+      setError(formatApiError(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const t = COPY[contract?.language ?? language]
   const isVehicle = contract?.subject.isVehicle ?? false
@@ -163,10 +225,54 @@ export function ContractModal({ reservation, onClose }: ContractModalProps) {
             </button>
           </div>
           <CopyButton label="Copy terms" value={contract?.body ?? ''} title="Copy the contract terms" />
-          <button className="pill-button" disabled={!contract} type="button" onClick={() => window.print()}>
+          {editing ? (
+            <>
+              <button className="pill-button" disabled={saving} type="button" onClick={handleSave}>
+                <Save size={14} /> {saving ? 'Saving…' : 'Save draft'}
+              </button>
+              <button
+                className="pill-button"
+                disabled={saving}
+                type="button"
+                onClick={() => {
+                  setDraft(contract?.body ?? '')
+                  setEditing(false)
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              className="pill-button"
+              disabled={!contract}
+              type="button"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil size={14} /> Edit
+            </button>
+          )}
+          {contract?.isDraft && !editing && (
+            <button className="pill-button" disabled={saving} type="button" onClick={handleReset}>
+              <RotateCcw size={14} /> Reset to template
+            </button>
+          )}
+          <button
+            className="pill-button"
+            disabled={!contract || editing}
+            type="button"
+            onClick={() => window.print()}
+          >
             <Printer size={14} /> Print / Save PDF
           </button>
         </div>
+
+        {contract?.isDraft && (
+          <p className="contract-draft-note contract-chrome">
+            Edited contract{contract.updatedBy ? ` — last saved by ${contract.updatedBy}` : ''}. The
+            template is no longer applied to it.
+          </p>
+        )}
 
         {status === 'loading' && <p className="list-empty contract-chrome">Building the contract…</p>}
         {status === 'error' && <p className="form-error contract-chrome">{error}</p>}
@@ -348,11 +454,54 @@ export function ContractModal({ reservation, onClose }: ContractModalProps) {
                 </table>
               </div>
 
-              {/* The terms, from the editable template */}
+              {/* The terms. Read as a document, edited in the same box — so
+                  what is typed is exactly what prints. */}
               <div className="cdoc-block">
                 <div className="cdoc-bar">{t.terms}</div>
-                <div className="cdoc-terms">{contract.body}</div>
+                {editing ? (
+                  <textarea
+                    aria-label={t.terms}
+                    className="cdoc-terms cdoc-terms-edit"
+                    rows={18}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                ) : (
+                  <div className="cdoc-terms">{contract.body}</div>
+                )}
               </div>
+
+              {editing && (
+                <div className="cdoc-block cdoc-handfill">
+                  <div className="cdoc-bar">Filled in at the desk</div>
+                  <div className="cdoc-handfill-grid">
+                    <label>
+                      {t.idNumber}
+                      <input
+                        type="text"
+                        value={idNumber}
+                        onChange={(event) => setIdNumber(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      {t.licence}
+                      <input
+                        type="text"
+                        value={licenceNumber}
+                        onChange={(event) => setLicenceNumber(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Deposit
+                      <input
+                        type="text"
+                        value={deposit}
+                        onChange={(event) => setDeposit(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <p className="cdoc-signature">
                 {t.signature} <span className="cdoc-signature-line" />

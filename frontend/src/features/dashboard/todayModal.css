@@ -1,0 +1,131 @@
+/* Today, over the dashboard.
+   The cards are the reservation cards — staff already know how to read those,
+   and a second card style for the same thing is a second thing to learn. */
+
+.today-modal {
+  display: grid;
+  gap: 14px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.today-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.today-nav input[type='date'] {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.today-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.today-group {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.today-group > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.today-group h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.today-count {
+  margin-left: auto;
+  min-width: 24px;
+  border-radius: 999px;
+  background: var(--bg-subtle, rgba(127, 127, 127, 0.14));
+  padding: 1px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* A departure is the one with a deadline attached — the apartment has to be
+   turned round before the arrival on the other list walks in. */
+.today-group--departures > header svg { color: var(--warning, #b26a00); }
+.today-group--arrivals > header svg { color: var(--success, #2e7d32); }
+
+/* The reservation card is four columns wide; in a modal column it stacks. */
+.today-modal .search-res-card {
+  grid-template-columns: 64px minmax(0, 1fr);
+  row-gap: 8px;
+}
+
+.today-modal .search-res-card-photo {
+  width: 64px;
+  height: 64px;
+}
+
+.today-card-arrow { color: var(--text-muted); }
+
+.today-card-guests {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+}
+
+.today-modal .search-res-card-dates {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.today-card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.today-card-actions .btn,
+.today-card-actions .copy-info-btn {
+  min-height: 30px;
+}
+
+/* The call button is an anchor, so it needs the button's alignment back. */
+.today-card-actions a.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+
+.today-no-phone,
+.today-empty {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.today-empty { margin: 0; }
+
+@media (max-width: 700px) {
+  .today-groups { grid-template-columns: minmax(0, 1fr); }
+}

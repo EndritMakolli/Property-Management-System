@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -66,6 +66,35 @@ def fetch_ical_events(url):
     return parse_ical_events(content)
 
 
+# How long a booking may stay missing from a feed before it is treated as
+# cancelled. A channel that drops a booking for one fetch gets the benefit of
+# the doubt; one that has not mentioned it for two days meant it.
+MISSING_GRACE = timedelta(days=2)
+
+
+class IcalEvents(list):
+    """Parsed events, plus whether the feed actually finished.
+
+    The completeness flag travels with the events because the decision it
+    guards - whether to reconcile cancellations - is made far from the fetch.
+    """
+
+    complete = True
+
+
+def feed_looks_complete(content):
+    """Did this feed end where a calendar is supposed to end?
+
+    A connection dropped mid-transfer yields valid events and no END:VCALENDAR.
+    Without this check, three of forty bookings arriving looks exactly like
+    thirty-seven cancellations.
+    """
+    text = (content or "").strip()
+    if "BEGIN:VCALENDAR" not in text.upper():
+        return False
+    return text.upper().rstrip().endswith("END:VCALENDAR")
+
+
 def parse_ical_events(content):
     unfolded_lines = []
     for raw_line in content.splitlines():
@@ -91,7 +120,9 @@ def parse_ical_events(content):
         field = key.split(";", 1)[0].upper()
         current[field] = value.strip()
 
-    return events
+    parsed = IcalEvents(events)
+    parsed.complete = feed_looks_complete(content)
+    return parsed
 
 
 def ical_date(value):
@@ -141,6 +172,7 @@ def import_ical_reservations(prop, platform, events):
     skipped = 0
     conflicts = 0
     cancelled = 0
+    missing = 0
     errors = []
     seen_uids = set()
     had_valid_event = False
@@ -205,6 +237,8 @@ def import_ical_reservations(prop, platform, events):
 
         if created:
             reservation = Reservation(platform=platform, external_uid=uid)
+            # Only a row sync created may ever be reconciled away by sync.
+            reservation.created_by_sync = True
             reservation.property = prop
             reservation.guest_name = label
             reservation.guest_phone = ""
@@ -219,6 +253,8 @@ def import_ical_reservations(prop, platform, events):
 
         reservation.check_in = check_in
         reservation.check_out = check_out
+        # It is in the feed, so whatever we thought before, it is not missing.
+        reservation.missing_from_sync_since = None
 
         try:
             reservation.save()
@@ -235,26 +271,45 @@ def import_ical_reservations(prop, platform, events):
         else:
             updated += 1
 
-    # Reconcile cancellations: a booking that disappeared from the feed was
-    # cancelled on the channel — archive it so it stops blocking the calendar.
-    # Pinned (manually relocated) bookings are left alone, and the had_valid_event
-    # guard prevents a transient empty/failed feed from mass-archiving.
-    if had_valid_event:
+    # Reconcile disappearances - carefully.
+    #
+    # A booking absent from this fetch has not necessarily been cancelled. The
+    # feed may have been truncated mid-transfer, served stale, or simply have
+    # omitted it. So absence is recorded as a *state* first: the booking is
+    # flagged missing and left on the calendar, and only becomes a cancellation
+    # once the feed has failed to mention it for MISSING_GRACE.
+    #
+    # Three guards before that even starts:
+    #   had_valid_event  - an empty or unparseable feed decides nothing
+    #   feed_complete    - a feed with no END:VCALENDAR was cut off; three of
+    #                      forty arriving must not read as thirty-seven cancellations
+    #   created_by_sync  - a booking a person typed in is not the feed's to cancel,
+    #                      even after adoption gave it the channel's UID
+    feed_complete = getattr(events, "complete", True)
+    if had_valid_event and feed_complete:
         today = localdate()
         now = datetime.now(timezone.utc)
         vanished = (
             Reservation.objects.filter(
                 property=prop, platform=platform, is_archived=False,
-                pinned_property=False, check_out__gte=today,
+                pinned_property=False, created_by_sync=True, check_out__gte=today,
             )
             .exclude(external_uid__isnull=True)
             .exclude(external_uid__in=seen_uids)
         )
         for reservation in vanished:
-            reservation.is_archived = True
-            reservation.archived_at = now
-            reservation.save(update_fields=["is_archived", "archived_at"])
-            cancelled += 1
+            if reservation.missing_from_sync_since is None:
+                reservation.missing_from_sync_since = now
+                reservation.save(update_fields=["missing_from_sync_since"])
+                missing += 1
+            elif now - reservation.missing_from_sync_since >= MISSING_GRACE:
+                reservation.is_archived = True
+                reservation.archived_at = now
+                reservation.save(update_fields=["is_archived", "archived_at"])
+                cancelled += 1
+            else:
+                # Still inside the grace window; leave it on the calendar.
+                missing += 1
 
         # Clear conflicts whose channel event is no longer in the feed.
         SyncConflict.objects.filter(
@@ -267,6 +322,7 @@ def import_ical_reservations(prop, platform, events):
         "skipped": skipped,
         "conflicts": conflicts,
         "cancelled": cancelled,
+        "missing": missing,
         "errors": errors[:8],
     }
 

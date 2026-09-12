@@ -28,7 +28,6 @@ from ._booking_public import (
     booking_availability,
     booking_calculate,
     booking_cancel,
-    booking_change_request,
     booking_create_direct,
     booking_create_request,
     booking_properties,
@@ -126,7 +125,14 @@ from ._receipts import (
     receipt_monthly_view,
 )
 from ._sync_conflicts import sync_conflict_dismiss, sync_conflict_link, sync_conflict_list
+from ._staff_leave import (
+    staff_leave_detail,
+    staff_leave_list,
+    staff_member_detail,
+    staff_member_list,
+)
 from ._sync_log import sync_log_list
+from ._sync_schedule import sync_run_now, sync_status
 from ._guest_auth import guest_logout, guest_me, guest_request_link, guest_verify
 from ._guest_mail import booking_request_notify
 from ._guest_portal import guest_bookings, guest_cancel_booking, guest_stats
@@ -144,7 +150,6 @@ __all__ = [
     "booking_availability",
     "booking_calculate",
     "booking_cancel",
-    "booking_change_request",
     "booking_create_direct",
     "booking_create_request",
     "booking_properties",
@@ -241,7 +246,13 @@ __all__ = [
     "sync_conflict_dismiss",
     "sync_conflict_link",
     "sync_conflict_list",
+    "staff_leave_detail",
+    "staff_leave_list",
+    "staff_member_detail",
+    "staff_member_list",
     "sync_log_list",
+    "sync_run_now",
+    "sync_status",
     "tax_detail",
     "tax_list",
     "user_detail",

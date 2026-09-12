@@ -66,10 +66,23 @@ def reservation_list(request):
         if is_management(request):
             reservations = reservations.filter(property__hidden_from_management=False)
 
-        # "Who is in the building right now" - arrivals today included,
-        # departures today not: they handed the key back this morning. It wins
-        # over the month filter, because it is not a question about a month.
-        if request.GET.get("hosting") == "1":
+        # One day's turnaround: everyone arriving, leaving or staying put.
+        # Unlike "currently hosting" a departure counts - somebody has to take
+        # the key back and clean the apartment before the next arrival, who is
+        # on this same list. Both win over the month filter, because neither is
+        # a question about a month.
+        day_value = request.GET.get("day")
+        if day_value:
+            try:
+                day = date.fromisoformat(day_value)
+            except ValueError:
+                # Falling back to every reservation would look like the page
+                # working, and be wrong.
+                return JsonResponse({"error": "Choose a valid day."}, status=400)
+            reservations = reservations.filter(
+                check_in__lte=day, check_out__gte=day
+            ).exclude(platform="maintenance")
+        elif request.GET.get("hosting") == "1":
             today = localdate()
             reservations = reservations.filter(
                 check_in__lte=today, check_out__gt=today
@@ -91,9 +104,11 @@ def reservation_list(request):
         if property_id:
             reservations = reservations.filter(property_id=property_id)
 
-        if archived:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-            Reservation.objects.filter(is_archived=True, archived_at__lt=cutoff).delete()
+        # Nothing is purged here. Listing the archive used to permanently
+        # delete every row archived over 30 days ago - a GET that destroyed
+        # data, and the second half of "sync deleted my reservation": sync
+        # archives it, a month later someone opens this tab and it is gone.
+        # Archived rows now stay until someone deletes one deliberately.
 
         return JsonResponse({"reservations": [serialize_reservation(item) for item in reservations]})
 

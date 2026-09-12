@@ -8,90 +8,10 @@ from .base import TimeStampedModel
 from .properties import Property
 
 
-class Expense(TimeStampedModel):
-    class Category(models.TextChoices):
-        CLEANING = "cleaning", "Cleaning"
-        MAINTENANCE = "maintenance", "Maintenance"
-        UTILITIES = "utilities", "Utilities"
-        PLATFORM_FEES = "platform_fees", "Platform Fees"
-        INSURANCE = "insurance", "Insurance"
-        MORTGAGE = "mortgage", "Mortgage"
-        SUPPLIES = "supplies", "Supplies"
-        TAX = "tax", "Tax"
-        OTHER = "other", "Other"
-
-    class Frequency(models.TextChoices):
-        ONE_TIME = "one_time", "One-Time"
-        MONTHLY = "monthly", "Monthly"
-        YEARLY = "yearly", "Yearly"
-
-    property = models.ForeignKey(
-        Property, on_delete=models.SET_NULL, null=True, blank=True, related_name="expenses"
-    )
-    category = models.CharField(max_length=30, choices=Category.choices)
-    description = models.CharField(max_length=255)
-    amount_eur = models.DecimalField(max_digits=10, decimal_places=2)
-    recurring = models.BooleanField(default=False)
-    recurrence_frequency = models.CharField(
-        max_length=10, choices=Frequency.choices, blank=True, null=True
-    )
-    date = models.DateField()
-    receipt_url = models.URLField(blank=True, null=True)
-
-    class Meta:
-        ordering = ["-date"]
-        indexes = [
-            models.Index(fields=["property", "date"]),
-            models.Index(fields=["category", "date"]),
-            models.Index(fields=["recurring", "recurrence_frequency"]),
-        ]
-
-    def __str__(self):
-        prop = self.property.name if self.property else "Global"
-        return f"{prop} - {self.category} - EUR {self.amount_eur} ({self.date})"
-
-    @builtin_property
-    def is_global(self):
-        return self.property is None
-
-
-class FinancialReport(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    property = models.ForeignKey(
-        Property, on_delete=models.SET_NULL, null=True, blank=True, related_name="financial_reports"
-    )
-    period_start = models.DateField()
-    period_end = models.DateField()
-    total_revenue_eur = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0.00")
-    )
-    total_expenses_eur = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0.00")
-    )
-    net_profit_eur = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0.00")
-    )
-    occupancy_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
-    avg_nightly_rate_eur = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
-    total_nights_booked = models.PositiveIntegerField(default=0)
-    total_nights_free = models.PositiveIntegerField(default=0)
-    generated_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-period_start"]
-        indexes = [
-            models.Index(fields=["property", "period_start", "period_end"]),
-        ]
-
-    def __str__(self):
-        prop = self.property.name if self.property else "All Properties"
-        return f"{prop} - {self.period_start} to {self.period_end}"
-
-    def save(self, *args, **kwargs):
-        self.net_profit_eur = self.total_revenue_eur - self.total_expenses_eur
-        super().save(*args, **kwargs)
+# `Expense` was removed in migration 0063: zero rows, queried by no view, and
+# superseded by `FinanceExpense` below - which is what `ExpensePayment`
+# actually points at. Two near-identically named models where only one works
+# is how a write eventually lands in the wrong table.
 
 
 class ExpenseCategory(TimeStampedModel):

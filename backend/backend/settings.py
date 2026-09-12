@@ -94,6 +94,11 @@ TRUST_PROXY_HEADERS = config('TRUST_PROXY_HEADERS', default=not DEBUG, cast=bool
 # API — so it is disabled unless explicitly turned on, and never on a guessable
 # path. Manage staff accounts through the app's own Admin Panel instead.
 DJANGO_ADMIN_ENABLED = config('DJANGO_ADMIN_ENABLED', default=False, cast=bool)
+
+# The direct-booking endpoint writes a confirmed reservation recording money it
+# never took - the payment step is a stub. Off until there is a real payment
+# provider; see views/_booking_public.booking_create_direct.
+ONLINE_PAYMENTS_ENABLED = config('ONLINE_PAYMENTS_ENABLED', default=False, cast=bool)
 DJANGO_ADMIN_PATH = config('DJANGO_ADMIN_PATH', default='admin').strip('/')
 
 INSTALLED_APPS = [

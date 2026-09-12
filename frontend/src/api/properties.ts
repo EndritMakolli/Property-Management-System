@@ -223,3 +223,46 @@ export async function createPropertyReview(
 export async function deletePropertyReview(propertyId: string, reviewId: string) {
   await apiDelete(`/api/properties/${propertyId}/reviews/${reviewId}/`, 'Could not delete review.')
 }
+
+// ── Timed synchronisation ─────────────────────────────────────────────────────
+
+export type SyncRunRecord = {
+  id: string
+  status: 'running' | 'completed' | 'failed'
+  trigger: 'scheduled' | 'manual'
+  startedAt: string
+  finishedAt: string
+  propertiesSynced: number
+  errorCount: number
+  errorMessage: string
+}
+
+export type ChannelSyncStateRecord = {
+  propertyId: string
+  propertyName: string
+  channel: string
+  lastAttemptAt: string
+  lastSuccessAt: string
+  nextAttemptAt: string
+  consecutiveFailures: number
+  lastError: string
+}
+
+export type SyncStatusResult = {
+  /** The run in progress, or null when nothing is going. */
+  running: SyncRunRecord | null
+  recentRuns: SyncRunRecord[]
+  channels: ChannelSyncStateRecord[]
+  dueNow: number
+  autoSyncProperties: number
+}
+
+export async function fetchSyncStatus() {
+  return apiGet<SyncStatusResult>('/api/sync/status/')
+}
+
+/** Run every feed that is due. Refused with a 409 if one is already running —
+ *  the server holds the same lock the scheduled run takes. */
+export async function runDueSyncs() {
+  return apiSend<{ ok: boolean; running: SyncRunRecord | null }>('/api/sync/run/', 'POST', {})
+}

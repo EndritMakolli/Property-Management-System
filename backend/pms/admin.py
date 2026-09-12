@@ -1,16 +1,12 @@
 from django.contrib import admin
 
 from .models import (
-    ClaudeTask,
-    Expense,
     ExpenseCategory,
     FinanceExpense,
     FinancialObligation,
-    FinancialReport,
     Guest,
-    GuestStay,
-    Inquiry,
     Property,
+    PropertyReview,
     Reservation,
     Loan,
 )
@@ -94,45 +90,6 @@ class ReservationAdmin(admin.ModelAdmin):
     date_hierarchy = "check_in"
 
 
-@admin.register(GuestStay)
-class GuestStayAdmin(admin.ModelAdmin):
-    list_display = ("guest", "property", "check_in", "check_out", "nights", "amount_paid_eur", "platform")
-    list_filter = ("platform", "property")
-    search_fields = ("guest__first_name", "guest__last_name", "property__name")
-    date_hierarchy = "check_in"
-
-
-@admin.register(Inquiry)
-class InquiryAdmin(admin.ModelAdmin):
-    list_display = ("guest", "property", "platform", "status", "check_in_requested", "check_out_requested", "created_at")
-    list_filter = ("platform", "status", "property")
-    search_fields = ("content", "guest__first_name", "guest__last_name", "property__name")
-    date_hierarchy = "created_at"
-
-
-@admin.register(Expense)
-class ExpenseAdmin(admin.ModelAdmin):
-    list_display = ("description", "property", "category", "amount_eur", "date", "recurring", "recurrence_frequency")
-    list_filter = ("category", "recurring", "recurrence_frequency", "property")
-    search_fields = ("description", "property__name")
-    date_hierarchy = "date"
-
-
-@admin.register(FinancialReport)
-class FinancialReportAdmin(admin.ModelAdmin):
-    list_display = (
-        "property",
-        "period_start",
-        "period_end",
-        "total_revenue_eur",
-        "total_expenses_eur",
-        "net_profit_eur",
-        "occupancy_rate",
-    )
-    list_filter = ("property",)
-    date_hierarchy = "period_start"
-
-
 @admin.register(ExpenseCategory)
 class ExpenseCategoryAdmin(admin.ModelAdmin):
     list_display = ("name", "created_at")
@@ -168,9 +125,9 @@ class FinancialObligationAdmin(admin.ModelAdmin):
     search_fields = ("company_name", "description", "notes")
 
 
-@admin.register(ClaudeTask)
-class ClaudeTaskAdmin(admin.ModelAdmin):
-    list_display = ("task_type", "status", "triggered_by", "created_at", "completed_at")
-    list_filter = ("task_type", "status", "triggered_by")
-    search_fields = ("error_message",)
-    readonly_fields = ("created_at", "updated_at", "completed_at")
+
+
+@admin.register(PropertyReview)
+class PropertyReviewAdmin(admin.ModelAdmin):
+    list_display = ("property", "rating", "created_at")
+    list_filter = ("rating",)

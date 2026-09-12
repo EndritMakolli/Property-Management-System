@@ -339,3 +339,109 @@
   font-size: 0.86rem;
   margin: 0;
 }
+
+/* ── Timed synchronisation ───────────────────────────────────────────────────
+   A schedule nobody can see is a schedule nobody trusts, and the first thing
+   anyone does with one they do not trust is press Sync All every morning. */
+
+.sync-status {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  padding: 14px 16px;
+}
+
+.sync-status > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sync-status h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.sync-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.sync-facts div {
+  display: grid;
+  gap: 2px;
+}
+
+.sync-facts dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sync-facts dd {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.sync-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.sync-failing {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sync-failing li {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--warning-border, var(--border));
+  border-radius: 8px;
+  background: var(--warning-bg, transparent);
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.sync-failing small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+/* The only animation on the page, and it means "something is happening right
+   now" — nothing else should borrow it. */
+@keyframes sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-status .spin {
+  animation: sync-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-status .spin {
+    animation: none;
+  }
+}

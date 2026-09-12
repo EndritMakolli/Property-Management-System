@@ -1531,3 +1531,81 @@
 .input-with-unit--wide input {
   padding-right: 96px !important;
 }
+
+/* ── An edited contract ──────────────────────────────────────────────────────
+   The terms are edited in the same box they print from, so what is typed is
+   what comes out. The note above says the template no longer governs it. */
+
+.contract-draft-note {
+  margin: 0 0 8px;
+  border-left: 3px solid var(--accent);
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.cdoc-terms-edit {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.cdoc-handfill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+.cdoc-handfill-grid label {
+  display: grid;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cdoc-handfill-grid input {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* The desk fields are working notes, not part of the document. */
+@media print {
+  .cdoc-handfill,
+  .contract-draft-note {
+    display: none !important;
+  }
+}
+
+/* ── To Fix: ticked off, not deleted ─────────────────────────────────────────
+   The only way to clear an issue used to be Delete, so the list could say what
+   was outstanding and never what had been dealt with. */
+
+.maintenance-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.maintenance-view-tabs {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.maintenance-resolved-note {
+  color: var(--success, #2e7d32);
+  font-weight: 600;
+}

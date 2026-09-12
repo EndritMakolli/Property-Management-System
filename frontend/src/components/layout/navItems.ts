@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Tag,
   Users,
+  Umbrella,
   Wallet,
   Wrench,
 } from 'lucide-react'
@@ -65,6 +66,9 @@ export const navItems: NavItem[] = [
   // Holds both the guest replies and the rental contracts, so it is named for
   // what it is rather than for the half of it that came first.
   { label: 'Templates', path: '/message-templates', icon: MessageSquare, roles: ['admin', 'management'] },
+  // The office keeps this register; cleaning staff appear in it and do not
+  // keep it, so it is not theirs to open.
+  { label: 'Staff Leaves', path: '/staff-leaves', icon: Umbrella, roles: ['admin', 'management'] },
   { label: 'Admin Panel', path: '/admin-panel', icon: ShieldCheck, roles: ['admin'] },
   { label: 'My Security', path: '/security', icon: Lock, roles: ['admin', 'management', 'cleaning'] },
 ]

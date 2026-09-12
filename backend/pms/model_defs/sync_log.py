@@ -15,6 +15,8 @@ class SyncLog(models.Model):
     updated_count = models.PositiveIntegerField(default=0)
     skipped_count = models.PositiveIntegerField(default=0)
     conflict_count = models.PositiveIntegerField(default=0)
+    # Bookings the feed stopped mentioning, flagged for review rather than cancelled.
+    missing_count = models.PositiveIntegerField(default=0)
     error_message = models.TextField(blank=True)
     synced_at = models.DateTimeField(auto_now_add=True)
 

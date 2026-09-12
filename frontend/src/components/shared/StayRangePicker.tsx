@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import { toDateInputValue } from '../../utils/date'
+import { applyDayClick, forbiddenByMode, type EditMode } from './stayRangeEdit'
 import { compareMonths, openingMonth, shiftMonth } from './stayRangeMonths'
 import styles from './StayRangePicker.module.css'
 
@@ -18,7 +19,14 @@ interface Props {
   blocked?: BlockedRange[]
   checkIn: string
   checkOut: string
-  onChange: (checkIn: string, checkOut: string) => void
+  /** `complete` says the stay is whole, so a popover may close itself. */
+  onChange: (checkIn: string, checkOut: string, complete: boolean) => void
+  /**
+   * Which end of the stay a click sets. `range` is the original one-gesture
+   * behaviour and stays the default: the guest site picks a whole stay from
+   * scratch and should not be asked for two separate decisions.
+   */
+  mode?: EditMode
   /** Which palette to wear. The guest site is warm; the PMS is not. */
   tone?: 'client' | 'pms'
   /** How many months to show at once. Two side by side unless space is tight. */
@@ -64,6 +72,7 @@ export default function StayRangePicker({
   tone = 'client',
   months: monthCount = 2,
   allowPast = false,
+  mode = 'range',
 }: Props) {
   const blockedNights = useMemo(() => expandBlocked(blocked), [blocked])
   const today = toDateInputValue(new Date())
@@ -91,6 +100,10 @@ export default function StayRangePicker({
   function state(iso: string) {
     if (!allowPast && iso < today) return 'past'
     if (blockedNights.has(iso)) return 'blocked'
+    // Editing one end rules out days the other end makes impossible - a
+    // departure on or before its own arrival, or one reached by booking
+    // through a night somebody else has.
+    if (forbiddenByMode(iso, mode, { checkIn, checkOut }, rangeHasBlocked)) return 'blocked'
     return 'open'
   }
 
@@ -105,9 +118,8 @@ export default function StayRangePicker({
 
   function clickDay(iso: string) {
     if (state(iso) !== 'open') return
-    if (!checkIn || (checkIn && checkOut)) { onChange(iso, ''); return }
-    if (iso <= checkIn || rangeHasBlocked(checkIn, iso)) { onChange(iso, ''); return }
-    onChange(checkIn, iso)
+    const next = applyDayClick({ checkIn, checkOut }, iso, mode, rangeHasBlocked)
+    onChange(next.checkIn, next.checkOut, next.complete)
   }
 
   function inRange(iso: string) {

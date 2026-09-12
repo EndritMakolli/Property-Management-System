@@ -1,4 +1,4 @@
-import { apiGet, apiSend } from './client'
+import { apiDelete, apiGet, apiSend } from './client'
 
 export type ContractKind = 'apartment' | 'vehicle'
 
@@ -59,6 +59,20 @@ export type RenderedContract = {
   company: ContractParty
   client: ContractParty
   subject: ContractSubject
+  /** Whether somebody has edited this contract. A fresh render is not a draft;
+   *  a draft is returned exactly as it was typed and never re-rendered over. */
+  isDraft: boolean
+  updatedAt: string
+  updatedBy: string
+  /** Written in by hand at the desk, and kept with the draft. */
+  fields: { licenceNumber: string; deposit: string }
+}
+
+export type ContractDraftPayload = {
+  body: string
+  clientIdNumber?: string
+  licenceNumber?: string
+  deposit?: string
 }
 
 export async function fetchContractTemplates() {
@@ -81,5 +95,27 @@ export async function updateContractTemplate(
 export async function fetchReservationContract(reservationId: string, language: 'sq' | 'en') {
   return apiGet<RenderedContract>(
     `/api/reservations/${reservationId}/contract/?language=${language}`,
+  )
+}
+
+/** Save the contract as edited. Returns it as it will now be reopened. */
+export async function saveReservationContract(
+  reservationId: string,
+  language: 'sq' | 'en',
+  payload: ContractDraftPayload,
+) {
+  return apiSend<RenderedContract>(
+    `/api/reservations/${reservationId}/contract/?language=${language}`,
+    'PUT',
+    payload,
+  )
+}
+
+/** Throw the edit away and go back to the template. Nothing else is touched —
+ *  the reservation and the guest are not the contract's to delete. */
+export async function resetReservationContract(reservationId: string, language: 'sq' | 'en') {
+  await apiDelete(
+    `/api/reservations/${reservationId}/contract/?language=${language}`,
+    'Could not reset the contract.',
   )
 }

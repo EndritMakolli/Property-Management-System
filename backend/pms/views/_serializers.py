@@ -103,6 +103,7 @@ def serialize_reservation(reservation):
         "checkIn": reservation.check_in.isoformat(),
         "checkOut": reservation.check_out.isoformat(),
         "totalNights": reservation.nights,
+        "guestsCount": reservation.guests_count,
         "nightlyPrice": str(reservation.nightly_price_eur),
         "monthlyPrice": str(reservation.monthly_price_eur)
         if reservation.monthly_price_eur is not None
@@ -234,6 +235,9 @@ def serialize_maintenance_issue(issue, request):
         "description": issue.description,
         "reporterName": issue.reporter_name,
         "reportedAt": issue.reported_at.isoformat(),
+        "isResolved": issue.is_resolved,
+        "resolvedAt": issue.resolved_at.isoformat() if issue.resolved_at else "",
+        "resolvedBy": issue.resolved_by.username if issue.resolved_by else "",
         "photos": [
             {
                 "id": str(photo.id),

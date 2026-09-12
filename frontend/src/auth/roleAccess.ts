@@ -20,6 +20,7 @@ const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
     '/booking-requests',
     '/pricing-rules',
     '/message-templates',
+    '/staff-leaves',
     '/settings',
     '/invoice',
     '/security',
@@ -39,10 +40,13 @@ const accessByRole: Record<Exclude<UserRole, ''>, string[]> = {
     '/booking-requests',
     '/pricing-rules',
     '/message-templates',
+    '/staff-leaves',
     '/settings',
     '/invoice',
     '/security',
   ],
+  // Cleaning staff appear in the leave register and do not keep it, so it is
+  // not on their list. The server enforces this too.
   cleaning: ['/dashboard', '/codes', '/maintenance', '/invoice', '/security'],
 }
 

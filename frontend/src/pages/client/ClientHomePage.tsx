@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { calculateNights, formatDisplayDate } from '../../utils/date'
 import { readClientSearch, saveClientSearch } from '../../utils/clientSearch'
@@ -211,31 +211,72 @@ export default function ClientHomePage() {
 
               {/* Split stay */}
               {available.length === 0 && combinations.length > 0 && (
-                <div className={styles.splitSection}>
-                  <p className={styles.splitLead}>No single apartment fits your group — combine apartments:</p>
+                <div className={styles.splitList}>
+                  <p className={styles.splitLead}>
+                    No single apartment fits {guests} {guests === 1 ? 'guest' : 'guests'} —
+                    but these combinations do. Tap an apartment to look inside.
+                  </p>
                   {combinations.map((combo, ci) => {
                     const total = Math.round(Number(combo.combinedTotal))
                     const segments = combo.apartments.map(({ property: a }) => ({
                       propertyId: a.id, name: a.name, checkIn, checkOut, nights, price: priceOf(a),
                     }))
+                    const sleeps = combo.apartments.reduce(
+                      (sum, { property: a }) => sum + (a.maxGuests ?? 0), 0,
+                    )
                     return (
                       <div className={styles.splitCombo} key={ci}>
                         <div className={styles.splitRoute}>
-                          {segments.map((s, i) => (
-                            <div className={styles.splitSegment} key={`${s.name}-${i}`}>
-                              <span className={styles.splitIndex}>{i + 1}</span>
-                              <div>
-                                <strong>{s.name}</strong>
-                                <p>{formatDisplayDate(checkIn)} → {formatDisplayDate(checkOut)} · {nights} {nights === 1 ? 'night' : 'nights'}</p>
-                              </div>
-                              <span className={styles.splitPrice}>€{s.price}</span>
-                            </div>
-                          ))}
+                          {combo.apartments.map(({ property: a }, i) => {
+                            const photo = a.photos[0]
+                            return (
+                              <Fragment key={`${a.id}-${i}`}>
+                                {/* The apartments are taken together, so the
+                                    join between them is said rather than left
+                                    to a gap. */}
+                                {i > 0 && <span className={styles.splitPlus} aria-hidden="true">+</span>}
+                                {/* The same card as a single result — same
+                                    classes, same markup. A second card style
+                                    is a second thing to keep right. */}
+                                <div className={styles.splitSlot}>
+                                  <article
+                                    className={styles.resCard}
+                                    onClick={() => setDetail(a)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') setDetail(a) }}
+                                  >
+                                    <div className={styles.resImg}>
+                                      {photo ? <img src={photo} alt={a.name} loading="lazy" /> : <span>🏠</span>}
+                                      <span className={styles.splitIndex}>{i + 1}</span>
+                                    </div>
+                                    <div className={styles.resBody}>
+                                      <h3 className={styles.resName}>{a.name}</h3>
+                                      <p className={styles.resMeta}>
+                                        {a.apartmentType}{a.maxGuests ? ` · up to ${a.maxGuests} guests` : ''}
+                                        <br />
+                                        {formatDisplayDate(checkIn)} → {formatDisplayDate(checkOut)}
+                                      </p>
+                                      <div className={styles.resFoot}>
+                                        <div className={styles.priceBlock}>
+                                          <span className={styles.price}>€{priceOf(a)}</span>
+                                          <span className={styles.priceSub}> · {nights} {nights === 1 ? 'night' : 'nights'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </article>
+                                </div>
+                              </Fragment>
+                            )
+                          })}
                         </div>
                         <div className={styles.splitFoot}>
                           <div className={styles.priceBlock}>
                             <span className={styles.price}>€{total}</span>
-                            <span className={styles.priceSub}> total · {combo.apartments.length} apartments</span>
+                            <span className={styles.priceSub}>
+                              {' '}total · {combo.apartments.length} apartments
+                              {sleeps ? ` · sleeps ${sleeps}` : ''}
+                            </span>
                           </div>
                           <button
                             className={styles.resBookBtn}

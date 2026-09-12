@@ -1,7 +1,6 @@
 from .access import DoorCode, LockboxCode
 from .attachments import ReservationAttachment
 from .audit import ReservationAuditLog
-from .automation import ClaudeTask
 from .booking import (
     Amenity,
     BookingRequest,
@@ -14,17 +13,14 @@ from .booking import (
     PropertyPhoto,
     StayConstraint,
 )
-from .communication import Inquiry
 from .company import CompanyProfile
-from .messaging import ContractTemplate, MessageTemplate
+from .messaging import ContractTemplate, MessageTemplate, ReservationContract
 from .notifications import NotificationRead
 from .finance import (
-    Expense,
     ExpenseCategory,
     ExpensePayment,
     FinanceExpense,
     FinancialObligation,
-    FinancialReport,
     Loan,
 )
 from .guest_auth import GuestAccount, GuestLoginLink
@@ -32,11 +28,13 @@ from .guests import Guest, GuestDocument
 from .invoices import Invoice
 from .maintenance import ApartmentCleanStatus, MaintenanceIssue, MaintenancePhoto
 from .properties import Property
-from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
 from .reviews import PropertyReview
+from .receipts import DailyEntry, ReceiptItem, ReceiptItemReservation
 from .security import LoginChallenge, UserSecurity
-from .reservations import GuestStay, Reservation, ReservationType
+from .staff import StaffLeave, StaffMember
+from .reservations import Reservation, ReservationType
 from .sync_log import SyncConflict, SyncLog
+from .sync_schedule import ChannelSyncState, SyncRun
 from .taxes import MonthlyTax
 
 __all__ = [
@@ -45,25 +43,21 @@ __all__ = [
     "BookingRequest",
     "BookingSiteSettings",
     "CancellationPolicy",
-    "ClaudeTask",
     "CompanyProfile",
     "ContractTemplate",
     "NotificationRead",
     "MessageTemplate",
+    "ReservationContract",
     "DoorCode",
-    "Expense",
     "ExpenseCategory",
     "ExpensePayment",
     "FinanceExpense",
     "FinancialObligation",
-    "FinancialReport",
     "Guest",
     "GuestAccount",
     "GuestLoginLink",
     "GuestDocument",
-    "GuestStay",
     "HouseRule",
-    "Inquiry",
     "Invoice",
     "LockboxCode",
     "LoginChallenge",
@@ -75,9 +69,9 @@ __all__ = [
     "PricingGroup",
     "PricingRule",
     "Property",
+    "PropertyReview",
     "PropertyAmenity",
     "PropertyPhoto",
-    "PropertyReview",
     "UserSecurity",
     "ReceiptItem",
     "ReceiptItemReservation",
@@ -87,5 +81,9 @@ __all__ = [
     "ReservationAuditLog",
     "StayConstraint",
     "SyncConflict",
+    "ChannelSyncState",
+    "SyncRun",
+    "StaffLeave",
+    "StaffMember",
     "SyncLog",
 ]

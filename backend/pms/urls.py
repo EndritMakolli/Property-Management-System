@@ -88,7 +88,13 @@ urlpatterns = [
     path("clean-status/<uuid:property_id>/mark/", views.clean_status_mark, name="clean-status-mark"),
 
     # Sync Logs
+    path("staff-members/", views.staff_member_list, name="staff-member-list"),
+    path("staff-members/<uuid:member_id>/", views.staff_member_detail, name="staff-member-detail"),
+    path("staff-leave/", views.staff_leave_list, name="staff-leave-list"),
+    path("staff-leave/<uuid:leave_id>/", views.staff_leave_detail, name="staff-leave-detail"),
     path("sync-logs/", views.sync_log_list, name="sync-log-list"),
+    path("sync/status/", views.sync_status, name="sync-status"),
+    path("sync/run/", views.sync_run_now, name="sync-run-now"),
 
     # Sync Conflicts (channel events that couldn't import)
     path("sync-conflicts/", views.sync_conflict_list, name="sync-conflict-list"),
@@ -115,7 +121,6 @@ urlpatterns = [
     path("booking/bookings/", views.booking_create_direct, name="booking-create-direct"),
     path("booking/reservations/<uuid:token>/", views.booking_reservation_detail, name="booking-reservation-detail"),
     path("booking/reservations/<uuid:token>/cancel/", views.booking_cancel, name="booking-cancel"),
-    path("booking/reservations/<uuid:token>/change-request/", views.booking_change_request, name="booking-change-request"),
 
     # ---- Guest account portal (public site, guest session) ----
     path("guest/auth/request-link/", views.guest_request_link, name="guest-request-link"),

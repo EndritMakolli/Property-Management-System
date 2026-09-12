@@ -5,6 +5,7 @@ import { fetchProperties, fetchQuotes, fetchReservations } from '../api/pmsApi'
 import { CalendarOverviewTimeline } from '../features/calendar/CalendarOverviewTimeline'
 import { useCalendarReservationEditor } from '../features/calendar/useCalendarReservationEditor'
 import { GuestReplyPanel } from '../features/availability/GuestReplyPanel'
+import { findCombinations } from '../features/availability/groupCombinations'
 import { NewReservationModal } from '../features/reservations/NewReservationModal'
 import type { PropertyListing, QuoteRecord, ReservationRecord } from '../types/domain'
 import { calculateNights, formatDisplayDate, parseDateValue, toDateInputValue } from '../utils/date'
@@ -15,6 +16,8 @@ type AvailabilitySearchState = {
   bedrooms: string
   checkIn: string
   checkOut: string
+  /** Party size, as typed. '' means nobody asked, so no group search runs. */
+  guests: string
 }
 
 type StaySegment = {
@@ -55,6 +58,7 @@ export function AvailabilityPage() {
     bedrooms: 'any',
     checkIn: toDateInputValue(today),
     checkOut: toDateInputValue(tomorrow),
+    guests: '',
   }
   const storedSearch = readStoredAvailabilitySearch(defaultSearch)
 
@@ -64,6 +68,7 @@ export function AvailabilityPage() {
   const [checkIn, setCheckIn] = useState(storedSearch.checkIn)
   const [checkOut, setCheckOut] = useState(storedSearch.checkOut)
   const [bedrooms, setBedrooms] = useState(storedSearch.bedrooms)
+  const [guests, setGuests] = useState(storedSearch.guests ?? '')
   const [timelineStartDate, setTimelineStartDate] = useState(() => parseDate(storedSearch.checkIn))
 
   const {
@@ -121,9 +126,9 @@ export function AvailabilityPage() {
   useEffect(() => {
     window.localStorage.setItem(
       availabilitySearchStorageKey,
-      JSON.stringify({ bedrooms, checkIn, checkOut }),
+      JSON.stringify({ bedrooms, checkIn, checkOut, guests }),
     )
-  }, [bedrooms, checkIn, checkOut])
+  }, [bedrooms, checkIn, checkOut, guests])
 
   const bedroomOptions = useMemo(
     () => [...new Set(properties.map((property) => property.bedrooms))].sort((a, b) => a - b),
@@ -145,6 +150,43 @@ export function AvailabilityPage() {
       return bedroomMatch && !hasOverlap
     })
   }, [bedrooms, checkIn, checkOut, properties, reservations])
+
+  // Free for the whole stay, whatever their size. A party of fourteen does not
+  // care how many bedrooms each apartment has, so the bedroom filter - which
+  // narrows the single-apartment list above - must not narrow this one too.
+  const freeForStay = useMemo(() => {
+    if (!checkIn || !checkOut || calculateNights(checkIn, checkOut) < 1) return []
+    return properties.filter(
+      (property) =>
+        !reservations.some(
+          (reservation) =>
+            reservation.propertyId === property.id &&
+            reservationOverlapsStay(reservation, checkIn, checkOut),
+        ),
+    )
+  }, [checkIn, checkOut, properties, reservations])
+
+  const partySize = Number(guests) || 0
+
+  const groupOptions = useMemo(() => {
+    if (partySize < 2) return []
+    return findCombinations(
+      freeForStay.map((property) => ({
+        id: property.id,
+        name: property.name,
+        maxGuests: property.maxGuests,
+        bedrooms: property.bedrooms,
+      })),
+      partySize,
+    )
+  }, [freeForStay, partySize])
+
+  // Apartments that sleep the party on their own. Shown beside the
+  // combinations so a group is never split when it did not need to be.
+  const singlesForParty = useMemo(
+    () => (partySize < 2 ? [] : freeForStay.filter((property) => property.maxGuests >= partySize)),
+    [freeForStay, partySize],
+  )
 
   const nights = calculateNights(checkIn, checkOut)
   const searchKey = `${checkIn}|${checkOut}|${bedrooms}`
@@ -357,6 +399,17 @@ export function AvailabilityPage() {
               ))}
             </select>
           </label>
+          <label>
+            Party size
+            <input
+              className="availability-guests"
+              min={1}
+              placeholder="Any"
+              type="number"
+              value={guests}
+              onChange={(event) => setGuests(event.target.value.replace(/[^0-9]/g, ''))}
+            />
+          </label>
           <button className="primary-button" type="button" onClick={() => setTimelineStartDate(parseDate(checkIn))}>
             <Search size={17} />
             Search
@@ -401,6 +454,94 @@ export function AvailabilityPage() {
               )
             })}
           </div>
+          {partySize >= 2 && (
+            <section className="availability-group">
+              <div>
+                <p className="eyebrow">Party of {partySize}</p>
+                <h3>
+                  {singlesForParty.length > 0
+                    ? 'Apartments that take the whole party'
+                    : 'No single apartment takes the whole party'}
+                </h3>
+              </div>
+
+              {singlesForParty.length > 0 && (
+                <div className="group-singles">
+                  {singlesForParty.map((property) => (
+                    <article className="group-single" key={property.id}>
+                      <div>
+                        <strong>{property.name}</strong>
+                        <small>sleeps {property.maxGuests}</small>
+                      </div>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        type="button"
+                        onClick={() => openBookModal(property)}
+                      >
+                        Book
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {groupOptions.length > 0 ? (
+                <>
+                  <p className="group-lead">
+                    {singlesForParty.length > 0 ? 'Or split them across:' : 'Split them across:'}
+                  </p>
+                  <div className="group-combos">
+                    {groupOptions.map((combo) => (
+                      <article
+                        className="group-combo"
+                        key={combo.apartments.map((a) => a.id).join('+')}
+                      >
+                        <header>
+                          <strong>
+                            {combo.apartments.length} apartments · sleeps {combo.capacity}
+                          </strong>
+                          <small>
+                            {combo.bedrooms} {combo.bedrooms === 1 ? 'bedroom' : 'bedrooms'}
+                            {combo.spareBeds > 0
+                              ? ` · ${combo.spareBeds} spare ${combo.spareBeds === 1 ? 'bed' : 'beds'}`
+                              : ' · exact fit'}
+                          </small>
+                        </header>
+                        <ul>
+                          {combo.apartments.map((apartment) => {
+                            const property = freeForStay.find((row) => row.id === apartment.id)
+                            return (
+                              <li key={apartment.id}>
+                                <span>{apartment.name}</span>
+                                <small>sleeps {apartment.maxGuests}</small>
+                                {property && (
+                                  <button
+                                    className="btn btn-sm btn-outline"
+                                    type="button"
+                                    onClick={() => openBookModal(property)}
+                                  >
+                                    Book
+                                  </button>
+                                )}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                singlesForParty.length === 0 && (
+                  <p className="group-empty">
+                    Nothing free over these dates sleeps {partySize}, even combined. Try shorter
+                    dates, or split the party across two stays.
+                  </p>
+                )
+              )}
+            </section>
+          )}
+
           {availableProperties.length === 0 && insights.length > 0 && (
             <section className="availability-insights">
               <div>

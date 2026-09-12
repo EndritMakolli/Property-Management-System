@@ -72,6 +72,8 @@ export type ReservationRecord = {
   checkIn: string
   checkOut: string
   totalNights: number
+  /** How many people the stay is for. */
+  guestsCount?: number
   nightlyPrice: string
   monthlyPrice?: string
   totalPaid: string
@@ -289,6 +291,11 @@ export type MaintenanceIssueRecord = {
   description: string
   reporterName: string
   reportedAt: string
+  /** Whether it has been dealt with. Resolving is how an issue is cleared;
+   *  Delete is for a row entered by mistake, as it is everywhere else. */
+  isResolved: boolean
+  resolvedAt: string
+  resolvedBy: string
   photos: { id: string; url: string }[]
 }
 

@@ -530,3 +530,138 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── A group too big for one apartment ───────────────────────────────────── */
+
+/* Staff were reading the grid and adding up beds by hand. This answers the
+   question directly: who sleeps the party, and failing that, which apartments
+   together do. Deliberately below the single-apartment list — splitting a
+   group is the fallback, not the first offer. */
+.availability-group {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  padding: 16px;
+}
+
+.availability-group h3 {
+  margin: 0;
+}
+
+.group-lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.group-singles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.group-single {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--accent-border, var(--border));
+  border-radius: 8px;
+  background: var(--bg-subtle, transparent);
+  padding: 10px 12px;
+}
+
+.group-single strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.group-single small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.group-combos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.group-combo {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.group-combo header {
+  display: grid;
+  gap: 2px;
+}
+
+.group-combo header strong {
+  font-size: 0.88rem;
+}
+
+.group-combo header small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.group-combo ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group-combo li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  font-size: 0.84rem;
+}
+
+.group-combo li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-combo li small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.group-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.availability-guests {
+  width: 100%;
+  min-width: 0;
+}
+
+/* One column on a phone: three columns of apartment, capacity and button do
+   not survive 360px, and the button is the part that must stay tappable. */
+@media (max-width: 700px) {
+  .group-combo li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .group-combo li button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}

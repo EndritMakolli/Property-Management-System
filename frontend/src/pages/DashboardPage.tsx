@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, CheckSquare, Home, Plus, Square, TrendingUp, Users, Wrench } from 'lucide-react'
+import { Activity, CalendarDays, CheckSquare, Home, Plus, Square, Sunrise, TrendingUp, Users, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -11,6 +11,7 @@ import {
 } from '../api/pmsApi'
 import { fetchDashboardForecast, type DashboardForecast } from '../api/forecast'
 import { NewReservationModal } from '../features/reservations/NewReservationModal'
+import { TodayModal } from '../features/dashboard/TodayModal'
 import { useAuth } from '../auth/AuthContext'
 import { Metric } from '../components/shared/Metric'
 import { PanelHeader } from '../components/shared/PanelHeader'
@@ -49,6 +50,7 @@ export function DashboardPage() {
   const [forecast, setForecast] = useState<DashboardForecast | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [addReservationOpen, setAddReservationOpen] = useState(false)
+  const [todayOpen, setTodayOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<ReservationRecord | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -255,6 +257,12 @@ export function DashboardPage() {
             value={reportDate}
             onChange={setReportDate}
           />
+          {/* The first thing looked at in the morning, and nothing else — so it
+              opens over the dashboard rather than owning a page. */}
+          <button className="primary-button" onClick={() => setTodayOpen(true)}>
+            <Sunrise size={17} />
+            Today
+          </button>
           <button className="primary-button" onClick={() => navigate('/clients')}>
             <Users size={17} />
             Clients
@@ -265,6 +273,8 @@ export function DashboardPage() {
           </button>
         </div>
       </section>
+
+      {todayOpen && <TodayModal onClose={() => setTodayOpen(false)} />}
 
       <NewReservationModal
         open={addReservationOpen}

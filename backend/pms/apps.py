@@ -7,3 +7,6 @@ class PmsConfig(AppConfig):
 
     def ready(self):
         import pms.signals  # noqa: F401
+        # Registers the production-config checks. Importing here rather
+        # than at module scope keeps them out of the app-loading path.
+        import pms.checks  # noqa: F401

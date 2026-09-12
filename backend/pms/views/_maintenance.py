@@ -17,11 +17,16 @@ def maintenance_issue_list(request):
 
     if request.method == "GET":
         property_id = request.GET.get("property")
-        issues = MaintenanceIssue.objects.select_related("property").prefetch_related("photos")
+        issues = MaintenanceIssue.objects.select_related(
+            "property", "resolved_by"
+        ).prefetch_related("photos")
         if is_management(request):
             issues = issues.filter(property__hidden_from_management=False)
         if property_id:
             issues = issues.filter(property_id=property_id)
+        # The list answers "what needs doing". A tap that has been fixed is
+        # history, and is asked for deliberately with ?resolved=1.
+        issues = issues.filter(is_resolved=request.GET.get("resolved") == "1")
         return JsonResponse({"issues": [serialize_maintenance_issue(issue, request) for issue in issues]})
 
     if request.method == "POST":
@@ -69,7 +74,11 @@ def maintenance_issue_detail(request, issue_id):
         return denied
 
     try:
-        issue = MaintenanceIssue.objects.select_related("property").prefetch_related("photos").get(pk=issue_id)
+        issue = (
+            MaintenanceIssue.objects.select_related("property", "resolved_by")
+            .prefetch_related("photos")
+            .get(pk=issue_id)
+        )
     except MaintenanceIssue.DoesNotExist:
         return JsonResponse({"error": "Issue not found."}, status=404)
 
@@ -80,6 +89,20 @@ def maintenance_issue_detail(request, issue_id):
                 issue.description = (payload.get("description") or "").strip()
             if "reporterName" in payload:
                 issue.reporter_name = payload.get("reporterName") or ""
+            # Only the keys sent: editing the wording of a fixed issue must not
+            # quietly reopen it.
+            if "isResolved" in payload:
+                resolved = bool(payload.get("isResolved"))
+                if resolved and not issue.is_resolved:
+                    issue.is_resolved = True
+                    issue.resolved_at = timezone.now()
+                    issue.resolved_by = request.user if request.user.is_authenticated else None
+                elif not resolved:
+                    # Reopening clears the record rather than leaving a stale
+                    # "fixed by" against something that is broken again.
+                    issue.is_resolved = False
+                    issue.resolved_at = None
+                    issue.resolved_by = None
             issue.save()
         except ValidationError as error:
             return JsonResponse(

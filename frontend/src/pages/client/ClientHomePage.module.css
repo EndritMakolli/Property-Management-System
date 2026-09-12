@@ -251,47 +251,85 @@
 
 /* Split stay */
 .splitSection {
-  background: var(--c-paper);
-  border: 1px solid var(--c-border);
+  margin-top: 28px;
+  background: var(--c-cream-2);
+  border: 1px solid var(--c-border-strong);
   border-radius: 18px;
   padding: 24px;
 }
 .splitLead { font-size: 0.95rem; color: var(--c-muted); margin: 0 0 18px; font-weight: 600; }
 
-.splitCombo { padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--c-border); }
-.splitCombo:first-of-type { padding-top: 0; margin-top: 0; border-top: none; }
-
-.splitRoute {
+/* The combinations. A plain stack - the box is per combination, below - so each
+   offer is its own thing rather than one entry in a shared panel with rules
+   between them. .splitSection stays for the "needs a longer stay" block. */
+.splitList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.splitList .splitLead { margin: 0; }
+
+/* One offer, one box. A shade darker than the page and the ordinary cards sit
+   on it, so the combination reads as a unit. */
+.splitCombo {
+  background: var(--c-cream-2);
+  border: 1px solid var(--c-border-strong);
+  border-radius: 18px;
+  padding: 20px 24px;
+}
+
+/* The apartments of one combination sit in a row with a + between them: they
+   are taken together, and a plain grid made them look like two separate
+   results that happened to be adjacent. Equal widths, so neither reads as the
+   main one. */
+/* Centred in the panel: two fixed-width cards left-aligned in a wide panel
+   left a lopsided empty half to the right. */
+.splitRoute {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
   margin-bottom: 18px;
 }
 
-.splitSegment {
-  display: grid;
-  grid-template-columns: 32px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  background: var(--c-cream-3);
-  border: 1px solid var(--c-border);
-  border-radius: 12px;
-  padding: 14px;
+.splitPlus {
+  align-self: center;
+  flex: none;
+  color: var(--c-muted-2);
+  font-size: 1.6rem;
+  font-weight: 300;
+  line-height: 1;
+  user-select: none;
 }
-.splitSegment strong { display: block; font-size: 0.9rem; color: var(--c-ink); }
-.splitSegment p { margin: 4px 0 0; font-size: 0.78rem; color: var(--c-muted-2); }
 
+/* Sizes the ordinary card to the width it has in the results grid, so a card
+   in a combination is the same size as a card on its own. The card itself is
+   left exactly as it is. */
+.splitSlot {
+  flex: 0 0 auto;
+  width: 270px;
+  max-width: 100%;
+}
+
+/* The order badge sits on the photo, the way a step number does on Airbnb. */
 .splitIndex {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--c-gold);
   color: #fff;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 25%);
 }
+
 .splitPrice { font-weight: 800; color: var(--c-ink); font-size: 0.95rem; }
 
 .splitFoot {
@@ -485,4 +523,15 @@
 
 .mapCtaSmall:hover {
   border-color: var(--c-gold, #b99756);
+}
+
+/* Stacked on a phone, full width, with the + still between them. */
+@media (max-width: 640px) {
+  .splitRoute {
+    flex-direction: column;
+  }
+
+  .splitSlot {
+    width: 100%;
+  }
 }

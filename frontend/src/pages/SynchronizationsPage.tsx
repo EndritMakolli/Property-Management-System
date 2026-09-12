@@ -8,6 +8,7 @@ import {
   updatePropertySync,
   type SyncAllResult,
 } from '../api/pmsApi'
+import { SyncStatusPanel } from '../features/settings/SyncStatusPanel'
 import type { PropertyListing, SyncLogRecord } from '../types/domain'
 
 type EditableSyncProperty = PropertyListing & {
@@ -158,6 +159,8 @@ export function SynchronizationsPage() {
           </button>
         </div>
       </div>
+
+      <SyncStatusPanel onSynced={loadProperties} />
 
       {syncAllBusy && (
         <p className="sync-all-progress">Syncing every configured channel — this can take a moment…</p>

@@ -56,12 +56,17 @@ class ExistingTokenCancelTests(CancellationBase):
     def cancel(self, token):
         return self.client.post(f"/api/booking/reservations/{token}/cancel/")
 
-    def test_with_no_policy_configured_cancellation_is_free(self):
+    def test_with_no_policy_configured_the_guest_is_asked_to_get_in_touch(self):
+        """Changed deliberately. An empty policy table used to mean free
+        cancellation and a full refund - a commercial term nobody had agreed
+        to, applied because nothing had been configured. Absence of a policy is
+        not a generous policy, so the booking is left alone and the guest is
+        asked to make contact."""
         reservation = self.reservation()
         response = self.cancel(reservation.booking_token)
-        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.status_code, 400, response.content)
         reservation.refresh_from_db()
-        self.assertTrue(reservation.is_archived)
+        self.assertFalse(reservation.is_archived)
 
     def test_a_free_policy_inside_its_window_cancels(self):
         CancellationPolicy.objects.create(
@@ -180,6 +185,13 @@ class GuestPortalCancelTests(CancellationBase):
         self.assertEqual(request.rejection_message, "Cancelled by guest.")
 
     def test_a_guest_can_cancel_a_confirmed_booking(self):
+        # A policy has to exist for a guest to cancel under it. Leaving the
+        # table empty used to pass by accident, because "no policy" meant free
+        # cancellation; it now means "get in touch", so the case this test is
+        # actually about has to be set up.
+        CancellationPolicy.objects.create(
+            scope="all", policy_type=CancellationPolicy.PolicyType.FREE, days_before_checkin=7
+        )
         request = self.confirmed()
         self.sign_in()
         self.assertEqual(self.cancel(request.id).status_code, 200)
